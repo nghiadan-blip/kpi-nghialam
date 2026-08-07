@@ -1,0 +1,3 @@
+import db from '../src/config/db';
+
+export default db;
