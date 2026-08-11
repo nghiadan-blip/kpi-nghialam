@@ -103,18 +103,18 @@ export const AIChatWidget: React.FC = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-red-800 via-red-700 to-amber-700 hover:from-red-900 hover:to-amber-800 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 border border-amber-300/40"
+          className="group relative flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-600 hover:from-blue-800 hover:to-indigo-800 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 border border-sky-300/40"
         >
-          <div className="absolute -inset-1 bg-amber-400/30 rounded-full blur-md opacity-75 group-hover:opacity-100 transition animate-pulse" />
+          <div className="absolute -inset-1 bg-sky-400/30 rounded-full blur-md opacity-75 group-hover:opacity-100 transition animate-pulse" />
           <div className="relative flex items-center space-x-2">
-            <div className="p-1 rounded-full bg-amber-400/20 text-yellow-200">
-              <Sparkles className="w-5 h-5 text-amber-300" />
+            <div className="p-1 rounded-full bg-white/20 text-yellow-200">
+              <Sparkles className="w-5 h-5 text-yellow-300" />
             </div>
             <span className="font-bold text-xs md:text-sm tracking-wide">Trợ Lý AI DeepSeek</span>
           </div>
           <span className="relative flex h-2.5 w-2.5">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
           </span>
         </button>
       )}
@@ -127,7 +127,7 @@ export const AIChatWidget: React.FC = () => {
           }`}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-red-900 via-red-800 to-red-950 text-white px-4 py-3.5 flex items-center justify-between border-b border-amber-400/30">
+          <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 text-white px-4 py-3.5 flex items-center justify-between border-b border-sky-500/30">
             <div className="flex items-center space-x-2.5">
               <VietnameseEmblem size={32} />
               <div>
@@ -135,11 +135,11 @@ export const AIChatWidget: React.FC = () => {
                   <h3 className="font-black text-xs md:text-sm tracking-wide uppercase">
                     TRỢ LÝ AI DEEPSEEK
                   </h3>
-                  <span className="bg-amber-400/20 text-yellow-300 border border-yellow-300/40 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                  <span className="bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
                     NĐ 335
                   </span>
                 </div>
-                <div className="flex items-center space-x-1 text-[11px] text-yellow-100/80">
+                <div className="flex items-center space-x-1 text-[11px] text-sky-200/80">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   <span>Trực tuyến 24/7 • UBND xã Nghĩa Lâm</span>
                 </div>

@@ -45,25 +45,25 @@ export const Navbar: React.FC = () => {
     switch (role) {
       case 'ADMIN':
         return (
-          <span className="bg-purple-100 text-purple-800 border border-purple-200/80 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-xs">
+          <span className="bg-purple-100 text-purple-800 border border-purple-200 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-2xs">
             Quản trị viên
           </span>
         );
       case 'LEADERSHIP':
         return (
-          <span className="bg-red-100 text-red-800 border border-red-200/80 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-xs">
+          <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-2xs">
             Lãnh đạo UBND
           </span>
         );
       case 'DEPARTMENT_HEAD':
         return (
-          <span className="bg-blue-100 text-blue-800 border border-blue-200/80 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-xs">
+          <span className="bg-blue-100 text-blue-800 border border-blue-200 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-2xs">
             Trưởng bộ phận
           </span>
         );
       default:
         return (
-          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-xs">
+          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wide shadow-2xs">
             Công chức
           </span>
         );
@@ -80,25 +80,25 @@ export const Navbar: React.FC = () => {
   return (
     <>
       <header className="bg-white border-b border-slate-200/90 shadow-sm sticky top-0 z-40">
-        {/* Top Header Branding Banner */}
-        <div className="bg-gradient-to-r from-red-900 via-red-800 to-red-950 text-white px-4 md:px-8 py-2.5 flex items-center justify-between border-b border-amber-500/30">
+        {/* Top Header Branding Banner — Modern Royal Blue & Navy Gradient */}
+        <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 text-white px-4 md:px-8 py-2.5 flex items-center justify-between border-b border-sky-500/30">
           <div className="flex items-center space-x-3.5">
             {/* National Emblem of Vietnam (Quoc huy) */}
             <div className="relative group">
-              <div className="absolute -inset-1 bg-amber-400/30 rounded-full blur-xs opacity-75 group-hover:opacity-100 transition" />
-              <VietnameseEmblem size={44} className="relative transform group-hover:scale-105 transition duration-300" />
+              <div className="absolute -inset-1 bg-amber-400/20 rounded-full blur-xs opacity-75 group-hover:opacity-100 transition" />
+              <VietnameseEmblem size={44} className="relative transform group-hover:scale-105 transition duration-300 drop-shadow-lg" />
             </div>
 
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-sm md:text-base font-extrabold uppercase tracking-wider text-white drop-shadow-xs">
+                <h1 className="text-sm md:text-base font-black uppercase tracking-wider text-white drop-shadow-xs">
                   ỦY BAN NHÂN DÂN XÃ NGHĨA LÂM
                 </h1>
-                <span className="hidden sm:inline-block text-[10px] bg-amber-400/20 text-yellow-300 border border-yellow-400/40 px-2 py-0.5 rounded-full font-bold">
+                <span className="hidden sm:inline-block text-[10px] bg-sky-500/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full font-bold">
                   TỈNH NGHỆ AN
                 </span>
               </div>
-              <p className="text-xs text-yellow-100/90 font-medium tracking-wide">
+              <p className="text-xs text-sky-100/90 font-medium tracking-wide">
                 Hệ thống Quản lý Nhiệm vụ & Đánh giá Cán bộ, Công chức — Nghị định 335/2025/NĐ-CP
               </p>
             </div>
@@ -106,8 +106,8 @@ export const Navbar: React.FC = () => {
 
           <div className="flex items-center space-x-4">
             {/* Live Clock */}
-            <div className="hidden lg:flex items-center space-x-1.5 text-xs text-yellow-100/80 bg-red-950/40 px-3 py-1 rounded-full border border-red-800/60 font-mono">
-              <Clock className="w-3.5 h-3.5 text-amber-400" />
+            <div className="hidden lg:flex items-center space-x-1.5 text-xs text-sky-100/90 bg-slate-900/60 px-3 py-1 rounded-full border border-sky-700/40 font-mono shadow-inner">
+              <Clock className="w-3.5 h-3.5 text-sky-400" />
               <span>{currentTime}</span>
             </div>
             <StatusPing />
@@ -126,10 +126,10 @@ export const Navbar: React.FC = () => {
                     key={item.to}
                     to={item.to}
                     className={({ isActive }) =>
-                      `flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                      `flex items-center space-x-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
                         isActive
-                          ? 'bg-sky-50 text-sky-700 font-bold shadow-xs border border-sky-200/60'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          ? 'bg-blue-600 text-white font-bold shadow-md shadow-blue-500/25 border border-blue-600'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-blue-700'
                       }`
                     }
                   >
@@ -149,7 +149,7 @@ export const Navbar: React.FC = () => {
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center space-x-2.5 px-3 py-1.5 rounded-xl hover:bg-slate-100/80 transition-all border border-transparent hover:border-slate-200 text-slate-700"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs">
                     {user.fullname.charAt(0)}
                   </div>
                   <div className="text-left hidden md:block">
@@ -173,7 +173,7 @@ export const Navbar: React.FC = () => {
                           Tài khoản đang đăng nhập
                         </p>
                         <p className="text-sm font-bold text-slate-900 mt-0.5">{user.fullname}</p>
-                        <p className="text-xs text-sky-700 font-medium">
+                        <p className="text-xs text-blue-700 font-medium">
                           {user.department_name || user.position}
                         </p>
                       </div>
@@ -210,7 +210,7 @@ export const Navbar: React.FC = () => {
             ) : (
               <Link
                 to="/login"
-                className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 text-white rounded-xl text-xs sm:text-sm font-bold transition shadow-sm"
+                className="flex items-center space-x-1.5 px-4 py-2 bg-gradient-to-r from-blue-700 to-indigo-700 hover:from-blue-800 hover:to-indigo-800 text-white rounded-xl text-xs sm:text-sm font-bold transition shadow-sm"
               >
                 <UserIcon className="w-4 h-4" />
                 <span>Đăng nhập</span>
