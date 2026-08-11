@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoutes';
 import departmentRoutes from './routes/departmentRoutes';
+import taskRoutes from './routes/taskRoutes';
+import catalogRoutes from './routes/catalogRoutes';
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.get('/api/health', (_req: Request, res: Response) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/catalog', catalogRoutes);
 
 export default app;
 

@@ -53,6 +53,27 @@ export interface Task {
   evidence?: string | null;
   created_at?: string;
   updated_at?: string;
+
+  // Joined fields
+  assignee_name?: string;
+  assignee_position?: string;
+  assignee_department_id?: number | null;
+  assignee_department_name?: string | null;
+  creator_name?: string;
+  creator_position?: string;
+  catalog_name?: string;
+  catalog_code?: string;
+  catalog_coefficient?: number;
+  is_overdue?: boolean;
+  computed_status?: TaskStatus | string;
+}
+
+export interface TaskStats {
+  total: number;
+  pending: number;
+  in_progress: number;
+  completed: number;
+  overdue: number;
 }
 
 export type EvaluationStatus = 'DRAFT' | 'SUBMITTED' | 'MANAGER_REVIEWED' | 'APPROVED';

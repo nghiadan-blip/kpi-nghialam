@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Department, HealthCheckResponse } from '../types';
+import { User, Department, Task, TaskStats, ProductCatalog, HealthCheckResponse } from '../types';
 
 export type { HealthCheckResponse };
 
@@ -98,6 +98,77 @@ export const departmentsApi = {
   },
   deleteDepartment: async (id: number) => {
     const res = await api.delete<{ message: string }>(`/departments/${id}`);
+    return res.data;
+  },
+};
+
+// --- Tasks APIs ---
+export const tasksApi = {
+  getTasks: async (params?: {
+    status?: string;
+    assigned_to?: number;
+    assigned_by?: number;
+    department_id?: number;
+    search?: string;
+    overdue_only?: boolean;
+  }) => {
+    const res = await api.get<{ tasks: Task[] }>('/tasks', { params });
+    return res.data;
+  },
+  getTaskStats: async () => {
+    const res = await api.get<{ stats: TaskStats }>('/tasks/stats');
+    return res.data;
+  },
+  getTaskById: async (id: number) => {
+    const res = await api.get<{ task: Task }>(`/tasks/${id}`);
+    return res.data;
+  },
+  createTask: async (data: {
+    title: string;
+    description?: string;
+    assigned_to: number;
+    product_catalog_id?: number | null;
+    deadline: string;
+    weight?: number;
+    status?: string;
+  }) => {
+    const res = await api.post<{ message: string; task: Task }>('/tasks', data);
+    return res.data;
+  },
+  updateTask: async (id: number, data: Partial<Task>) => {
+    const res = await api.put<{ message: string; task: Task }>(`/tasks/${id}`, data);
+    return res.data;
+  },
+  updateTaskStatus: async (id: number, status: string, evidence?: string) => {
+    const res = await api.patch<{ message: string }>(`/tasks/${id}/status`, { status, evidence });
+    return res.data;
+  },
+  deleteTask: async (id: number) => {
+    const res = await api.delete<{ message: string }>(`/tasks/${id}`);
+    return res.data;
+  },
+};
+
+// --- Catalog APIs ---
+export const catalogApi = {
+  getCatalog: async (params?: { category?: string; status?: string }) => {
+    const res = await api.get<{ catalog: ProductCatalog[] }>('/catalog', { params });
+    return res.data;
+  },
+  getCatalogById: async (id: number) => {
+    const res = await api.get<{ item: ProductCatalog }>(`/catalog/${id}`);
+    return res.data;
+  },
+  createCatalogItem: async (data: Partial<ProductCatalog>) => {
+    const res = await api.post<{ message: string; item: ProductCatalog }>('/catalog', data);
+    return res.data;
+  },
+  updateCatalogItem: async (id: number, data: Partial<ProductCatalog>) => {
+    const res = await api.put<{ message: string; item: ProductCatalog }>(`/catalog/${id}`, data);
+    return res.data;
+  },
+  deleteCatalogItem: async (id: number) => {
+    const res = await api.delete<{ message: string }>(`/catalog/${id}`);
     return res.data;
   },
 };
