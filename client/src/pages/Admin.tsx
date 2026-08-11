@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { usersApi, departmentsApi } from '../services/api';
-import { User, Department } from '../types';
+import { usersApi, departmentsApi, catalogApi } from '../services/api';
+import { User, Department, ProductCatalog } from '../types';
 import { UserModal } from '../components/UserModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { DepartmentModal } from '../components/DepartmentModal';
+import { CatalogModal } from '../components/CatalogModal';
 import {
   Users,
   Building2,
+  Layers,
   UserPlus,
   Plus,
   Search,
@@ -21,13 +23,16 @@ import {
 } from 'lucide-react';
 
 export const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'departments'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'catalog'>('users');
 
   // Users state
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [catalog, setCatalog] = useState<ProductCatalog[]>([]);
+
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingDepts, setLoadingDepts] = useState(true);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -44,6 +49,9 @@ export const Admin: React.FC = () => {
 
   const [deptModalOpen, setDeptModalOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
+
+  const [catalogModalOpen, setCatalogModalOpen] = useState(false);
+  const [editingCatalog, setEditingCatalog] = useState<ProductCatalog | null>(null);
 
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -76,8 +84,21 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const fetchCatalog = async () => {
+    setLoadingCatalog(true);
+    try {
+      const data = await catalogApi.getCatalog();
+      setCatalog(data.catalog);
+    } catch (err: any) {
+      console.error('Lỗi tải danh mục NĐ 335:', err);
+    } finally {
+      setLoadingCatalog(false);
+    }
+  };
+
   useEffect(() => {
     fetchDepartments();
+    fetchCatalog();
   }, []);
 
   useEffect(() => {
@@ -133,6 +154,23 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const handleDeleteCatalog = async (item: ProductCatalog) => {
+    if (!window.confirm(`Bạn có chắc muốn khóa sản phẩm danh mục "${item.name}"?`)) return;
+
+    try {
+      await catalogApi.deleteCatalogItem(item.id);
+      setActionMessage({ type: 'success', text: `Đã khóa sản phẩm ${item.name} thành công.` });
+      fetchCatalog();
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Có lỗi xảy ra khi khóa sản phẩm danh mục.',
+      });
+      setTimeout(() => setActionMessage(null), 4000);
+    }
+  };
+
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'ADMIN':
@@ -146,6 +184,17 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const getCategoryName = (cat: string) => {
+    switch (cat) {
+      case 'PART_A':
+        return <span className="text-purple-700 font-medium">Phần A (Hành chính)</span>;
+      case 'PART_B_GROUP_I':
+        return <span className="text-blue-700 font-medium">Phần B.I (TTPVHCC)</span>;
+      default:
+        return <span className="text-emerald-700 font-medium">Phần B.II (Tiếp dân / Đột xuất)</span>;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -156,7 +205,7 @@ export const Admin: React.FC = () => {
             <h1 className="text-xl font-bold text-slate-900">Quản Trị Hệ Thống UBND Xã Nghĩa Lâm</h1>
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Quản lý hồ sơ cán bộ công chức, cơ cấu tổ chức phòng ban và phân quyền truy cập hệ thống.
+            Quản lý hồ sơ cán bộ công chức, cơ cấu phòng ban và cấu hình danh mục tiêu chí đánh giá theo NĐ 335/2025/NĐ-CP.
           </p>
         </div>
 
@@ -164,21 +213,30 @@ export const Admin: React.FC = () => {
         <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs md:text-sm font-semibold transition ${
               activeTab === 'users' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>Cán bộ & Công chức ({users.length})</span>
+            <span>Cán bộ ({users.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('departments')}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-semibold transition ${
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs md:text-sm font-semibold transition ${
               activeTab === 'departments' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Building2 className="w-4 h-4" />
-            <span>Phòng ban / Bộ phận ({departments.length})</span>
+            <span>Phòng ban ({departments.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('catalog')}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs md:text-sm font-semibold transition ${
+              activeTab === 'catalog' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Layers className="w-4 h-4" />
+            <span>Danh mục NĐ 335 ({catalog.length})</span>
           </button>
         </div>
       </div>
@@ -477,6 +535,105 @@ export const Admin: React.FC = () => {
         </div>
       )}
 
+      {/* TAB 3: CATALOG (NĐ 335) */}
+      {activeTab === 'catalog' && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-bold text-slate-800">
+                Danh mục Sản phẩm, Tiêu chí & Hệ số theo NĐ 335/2025/NĐ-CP
+              </h2>
+              <p className="text-xs text-slate-500">
+                Khung danh mục tính điểm sản phẩm: Điểm chuẩn = 5.0 × Hệ số quy đổi (K).
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                setEditingCatalog(null);
+                setCatalogModalOpen(true);
+              }}
+              className="flex items-center space-x-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Thêm Sản Phẩm NĐ 335</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-slate-200">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">Mã / Tên Sản Phẩm</th>
+                  <th className="py-3 px-4">Nhóm danh mục</th>
+                  <th className="py-3 px-4 text-center">Hệ số quy đổi (K)</th>
+                  <th className="py-3 px-4 text-center">Điểm chuẩn (5 × K)</th>
+                  <th className="py-3 px-4">Mô tả quy cách</th>
+                  <th className="py-3 px-4 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loadingCatalog ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-slate-500">
+                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
+                      Đang tải danh mục sản phẩm...
+                    </td>
+                  </tr>
+                ) : catalog.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 text-slate-500">
+                      Chưa có sản phẩm nào trong danh mục.
+                    </td>
+                  </tr>
+                ) : (
+                  catalog.map((c) => (
+                    <tr key={c.id} className="hover:bg-slate-50/80 transition">
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900">{c.name}</div>
+                        <div className="text-xs text-purple-700 font-mono bg-purple-50 px-2 py-0.5 rounded inline-block mt-0.5">
+                          {c.code}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">{getCategoryName(c.category)}</td>
+                      <td className="py-3 px-4 text-center font-bold text-slate-900">
+                        <span className="bg-slate-100 px-2.5 py-1 rounded text-xs">x{c.coefficient}</span>
+                      </td>
+                      <td className="py-3 px-4 text-center font-bold text-purple-700">
+                        {(c.coefficient * (c.baseline_score || 5.0)).toFixed(1)} đ
+                      </td>
+                      <td className="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">
+                        {c.description || <span className="italic text-slate-400">Không có mô tả</span>}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className="inline-flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              setEditingCatalog(c);
+                              setCatalogModalOpen(true);
+                            }}
+                            title="Sửa sản phẩm"
+                            className="p-1.5 text-slate-600 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCatalog(c)}
+                            title="Khóa sản phẩm"
+                            className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Modals */}
       <UserModal
         isOpen={userModalOpen}
@@ -523,6 +680,23 @@ export const Admin: React.FC = () => {
           setActionMessage({
             type: 'success',
             text: editingDept ? 'Cập nhật phòng ban thành công!' : 'Thêm mới phòng ban thành công!',
+          });
+          setTimeout(() => setActionMessage(null), 3000);
+        }}
+      />
+
+      <CatalogModal
+        isOpen={catalogModalOpen}
+        item={editingCatalog}
+        onClose={() => {
+          setCatalogModalOpen(false);
+          setEditingCatalog(null);
+        }}
+        onSuccess={() => {
+          fetchCatalog();
+          setActionMessage({
+            type: 'success',
+            text: editingCatalog ? 'Cập nhật sản phẩm thành công!' : 'Thêm sản phẩm danh mục thành công!',
           });
           setTimeout(() => setActionMessage(null), 3000);
         }}

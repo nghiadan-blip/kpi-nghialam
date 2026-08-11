@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, Department, Task, TaskStats, ProductCatalog, HealthCheckResponse } from '../types';
+import { User, Department, Task, TaskStats, ProductCatalog, Evaluation, HealthCheckResponse } from '../types';
 
 export type { HealthCheckResponse };
 
@@ -169,6 +169,79 @@ export const catalogApi = {
   },
   deleteCatalogItem: async (id: number) => {
     const res = await api.delete<{ message: string }>(`/catalog/${id}`);
+    return res.data;
+  },
+};
+
+// --- Evaluations APIs ---
+export const evaluationsApi = {
+  getEvaluations: async (params?: {
+    month?: string;
+    department_id?: number;
+    status?: string;
+    employee_id?: number;
+  }) => {
+    const res = await api.get<{ evaluations: Evaluation[] }>('/evaluations', { params });
+    return res.data;
+  },
+  getEvaluationById: async (id: number) => {
+    const res = await api.get<{ evaluation: Evaluation }>(`/evaluations/${id}`);
+    return res.data;
+  },
+  saveDraft: async (data: {
+    month: string;
+    items: Array<{
+      product_catalog_id: number;
+      task_id?: number | null;
+      quantity: number;
+      remarks?: string;
+    }>;
+    remarks?: string;
+  }) => {
+    const res = await api.post<{ message: string; evaluation_id: number; self_score: number }>(
+      '/evaluations/draft',
+      data
+    );
+    return res.data;
+  },
+  submitSelfEvaluation: async (id: number) => {
+    const res = await api.post<{ message: string }>(`/evaluations/${id}/submit`);
+    return res.data;
+  },
+  reviewByManager: async (
+    id: number,
+    data: {
+      items: Array<{
+        id: number;
+        manager_points: number;
+        remarks?: string;
+      }>;
+      remarks?: string;
+    }
+  ) => {
+    const res = await api.post<{ message: string; manager_score: number }>(`/evaluations/${id}/review`, data);
+    return res.data;
+  },
+  approveByLeadership: async (
+    id: number,
+    data: {
+      items?: Array<{
+        id: number;
+        final_points: number;
+        remarks?: string;
+      }>;
+      final_score?: number;
+      remarks?: string;
+    }
+  ) => {
+    const res = await api.post<{ message: string; final_score: number; classification: string }>(
+      `/evaluations/${id}/approve`,
+      data
+    );
+    return res.data;
+  },
+  deleteEvaluation: async (id: number) => {
+    const res = await api.delete<{ message: string }>(`/evaluations/${id}`);
     return res.data;
   },
 };

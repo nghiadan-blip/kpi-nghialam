@@ -78,10 +78,31 @@ export interface TaskStats {
 
 export type EvaluationStatus = 'DRAFT' | 'SUBMITTED' | 'MANAGER_REVIEWED' | 'APPROVED';
 
+export interface EvaluationDetail {
+  id?: number;
+  evaluation_id?: number;
+  task_id?: number | null;
+  product_catalog_id: number;
+  quantity: number;
+  self_points: number;
+  manager_points: number;
+  final_points: number;
+  remarks?: string | null;
+
+  // Joined
+  catalog_code?: string;
+  catalog_name?: string;
+  catalog_category?: string;
+  catalog_coefficient?: number;
+  catalog_baseline_score?: number;
+  task_title?: string;
+  task_evidence?: string;
+}
+
 export interface Evaluation {
   id: number;
   employee_id: number;
-  month: string;
+  month: string; // YYYY-MM
   status: EvaluationStatus | string;
   self_score: number;
   manager_score: number;
@@ -91,18 +112,16 @@ export interface Evaluation {
   remarks?: string | null;
   created_at?: string;
   updated_at?: string;
-}
 
-export interface EvaluationDetail {
-  id: number;
-  evaluation_id: number;
-  task_id?: number | null;
-  product_catalog_id: number;
-  quantity: number;
-  self_points: number;
-  manager_points: number;
-  final_points: number;
-  remarks?: string | null;
+  // Joined
+  employee_name?: string;
+  employee_position?: string;
+  employee_department_id?: number | null;
+  department_name?: string;
+  manager_name?: string;
+  approver_name?: string;
+  classification?: string | null;
+  details?: EvaluationDetail[];
 }
 
 export interface AuditLog {
