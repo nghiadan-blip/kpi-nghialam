@@ -103,9 +103,9 @@ export const AIChatWidget: React.FC = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="group relative flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-blue-700 via-indigo-700 to-sky-600 hover:from-blue-800 hover:to-indigo-800 text-white rounded-full shadow-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 border border-sky-300/40"
+          className="group relative flex items-center space-x-2.5 px-4 py-3 bg-gradient-to-r from-[#27A4F2] via-[#3EAEF4] to-[#4585E6] hover:from-[#1864AB] hover:to-[#27A4F2] text-white rounded-full shadow-2xl shadow-[#27A4F2]/30 transition-all duration-300 transform hover:scale-105 active:scale-95 border border-[#CFEBFC]/40"
         >
-          <div className="absolute -inset-1 bg-sky-400/30 rounded-full blur-md opacity-75 group-hover:opacity-100 transition animate-pulse" />
+          <div className="absolute -inset-1 bg-[#27A4F2]/30 rounded-full blur-md opacity-75 group-hover:opacity-100 transition animate-pulse" />
           <div className="relative flex items-center space-x-2">
             <div className="p-1 rounded-full bg-white/20 text-yellow-200">
               <Sparkles className="w-5 h-5 text-yellow-300" />
@@ -113,7 +113,7 @@ export const AIChatWidget: React.FC = () => {
             <span className="font-bold text-xs md:text-sm tracking-wide">Trợ Lý AI DeepSeek</span>
           </div>
           <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#9FD7F9] opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
           </span>
         </button>
@@ -122,12 +122,12 @@ export const AIChatWidget: React.FC = () => {
       {/* 2. Slide-over Chat Box */}
       {isOpen && (
         <div
-          className={`bg-white rounded-2xl shadow-2xl border border-slate-200/90 overflow-hidden flex flex-col transition-all duration-300 animate-fade-in ${
+          className={`bg-white rounded-2xl shadow-2xl shadow-[#27A4F2]/15 border border-[#CFEBFC] overflow-hidden flex flex-col transition-all duration-300 animate-fade-in ${
             isExpanded ? 'w-[90vw] md:w-[680px] h-[85vh]' : 'w-[90vw] sm:w-[420px] h-[560px]'
           }`}
         >
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 text-white px-4 py-3.5 flex items-center justify-between border-b border-sky-500/30">
+          <div className="bg-gradient-to-r from-[#0C3260] via-[#1864AB] to-[#27A4F2] text-white px-4 py-3.5 flex items-center justify-between border-b border-[#9FD7F9]/30">
             <div className="flex items-center space-x-2.5">
               <VietnameseEmblem size={32} />
               <div>
@@ -135,11 +135,11 @@ export const AIChatWidget: React.FC = () => {
                   <h3 className="font-black text-xs md:text-sm tracking-wide uppercase">
                     TRỢ LÝ AI DEEPSEEK
                   </h3>
-                  <span className="bg-sky-500/20 text-sky-300 border border-sky-400/30 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
+                  <span className="bg-white/20 text-[#CFEBFC] border border-[#9FD7F9]/40 text-[9px] px-1.5 py-0.2 rounded-full font-bold">
                     NĐ 335
                   </span>
                 </div>
-                <div className="flex items-center space-x-1 text-[11px] text-sky-200/80">
+                <div className="flex items-center space-x-1 text-[11px] text-[#CFEBFC]/90">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   <span>Trực tuyến 24/7 • UBND xã Nghĩa Lâm</span>
                 </div>

@@ -197,7 +197,7 @@ export const Tasks: React.FC = () => {
             setEditingTask(null);
             setTaskModalOpen(true);
           }}
-          className="flex items-center space-x-2 px-5 py-2.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-semibold transition shadow-sm self-start md:self-auto"
+          className="flex items-center space-x-2 px-5 py-2.5 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-sm font-bold transition shadow-md shadow-[#27A4F2]/25 self-start md:self-auto"
         >
           <Plus className="w-4 h-4" />
           <span>Giao Nhiệm Vụ Mới</span>

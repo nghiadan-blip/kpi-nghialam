@@ -7,19 +7,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        commune: {
-          50: '#f0f9ff',
-          100: '#e0f2fe',
-          600: '#0284c7',
-          700: '#0369a1',
-          800: '#075985',
-          900: '#0c4a6e',
+        vietnix: {
+          primary: '#27A4F2',
+          sky: '#3EAEF4',
+          light: '#6EC2F7',
+          soft: '#9FD7F9',
+          ice: '#CFEBFC',
+          cobalt: '#4585E6',
+          periwinkle: '#91A8ED',
+          lavender: '#BDCBF4',
+          deep: '#1864AB',
+          navy: '#0C3260',
+          midnight: '#061933',
         },
-        gov: {
-          red: '#da251d',
-          yellow: '#ffde00',
-          dark: '#1e293b'
-        }
+        commune: {
+          50: '#CFEBFC',
+          100: '#9FD7F9',
+          200: '#6EC2F7',
+          300: '#3EAEF4',
+          400: '#27A4F2',
+          500: '#4585E6',
+          600: '#1c7ed6',
+          700: '#1864ab',
+          800: '#0c3260',
+          900: '#061933',
+        },
       }
     },
   },

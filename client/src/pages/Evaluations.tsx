@@ -194,7 +194,7 @@ export const Evaluations: React.FC = () => {
               setSelectedEval(userEvalThisMonth || null);
               setModalOpen(true);
             }}
-            className="flex items-center space-x-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+            className="flex items-center space-x-2 px-5 py-2.5 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-sm font-bold transition shadow-md shadow-[#27A4F2]/25"
           >
             <Plus className="w-4 h-4" />
             <span>

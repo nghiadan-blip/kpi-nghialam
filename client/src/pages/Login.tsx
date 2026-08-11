@@ -21,7 +21,7 @@ export const Login: React.FC = () => {
       username: 'admin',
       password: 'admin123',
       dept: 'Phòng CNTT & Quản trị',
-      badge: 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100',
+      badge: 'bg-[#BDCBF4]/40 text-[#0C3260] border border-[#91A8ED] hover:bg-[#BDCBF4]/70',
     },
     {
       role: 'LEADERSHIP',
@@ -29,7 +29,7 @@ export const Login: React.FC = () => {
       username: 'chutich',
       password: 'chutich123',
       dept: 'Lãnh đạo UBND xã',
-      badge: 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100',
+      badge: 'bg-[#CFEBFC] text-[#0C3260] border border-[#6EC2F7] hover:bg-[#9FD7F9]/50',
     },
     {
       role: 'LEADERSHIP',
@@ -37,7 +37,7 @@ export const Login: React.FC = () => {
       username: 'phochutich',
       password: 'phochutich123',
       dept: 'Lãnh đạo UBND xã',
-      badge: 'bg-sky-50 text-sky-900 border-sky-300 hover:bg-sky-100',
+      badge: 'bg-[#CFEBFC]/80 text-[#1864AB] border border-[#9FD7F9] hover:bg-[#CFEBFC]',
     },
     {
       role: 'DEPARTMENT_HEAD',
@@ -45,7 +45,7 @@ export const Login: React.FC = () => {
       username: 'truongphong_hcc',
       password: 'head123',
       dept: 'Trung tâm PV Hành chính công',
-      badge: 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100',
+      badge: 'bg-[#9FD7F9]/30 text-[#1864AB] border border-[#6EC2F7] hover:bg-[#9FD7F9]/60',
     },
     {
       role: 'DEPARTMENT_HEAD',
@@ -53,7 +53,7 @@ export const Login: React.FC = () => {
       username: 'truongphong_dc',
       password: 'head123',
       dept: 'Bộ phận Địa chính - Xây dựng',
-      badge: 'bg-indigo-50 text-indigo-800 border-indigo-200 hover:bg-indigo-100',
+      badge: 'bg-[#6EC2F7]/25 text-[#0C3260] border border-[#3EAEF4] hover:bg-[#6EC2F7]/50',
     },
     {
       role: 'EMPLOYEE',
@@ -61,7 +61,7 @@ export const Login: React.FC = () => {
       username: 'congchuc_dc',
       password: 'emp123',
       dept: 'Bộ phận Địa chính - Xây dựng',
-      badge: 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100',
+      badge: 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100',
     },
   ];
 
@@ -94,24 +94,24 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-[85vh] flex flex-col justify-center items-center py-10 px-4">
-      {/* Container with soft blue shadow */}
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl shadow-blue-950/10 border border-slate-200 overflow-hidden relative">
-        {/* Header with National Emblem & Royal Navy Gradient */}
-        <div className="bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-950 text-white p-6 md:p-8 text-center relative border-b-2 border-sky-500/40">
+      {/* Container with Vietnix palette shadow */}
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl shadow-[#27A4F2]/10 border border-[#CFEBFC] overflow-hidden relative">
+        {/* Header with National Emblem & Vietnix Blue Gradient */}
+        <div className="bg-gradient-to-br from-[#0C3260] via-[#1864AB] to-[#27A4F2] text-white p-6 md:p-8 text-center relative border-b-2 border-[#9FD7F9]/40">
           <div className="relative inline-block mb-3">
-            <div className="absolute -inset-2 bg-sky-400/20 rounded-full blur-md" />
+            <div className="absolute -inset-2 bg-white/20 rounded-full blur-md" />
             <VietnameseEmblem size={78} className="relative mx-auto drop-shadow-xl" />
           </div>
 
           <h2 className="text-base md:text-lg font-black tracking-wider uppercase drop-shadow-sm text-white">
             ỦY BAN NHÂN DÂN XÃ NGHĨA LÂM
           </h2>
-          <p className="text-xs text-sky-200/90 font-medium mt-1">
+          <p className="text-xs text-[#CFEBFC] font-medium mt-1">
             Hệ thống Quản lý Nhiệm vụ & Đánh giá Cán bộ, Công chức
           </p>
 
-          <div className="inline-flex items-center space-x-1.5 mt-3 text-[11px] bg-sky-950/80 text-sky-300 border border-sky-500/30 px-3 py-1 rounded-full font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5 text-sky-400" />
+          <div className="inline-flex items-center space-x-1.5 mt-3 text-[11px] bg-[#0C3260]/60 text-[#9FD7F9] border border-[#6EC2F7]/30 px-3 py-1 rounded-full font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#3EAEF4]" />
             <span>Khung Đánh giá Nghị định số 335/2025/NĐ-CP</span>
           </div>
         </div>
@@ -119,8 +119,8 @@ export const Login: React.FC = () => {
         {/* Login Form Body */}
         <div className="p-6 md:p-8">
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-              <LogIn className="w-4 h-4 text-blue-700" />
+            <h3 className="text-base font-bold text-[#0C3260] flex items-center space-x-2">
+              <LogIn className="w-4 h-4 text-[#27A4F2]" />
               <span>Đăng nhập hệ thống</span>
             </h3>
             <span className="text-xs text-slate-400 font-medium">Bảo mật JWT</span>
@@ -135,11 +135,11 @@ export const Login: React.FC = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5 tracking-wider">
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1.5 tracking-wider">
                 Tên đăng nhập
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#6EC2F7]">
                   <User className="w-4 h-4" />
                 </div>
                 <input
@@ -147,18 +147,18 @@ export const Login: React.FC = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm font-medium transition placeholder:text-slate-400 bg-slate-50/50 focus:bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] focus:border-transparent text-sm font-medium transition placeholder:text-slate-400 bg-[#F0F7FD]/50 focus:bg-white text-[#0C3260]"
                   placeholder="Nhập tên tài khoản"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5 tracking-wider">
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1.5 tracking-wider">
                 Mật khẩu
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#6EC2F7]">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -166,7 +166,7 @@ export const Login: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm font-medium transition placeholder:text-slate-400 bg-slate-50/50 focus:bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] focus:border-transparent text-sm font-medium transition placeholder:text-slate-400 bg-[#F0F7FD]/50 focus:bg-white text-[#0C3260]"
                   placeholder="••••••••"
                 />
               </div>
@@ -175,13 +175,13 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-800 hover:from-blue-800 hover:to-indigo-900 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 mt-3 cursor-pointer hover:shadow-lg active:scale-[0.99]"
+              className="w-full py-3 px-4 bg-gradient-to-r from-[#27A4F2] via-[#3EAEF4] to-[#4585E6] hover:from-[#1864AB] hover:to-[#27A4F2] disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-md shadow-[#27A4F2]/25 transition-all flex items-center justify-center space-x-2 mt-3 cursor-pointer hover:shadow-lg active:scale-[0.99]"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <LogIn className="w-4 h-4 text-sky-200" />
+                  <LogIn className="w-4 h-4 text-[#CFEBFC]" />
                   <span>Đăng Nhập Vào Hệ Thống</span>
                 </>
               )}
@@ -189,10 +189,10 @@ export const Login: React.FC = () => {
           </form>
 
           {/* Quick Demo Selector */}
-          <div className="mt-7 pt-5 border-t border-slate-200/80">
+          <div className="mt-7 pt-5 border-t border-[#CFEBFC]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-xs font-bold text-[#0C3260] flex items-center space-x-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#27A4F2]" />
                 <span>Chọn nhanh tài khoản trải nghiệm:</span>
               </span>
             </div>
@@ -202,7 +202,7 @@ export const Login: React.FC = () => {
                   key={acc.username}
                   type="button"
                   onClick={() => handleSelectDemo(acc.username, acc.password)}
-                  className={`p-2.5 text-left rounded-xl border text-xs font-medium transition hover:shadow-xs flex flex-col justify-between ${acc.badge} active:scale-[0.98]`}
+                  className={`p-2.5 text-left rounded-xl text-xs font-medium transition hover:shadow-xs flex flex-col justify-between ${acc.badge} active:scale-[0.98]`}
                 >
                   <span className="font-bold truncate text-[11px] leading-tight">{acc.title}</span>
                   <span className="text-[10px] opacity-75 font-mono mt-1">@{acc.username}</span>
@@ -213,8 +213,8 @@ export const Login: React.FC = () => {
         </div>
 
         {/* Footer info */}
-        <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-100 text-center text-xs text-slate-500 flex items-center justify-center space-x-1.5">
-          <Building className="w-3.5 h-3.5 text-slate-400" />
+        <div className="bg-[#F0F7FD] px-6 py-3.5 border-t border-[#CFEBFC] text-center text-xs text-[#1864AB] flex items-center justify-center space-x-1.5">
+          <Building className="w-3.5 h-3.5 text-[#6EC2F7]" />
           <span>Ủy ban nhân dân xã Nghĩa Lâm — Tỉnh Nghệ An</span>
         </div>
       </div>

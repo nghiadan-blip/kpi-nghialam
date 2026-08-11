@@ -89,26 +89,26 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 1. Hero Welcome Banner — Modern Royal Navy Gradient */}
-      <div className="bg-gradient-to-r from-slate-950 via-blue-950 to-indigo-950 rounded-2xl p-6 lg:p-7 text-white shadow-xl relative overflow-hidden border border-sky-500/30">
+      {/* 1. Hero Welcome Banner — Vietnix Blue Gradient */}
+      <div className="bg-gradient-to-r from-[#0C3260] via-[#1864AB] to-[#27A4F2] rounded-2xl p-6 lg:p-7 text-white shadow-xl relative overflow-hidden border border-[#9FD7F9]/30">
         <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
           <VietnameseEmblem size={240} />
         </div>
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start space-x-4">
-            <div className="hidden sm:block p-2 bg-slate-900/80 rounded-2xl border border-sky-400/30 shadow-inner flex-shrink-0">
+            <div className="hidden sm:block p-2 bg-[#0C3260]/70 rounded-2xl border border-[#9FD7F9]/40 shadow-inner flex-shrink-0">
               <VietnameseEmblem size={56} />
             </div>
             <div className="space-y-1.5">
-              <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 bg-sky-500/20 text-sky-200 border border-sky-300/30 rounded-full text-xs font-semibold">
-                <Sparkles className="w-3.5 h-3.5 text-sky-300" />
+              <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 bg-white/20 text-[#CFEBFC] border border-[#9FD7F9]/40 rounded-full text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
                 <span>Hệ thống Đánh giá & Xếp loại CBCC theo Nghị định 335/2025/NĐ-CP</span>
               </div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-xs">
                 Xin chào, {user?.fullname}!
               </h1>
-              <p className="text-xs md:text-sm text-sky-100/90 max-w-2xl font-medium">
-                Bạn đang đăng nhập với vai trò <strong className="text-white bg-blue-900/60 px-2 py-0.5 rounded-md border border-blue-600/40">{getRoleTitle(user?.role || '')}</strong>
+              <p className="text-xs md:text-sm text-[#CFEBFC] max-w-2xl font-medium">
+                Bạn đang đăng nhập với vai trò <strong className="text-white bg-[#0C3260]/60 px-2 py-0.5 rounded-md border border-[#6EC2F7]/40">{getRoleTitle(user?.role || '')}</strong>
                 {user?.department_name ? ` — ${user.department_name}` : ''}. Chúc bạn một ngày làm việc hiệu quả!
               </p>
             </div>
@@ -118,7 +118,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3">
             <Link
               to="/tasks"
-              className="flex items-center space-x-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-blue-900/40 transition"
+              className="flex items-center space-x-1.5 px-4 py-2.5 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-[#0C3260]/30 transition"
             >
               <Plus className="w-4 h-4" />
               <span>Giao việc mới</span>
@@ -126,15 +126,15 @@ export const Dashboard: React.FC = () => {
 
             <Link
               to="/evaluations"
-              className="flex items-center space-x-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-indigo-900/40 transition"
+              className="flex items-center space-x-1.5 px-4 py-2.5 bg-[#4585E6] hover:bg-[#1864AB] text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-[#0C3260]/30 transition"
             >
-              <Award className="w-4 h-4 text-amber-300" />
+              <Award className="w-4 h-4 text-yellow-300" />
               <span>Tự chấm điểm tháng</span>
             </Link>
 
             <button
               onClick={handleExportExcel}
-              className="flex items-center space-x-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-emerald-900/40 transition"
+              className="flex items-center space-x-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-emerald-900/30 transition"
             >
               <FileSpreadsheet className="w-4 h-4" />
               <span>Xuất Excel</span>
