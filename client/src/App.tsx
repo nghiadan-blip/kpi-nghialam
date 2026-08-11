@@ -9,6 +9,7 @@ import { Evaluations } from './pages/Evaluations';
 import { Admin } from './pages/Admin';
 import { Login } from './pages/Login';
 import { NotFound } from './pages/NotFound';
+import { AIChatWidget } from './components/AIChatWidget';
 
 export const App: React.FC = () => {
   return (
@@ -57,6 +58,9 @@ export const App: React.FC = () => {
           <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
             © 2026 UBND Xã Nghĩa Lâm — Khung Đánh giá & Xếp loại Cán bộ Công chức theo NĐ 335/2025/NĐ-CP.
           </footer>
+
+          {/* Floating DeepSeek AI Assistant */}
+          <AIChatWidget />
         </div>
       </Router>
     </AuthProvider>

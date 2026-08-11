@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { tasksApi } from '../services/api';
+import { tasksApi, aiApi } from '../services/api';
 import { Task, User, ProductCatalog } from '../types';
-import { X, CheckSquare, AlertCircle, Scale, Layers } from 'lucide-react';
+import { X, CheckSquare, AlertCircle, Scale, Layers, Sparkles, RefreshCw } from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -33,6 +33,7 @@ export const TaskModal: React.FC<Props> = ({
   });
 
   const [loading, setLoading] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +75,34 @@ export const TaskModal: React.FC<Props> = ({
 
   if (!isOpen) return null;
 
+  const handleAISuggest = async () => {
+    if (!formData.title.trim()) {
+      setError('Vui lòng nhập Tiêu đề nhiệm vụ trước để DeepSeek AI có cơ sở gợi ý.');
+      return;
+    }
+
+    const assignedUser = users.find((u) => u.id === Number(formData.assigned_to));
+    setGeneratingAI(true);
+    setError(null);
+
+    try {
+      const res = await aiApi.suggestTaskDetails({
+        title: formData.title,
+        department_name: assignedUser?.department_name ?? undefined,
+        position: assignedUser?.position,
+      });
+
+      setFormData((prev) => ({
+        ...prev,
+        description: res.suggestion,
+      }));
+    } catch (err: any) {
+      console.error('Lỗi gợi ý AI:', err);
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -84,38 +113,33 @@ export const TaskModal: React.FC<Props> = ({
     }
 
     if (!formData.assigned_to) {
-      setError('Vui lòng chọn cán bộ thực hiện nhiệm vụ.');
+      setError('Vui lòng chọn cán bộ thực hiện.');
       return;
     }
 
     if (!formData.deadline) {
-      setError('Vui lòng chọn hạn hoàn thành (deadline).');
+      setError('Vui lòng chọn hạn hoàn thành.');
       return;
     }
 
     setLoading(true);
     try {
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        assigned_to: Number(formData.assigned_to),
+        product_catalog_id: formData.product_catalog_id ? Number(formData.product_catalog_id) : null,
+        deadline: new Date(formData.deadline).toISOString(),
+        weight: Number(formData.weight) || 1.0,
+        status: formData.status,
+      };
+
       if (isEditing && task) {
-        await tasksApi.updateTask(task.id, {
-          title: formData.title.trim(),
-          description: formData.description ? formData.description.trim() : null,
-          assigned_to: Number(formData.assigned_to),
-          product_catalog_id: formData.product_catalog_id ? Number(formData.product_catalog_id) : null,
-          deadline: new Date(formData.deadline).toISOString(),
-          weight: Number(formData.weight),
-          status: formData.status,
-        });
+        await tasksApi.updateTask(task.id, payload);
       } else {
-        await tasksApi.createTask({
-          title: formData.title.trim(),
-          description: formData.description ? formData.description.trim() : undefined,
-          assigned_to: Number(formData.assigned_to),
-          product_catalog_id: formData.product_catalog_id ? Number(formData.product_catalog_id) : null,
-          deadline: new Date(formData.deadline).toISOString(),
-          weight: Number(formData.weight),
-          status: formData.status,
-        });
+        await tasksApi.createTask(payload);
       }
+
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -127,11 +151,11 @@ export const TaskModal: React.FC<Props> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center space-x-2">
-            <CheckSquare className="w-5 h-5 text-sky-600" />
-            <h3 className="font-bold text-slate-800">
+            <CheckSquare className="w-5 h-5 text-red-700" />
+            <h3 className="font-bold text-slate-900 text-base">
               {isEditing ? 'Chỉnh Sửa Nhiệm Vụ' : 'Giao Nhiệm Vụ Mới'}
             </h3>
           </div>
@@ -143,16 +167,16 @@ export const TaskModal: React.FC<Props> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs sm:text-sm">
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
+            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+            <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
               Tiêu đề nhiệm vụ <span className="text-red-500">*</span>
             </label>
             <input
@@ -160,21 +184,21 @@ export const TaskModal: React.FC<Props> = ({
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-slate-50/50 focus:bg-white"
               placeholder="VD: Soạn thảo báo cáo tình hình kinh tế - xã hội Quý 3"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
                 Người thực hiện (Cán bộ) <span className="text-red-500">*</span>
               </label>
               <select
                 required
                 value={formData.assigned_to}
                 onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
               >
                 <option value="">-- Chọn cán bộ --</option>
                 {users.map((u) => (
@@ -186,30 +210,28 @@ export const TaskModal: React.FC<Props> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
                 Hạn hoàn thành (Deadline) <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="datetime-local"
-                  required
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                  className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
-                />
-              </div>
+              <input
+                type="datetime-local"
+                required
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
+              />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1 flex items-center space-x-1">
-              <Layers className="w-3.5 h-3.5 text-sky-600" />
+            <label className="block text-xs font-bold uppercase text-slate-700 mb-1 flex items-center space-x-1 tracking-wider">
+              <Layers className="w-3.5 h-3.5 text-purple-600" />
               <span>Gắn danh mục sản phẩm (Theo NĐ 335/2025/NĐ-CP)</span>
             </label>
             <select
               value={formData.product_catalog_id}
               onChange={(e) => setFormData({ ...formData, product_catalog_id: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm bg-white"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
             >
               <option value="">-- Không gắn danh mục --</option>
               {catalog.map((c) => (
@@ -218,14 +240,14 @@ export const TaskModal: React.FC<Props> = ({
                 </option>
               ))}
             </select>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-[11px] text-slate-400 mt-1">
               Sản phẩm gắn với nhiệm vụ sẽ tự động được đưa vào biểu chấm điểm tháng.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1 flex items-center space-x-1">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 flex items-center space-x-1 tracking-wider">
                 <Scale className="w-3.5 h-3.5 text-slate-500" />
                 <span>Trọng số nhiệm vụ</span>
               </label>
@@ -236,18 +258,18 @@ export const TaskModal: React.FC<Props> = ({
                 max="10"
                 value={formData.weight}
                 onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 1.0 })}
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
                 Trạng thái nhiệm vụ
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
               >
                 <option value="PENDING">Chờ tiếp nhận (PENDING)</option>
                 <option value="IN_PROGRESS">Đang thực hiện (IN_PROGRESS)</option>
@@ -257,14 +279,29 @@ export const TaskModal: React.FC<Props> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Mô tả chi tiết nội dung & yêu cầu
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-bold uppercase text-slate-700 tracking-wider">
+                Mô tả chi tiết nội dung & yêu cầu
+              </label>
+              <button
+                type="button"
+                disabled={generatingAI}
+                onClick={handleAISuggest}
+                className="flex items-center space-x-1 px-2.5 py-0.5 bg-gradient-to-r from-amber-50 to-red-50 hover:from-amber-100 hover:to-red-100 text-red-800 border border-amber-300 rounded-md text-[11px] font-bold transition shadow-2xs disabled:opacity-50"
+              >
+                {generatingAI ? (
+                  <RefreshCw className="w-3 h-3 animate-spin text-red-600" />
+                ) : (
+                  <Sparkles className="w-3 h-3 text-amber-600" />
+                )}
+                <span>{generatingAI ? 'AI đang soạn...' : '✨ DeepSeek AI Gợi Ý'}</span>
+              </button>
+            </div>
             <textarea
-              rows={3}
+              rows={4}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm font-normal leading-relaxed"
               placeholder="Yêu cầu cụ thể về nội dung, quy cách trình bày, thời gian nghiệm thu..."
             />
           </div>
@@ -273,16 +310,16 @@ export const TaskModal: React.FC<Props> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition"
+              className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
             >
-              Hủy
+              Hủy bỏ
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded-lg transition shadow-sm"
+              className="px-5 py-2.5 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition"
             >
-              {loading ? 'Đang lưu...' : isEditing ? 'Lưu cập nhật' : 'Giao việc ngay'}
+              {loading ? 'Đang lưu...' : isEditing ? 'Cập Nhật Nhiệm Vụ' : 'Phân Công Nhiệm Vụ'}
             </button>
           </div>
         </form>

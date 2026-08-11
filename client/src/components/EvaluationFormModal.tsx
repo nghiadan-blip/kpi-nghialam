@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { evaluationsApi } from '../services/api';
+import { evaluationsApi, aiApi } from '../services/api';
 import { Evaluation, EvaluationDetail, ProductCatalog, Task } from '../types';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -13,6 +13,8 @@ import {
   Send,
   UserCheck,
   Calculator,
+  Sparkles,
+  RefreshCw,
 } from 'lucide-react';
 
 interface Props {
@@ -66,6 +68,7 @@ export const EvaluationFormModal: React.FC<Props> = ({
 
   const [generalRemarks, setGeneralRemarks] = useState(evaluation?.remarks || '');
   const [loading, setLoading] = useState(false);
+  const [generatingAI, setGeneratingAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -327,6 +330,37 @@ export const EvaluationFormModal: React.FC<Props> = ({
       setError(err.response?.data?.message || 'Có lỗi xảy ra khi phê duyệt.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // AI Generate Remark
+  const handleGenerateAIRemark = async () => {
+    setGeneratingAI(true);
+    try {
+      const activeScore =
+        status === 'APPROVED' || isLeadership
+          ? totalFinalScore
+          : isManager
+          ? totalManagerScore
+          : totalSelfScore;
+
+      const roleType = isLeadership ? 'LEADERSHIP' : isManager ? 'MANAGER' : 'SELF';
+
+      const res = await aiApi.generateEvaluationRemark({
+        employee_name: evaluation?.employee_name || user?.fullname,
+        position: evaluation?.employee_position || user?.position,
+        department: (evaluation?.department_name || user?.department_name) ?? undefined,
+        month,
+        score: activeScore,
+        items,
+        role_type: roleType,
+      });
+
+      setGeneralRemarks(res.remark);
+    } catch (err: any) {
+      console.error('Lỗi sinh nhận xét AI:', err);
+    } finally {
+      setGeneratingAI(false);
     }
   };
 
@@ -628,16 +662,34 @@ export const EvaluationFormModal: React.FC<Props> = ({
 
           {/* General Remarks */}
           <div>
-            <label className="block text-xs font-semibold uppercase text-slate-600 mb-1">
-              Nhận xét / Đánh giá chung của lãnh đạo
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-bold uppercase text-slate-700">
+                Nhận xét & Đánh giá kết quả công tác
+              </label>
+
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  disabled={generatingAI}
+                  onClick={handleGenerateAIRemark}
+                  className="flex items-center space-x-1.5 px-3 py-1 bg-gradient-to-r from-amber-50 to-red-50 hover:from-amber-100 hover:to-red-100 text-red-800 border border-amber-300/80 rounded-lg text-xs font-bold transition shadow-xs disabled:opacity-50"
+                >
+                  {generatingAI ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-red-600" />
+                  ) : (
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                  )}
+                  <span>{generatingAI ? 'DeepSeek AI đang soạn...' : '✨ DeepSeek AI Viết Nhận Xét'}</span>
+                </button>
+              )}
+            </div>
             <textarea
-              rows={2}
+              rows={3}
               disabled={isReadOnly}
               value={generalRemarks}
               onChange={(e) => setGeneralRemarks(e.target.value)}
-              placeholder="Nhận xét về tinh thần trách nhiệm, thái độ phục vụ nhân dân, tiến độ hoàn thành..."
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs disabled:bg-slate-50"
+              placeholder="Nhận xét về tinh thần trách nhiệm, thái độ phục vụ nhân dân, tiến độ hoàn thành các sản phẩm NĐ 335..."
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs disabled:bg-slate-50 focus:ring-2 focus:ring-amber-500 font-normal leading-relaxed"
             />
           </div>
         </div>

@@ -303,6 +303,30 @@ export const reportsApi = {
   },
 };
 
+// --- DeepSeek AI APIs ---
+export const aiApi = {
+  generateEvaluationRemark: async (data: {
+    employee_name?: string;
+    position?: string;
+    department?: string;
+    month: string;
+    score: number;
+    items: Array<any>;
+    role_type: 'SELF' | 'MANAGER' | 'LEADERSHIP';
+  }) => {
+    const res = await api.post<{ remark: string; source: string }>('/ai/evaluate-remark', data);
+    return res.data;
+  },
+  suggestTaskDetails: async (data: { title: string; department_name?: string; position?: string }) => {
+    const res = await api.post<{ suggestion: string; source: string }>('/ai/suggest-task', data);
+    return res.data;
+  },
+  chatWithAI: async (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => {
+    const res = await api.post<{ reply: string; source: string }>('/ai/chat', { messages });
+    return res.data;
+  },
+};
+
 export const fetchHealthCheck = async (): Promise<HealthCheckResponse> => {
   const response = await api.get<HealthCheckResponse>('/health');
   return response.data;
