@@ -246,6 +246,63 @@ export const evaluationsApi = {
   },
 };
 
+// --- Reports & Dashboard APIs ---
+export const reportsApi = {
+  getDashboardStats: async (month?: string) => {
+    const res = await api.get<{
+      month: string;
+      summary: {
+        totalUsers: number;
+        totalDepartments: number;
+        totalTasks: number;
+        completedTasks: number;
+        inProgressTasks: number;
+        pendingTasks: number;
+        overdueTasks: number;
+        taskCompletionRate: number;
+        totalEvaluations: number;
+        approvedEvaluationsCount: number;
+        evalCompletionRate: number;
+      };
+      classifications: {
+        countA: number;
+        countB: number;
+        countC: number;
+        countD: number;
+        totalApproved: number;
+      };
+      departmentProgress: Array<{
+        id: number;
+        name: string;
+        total: number;
+        completed: number;
+        rate: number;
+      }>;
+      urgentTasks: Array<{
+        id: number;
+        title: string;
+        deadline: string;
+        status: string;
+        weight: number;
+        assignee_name: string;
+        department_name: string;
+        is_overdue: boolean;
+      }>;
+      topEmployees: Array<{
+        fullname: string;
+        position: string;
+        department_name: string;
+        final_score: number;
+      }>;
+    }>('/reports/dashboard', { params: { month } });
+    return res.data;
+  },
+  downloadExcel: (month?: string) => {
+    const url = `/api/reports/evaluations/export${month ? `?month=${month}` : ''}`;
+    window.open(url, '_blank');
+  },
+};
+
 export const fetchHealthCheck = async (): Promise<HealthCheckResponse> => {
   const response = await api.get<HealthCheckResponse>('/health');
   return response.data;

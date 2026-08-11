@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { evaluationsApi, catalogApi, tasksApi, departmentsApi } from '../services/api';
+import { evaluationsApi, catalogApi, tasksApi, departmentsApi, reportsApi } from '../services/api';
 import { Evaluation, ProductCatalog, Task, Department } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { EvaluationFormModal } from '../components/EvaluationFormModal';
@@ -14,6 +14,7 @@ import {
   Trash2,
   AlertTriangle,
   RefreshCw,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const Evaluations: React.FC = () => {
@@ -179,18 +180,28 @@ export const Evaluations: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setSelectedEval(userEvalThisMonth || null);
-            setModalOpen(true);
-          }}
-          className="flex items-center space-x-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold transition shadow-sm self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>
-            {userEvalThisMonth ? 'Mở Phiếu Tự Chấm Tháng Này' : 'Tạo Phiếu Tự Đánh Giá Tháng'}
-          </span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+          <button
+            onClick={() => reportsApi.downloadExcel(selectedMonth)}
+            className="flex items-center space-x-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Xuất Báo Cáo Excel</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setSelectedEval(userEvalThisMonth || null);
+              setModalOpen(true);
+            }}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>
+              {userEvalThisMonth ? 'Mở Phiếu Tự Chấm Tháng Này' : 'Tạo Phiếu Tự Đánh Giá Tháng'}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Action Notification */}

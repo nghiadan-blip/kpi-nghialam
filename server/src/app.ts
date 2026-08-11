@@ -7,6 +7,7 @@ import departmentRoutes from './routes/departmentRoutes';
 import taskRoutes from './routes/taskRoutes';
 import catalogRoutes from './routes/catalogRoutes';
 import evaluationRoutes from './routes/evaluationRoutes';
+import reportRoutes from './routes/reportRoutes';
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/catalog', catalogRoutes);
 app.use('/api/evaluations', evaluationRoutes);
+app.use('/api/reports', reportRoutes);
 
 export default app;
 
