@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, User, Lock, AlertCircle, Sparkles, Building } from 'lucide-react';
+import { LogIn, User, Lock, AlertCircle, Sparkles, Building, ShieldCheck } from 'lucide-react';
+import { VietnameseEmblem } from '../components/VietnameseEmblem';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -16,45 +17,51 @@ export const Login: React.FC = () => {
   const demoAccounts = [
     {
       role: 'ADMIN',
-      title: 'Quản trị viên',
+      title: 'Quản trị hệ thống',
       username: 'admin',
       password: 'admin123',
-      color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100',
+      dept: 'Phòng CNTT & Quản trị',
+      badge: 'bg-purple-100 text-purple-800 border-purple-200',
     },
     {
       role: 'LEADERSHIP',
       title: 'Chủ tịch UBND xã',
       username: 'chutich',
       password: 'chutich123',
-      color: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',
+      dept: 'Lãnh đạo UBND xã',
+      badge: 'bg-red-100 text-red-800 border-red-200',
     },
     {
       role: 'LEADERSHIP',
-      title: 'Phó Chủ tịch',
+      title: 'Phó Chủ tịch UBND',
       username: 'phochutich',
       password: 'phochutich123',
-      color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100',
+      dept: 'Lãnh đạo UBND xã',
+      badge: 'bg-rose-100 text-rose-800 border-rose-200',
     },
     {
       role: 'DEPARTMENT_HEAD',
       title: 'Giám đốc TTPVHCC',
       username: 'truongphong_hcc',
       password: 'head123',
-      color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',
+      dept: 'Trung tâm PV Hành chính công',
+      badge: 'bg-blue-100 text-blue-800 border-blue-200',
     },
     {
       role: 'DEPARTMENT_HEAD',
       title: 'Trưởng BP Địa chính',
       username: 'truongphong_dc',
       password: 'head123',
-      color: 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100',
+      dept: 'Bộ phận Địa chính - Xây dựng',
+      badge: 'bg-indigo-100 text-indigo-800 border-indigo-200',
     },
     {
       role: 'EMPLOYEE',
       title: 'Công chức Địa chính',
       username: 'congchuc_dc',
       password: 'emp123',
-      color: 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100',
+      dept: 'Bộ phận Địa chính - Xây dựng',
+      badge: 'bg-emerald-100 text-emerald-800 border-emerald-200',
     },
   ];
 
@@ -86,43 +93,53 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[85vh] flex flex-col justify-center items-center py-8 px-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        {/* Header Branding */}
-        <div className="bg-gradient-to-r from-red-700 via-red-600 to-red-800 text-white p-6 text-center relative">
-          <div className="w-12 h-12 bg-amber-400 text-red-700 rounded-full flex items-center justify-center font-bold text-xl mx-auto shadow-md mb-2">
-            ★
+    <div className="min-h-[85vh] flex flex-col justify-center items-center py-10 px-4">
+      {/* Container with soft glow shadow */}
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl border border-slate-200/90 overflow-hidden relative">
+        {/* Header with National Emblem & Crimson Gradient */}
+        <div className="bg-gradient-to-br from-red-900 via-red-800 to-red-950 text-white p-6 md:p-8 text-center relative border-b-2 border-amber-500/40">
+          <div className="relative inline-block mb-3">
+            <div className="absolute -inset-2 bg-amber-400/20 rounded-full blur-md" />
+            <VietnameseEmblem size={76} className="relative mx-auto drop-shadow-xl" />
           </div>
-          <h2 className="text-lg font-bold tracking-wide uppercase">UBND XÃ NGHĨA LÂM</h2>
-          <p className="text-xs text-yellow-100 font-light mt-1">
-            Hệ thống Quản lý & Đánh giá Cán bộ, Công chức
+
+          <h2 className="text-base md:text-lg font-black tracking-wider uppercase drop-shadow-sm">
+            ỦY BAN NHÂN DÂN XÃ NGHĨA LÂM
+          </h2>
+          <p className="text-xs text-yellow-100/90 font-medium mt-1">
+            Hệ thống Quản lý Nhiệm vụ & Đánh giá Cán bộ, Công chức
           </p>
-          <div className="text-[10px] bg-red-900/40 text-yellow-200 rounded-full px-3 py-0.5 inline-block mt-2">
-            Khung đánh giá Nghị định 335/2025/NĐ-CP
+
+          <div className="inline-flex items-center space-x-1.5 mt-3 text-[11px] bg-red-950/60 text-yellow-300 border border-yellow-400/30 px-3 py-1 rounded-full font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+            <span>Khung Đánh giá Nghị định số 335/2025/NĐ-CP</span>
           </div>
         </div>
 
-        {/* Login Form */}
-        <div className="p-6">
-          <h3 className="text-base font-semibold text-slate-800 mb-4 flex items-center space-x-2">
-            <LogIn className="w-4 h-4 text-sky-600" />
-            <span>Đăng nhập hệ thống</span>
-          </h3>
+        {/* Login Form Body */}
+        <div className="p-6 md:p-8">
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <LogIn className="w-4 h-4 text-red-700" />
+              <span>Đăng nhập hệ thống</span>
+            </h3>
+            <span className="text-xs text-slate-400 font-medium">Bảo mật JWT</span>
+          </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>{error}</span>
+            <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2.5">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
+              <span className="font-medium">{error}</span>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1.5">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5 tracking-wider">
                 Tên đăng nhập
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <User className="w-4 h-4" />
                 </div>
                 <input
@@ -130,18 +147,18 @@ export const Login: React.FC = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-sm font-medium transition placeholder:text-slate-400 bg-slate-50/50 focus:bg-white"
                   placeholder="Nhập tên tài khoản"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase text-slate-600 mb-1.5">
+              <label className="block text-xs font-bold uppercase text-slate-700 mb-1.5 tracking-wider">
                 Mật khẩu
               </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                   <Lock className="w-4 h-4" />
                 </div>
                 <input
@@ -149,7 +166,7 @@ export const Login: React.FC = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-sm font-medium transition placeholder:text-slate-400 bg-slate-50/50 focus:bg-white"
                   placeholder="••••••••"
                 />
               </div>
@@ -158,25 +175,25 @@ export const Login: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 px-4 bg-sky-600 hover:bg-sky-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg shadow-sm transition flex items-center justify-center space-x-2 mt-2"
+              className="w-full py-3 px-4 bg-gradient-to-r from-red-700 via-red-800 to-red-900 hover:from-red-800 hover:to-red-950 disabled:opacity-50 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-2 mt-3 cursor-pointer hover:shadow-lg active:scale-[0.99]"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
                 <>
-                  <LogIn className="w-4 h-4" />
-                  <span>Đăng nhập</span>
+                  <LogIn className="w-4 h-4 text-yellow-300" />
+                  <span>Đăng Nhập Vào Hệ Thống</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick Demo Switcher */}
-          <div className="mt-6 pt-5 border-t border-slate-100">
-            <div className="flex items-center justify-between mb-2.5">
-              <span className="text-xs font-semibold text-slate-600 flex items-center space-x-1">
+          {/* Quick Demo Selector */}
+          <div className="mt-7 pt-5 border-t border-slate-200/80">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                <span>Chọn tài khoản trải nghiệm nhanh:</span>
+                <span>Chọn nhanh tài khoản trải nghiệm:</span>
               </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -185,17 +202,18 @@ export const Login: React.FC = () => {
                   key={acc.username}
                   type="button"
                   onClick={() => handleSelectDemo(acc.username, acc.password)}
-                  className={`p-2 text-left rounded-lg border text-xs font-medium transition ${acc.color} flex flex-col`}
+                  className={`p-2.5 text-left rounded-xl border text-xs font-medium transition hover:shadow-xs flex flex-col justify-between ${acc.badge} hover:opacity-90 active:scale-[0.98]`}
                 >
-                  <span className="font-bold truncate">{acc.title}</span>
-                  <span className="text-[11px] opacity-75 font-mono">@{acc.username}</span>
+                  <span className="font-bold truncate text-[11px] leading-tight">{acc.title}</span>
+                  <span className="text-[10px] opacity-75 font-mono mt-1">@{acc.username}</span>
                 </button>
               ))}
             </div>
           </div>
         </div>
 
-        <div className="bg-slate-50 px-6 py-3 border-t border-slate-100 text-center text-[11px] text-slate-500 flex items-center justify-center space-x-1">
+        {/* Footer info */}
+        <div className="bg-slate-50 px-6 py-3.5 border-t border-slate-100 text-center text-xs text-slate-500 flex items-center justify-center space-x-1.5">
           <Building className="w-3.5 h-3.5 text-slate-400" />
           <span>Ủy ban nhân dân xã Nghĩa Lâm — Tỉnh Nghệ An</span>
         </div>

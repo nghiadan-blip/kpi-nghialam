@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Calendar,
 } from 'lucide-react';
+import { VietnameseEmblem } from '../components/VietnameseEmblem';
 
 export const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -89,21 +90,28 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* 1. Hero Welcome Banner */}
-      <div className="bg-gradient-to-r from-red-800 via-red-700 to-red-900 rounded-2xl p-6 text-white shadow-md relative overflow-hidden">
-        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none" />
+      <div className="bg-gradient-to-r from-red-900 via-red-800 to-red-950 rounded-2xl p-6 lg:p-7 text-white shadow-lg relative overflow-hidden border border-red-700/50">
+        <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
+          <VietnameseEmblem size={240} />
+        </div>
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center space-x-1.5 px-3 py-1 bg-amber-400/20 text-yellow-200 border border-yellow-300/30 rounded-full text-xs font-semibold">
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-              <span>Hệ thống Đánh giá & Xếp loại CBCC theo Nghị định 335/2025/NĐ-CP</span>
+          <div className="flex items-start space-x-4">
+            <div className="hidden sm:block p-2 bg-red-950/60 rounded-2xl border border-amber-400/30 shadow-inner flex-shrink-0">
+              <VietnameseEmblem size={56} />
             </div>
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">
-              Xin chào, {user?.fullname}!
-            </h1>
-            <p className="text-sm text-yellow-100/90 max-w-2xl">
-              Bạn đang đăng nhập với vai trò <strong className="text-white">{getRoleTitle(user?.role || '')}</strong>
-              {user?.department_name ? ` — ${user.department_name}` : ''}. Chúc bạn một ngày làm việc hiệu quả!
-            </p>
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 bg-amber-400/20 text-yellow-200 border border-yellow-300/30 rounded-full text-xs font-semibold">
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>Hệ thống Đánh giá & Xếp loại CBCC theo Nghị định 335/2025/NĐ-CP</span>
+              </div>
+              <h1 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-white drop-shadow-xs">
+                Xin chào, {user?.fullname}!
+              </h1>
+              <p className="text-xs md:text-sm text-yellow-100/90 max-w-2xl font-medium">
+                Bạn đang đăng nhập với vai trò <strong className="text-white bg-red-950/50 px-2 py-0.5 rounded-md border border-red-700/40">{getRoleTitle(user?.role || '')}</strong>
+                {user?.department_name ? ` — ${user.department_name}` : ''}. Chúc bạn một ngày làm việc hiệu quả!
+              </p>
+            </div>
           </div>
 
           {/* Quick Action Buttons */}
