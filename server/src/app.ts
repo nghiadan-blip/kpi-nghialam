@@ -1,6 +1,9 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
+import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoutes';
+import departmentRoutes from './routes/departmentRoutes';
 
 const app = express();
 
@@ -23,4 +26,10 @@ app.get('/api/health', (_req: Request, res: Response) => {
   });
 });
 
+// Mount Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/departments', departmentRoutes);
+
 export default app;
+

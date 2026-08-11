@@ -14,6 +14,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('departments')
       .onDelete('SET NULL');
+    table.index('parent_id');
     table.timestamp('created_at').defaultTo(knex.fn.now());
   });
 
@@ -37,6 +38,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('departments')
       .onDelete('SET NULL');
+    table.index('department_id');
     table
       .string('status')
       .notNullable()
@@ -78,6 +80,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('users')
       .onDelete('CASCADE');
+    table.index('assigned_to');
     table
       .integer('assigned_by')
       .unsigned()
@@ -85,6 +88,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('users')
       .onDelete('RESTRICT');
+    table.index('assigned_by');
     table
       .integer('product_catalog_id')
       .unsigned()
@@ -92,6 +96,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('product_catalog')
       .onDelete('SET NULL');
+    table.index('product_catalog_id');
     table.dateTime('deadline').notNullable();
     table.float('weight').notNullable().defaultTo(1.0);
     table
@@ -130,6 +135,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('users')
       .onDelete('SET NULL');
+    table.index('manager_id');
     table
       .integer('approver_id')
       .unsigned()
@@ -137,6 +143,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('users')
       .onDelete('SET NULL');
+    table.index('approver_id');
     table.text('remarks').nullable();
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.timestamp('updated_at').defaultTo(knex.fn.now());
@@ -154,6 +161,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('evaluations')
       .onDelete('CASCADE');
+    table.index('evaluation_id');
     table
       .integer('task_id')
       .unsigned()
@@ -161,6 +169,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('tasks')
       .onDelete('SET NULL');
+    table.index('task_id');
     table
       .integer('product_catalog_id')
       .unsigned()
@@ -168,6 +177,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('product_catalog')
       .onDelete('RESTRICT');
+    table.index('product_catalog_id');
     table.integer('quantity').notNullable().defaultTo(1);
     table.float('self_points').notNullable();
     table.float('manager_points').notNullable();
@@ -185,6 +195,7 @@ export async function up(knex: Knex): Promise<void> {
       .references('id')
       .inTable('users')
       .onDelete('SET NULL');
+    table.index('user_id');
     table.string('action').notNullable();
     table.text('details').nullable();
     table.string('ip_address').nullable();
