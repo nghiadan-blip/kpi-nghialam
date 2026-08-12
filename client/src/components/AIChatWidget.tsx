@@ -70,10 +70,18 @@ export const AIChatWidget: React.FC = () => {
         history,
       });
 
+      const cleanReply = res.reply
+        .replace(/\\text\{([^}]+)\}/g, '$1')
+        .replace(/\\times/g, '×')
+        .replace(/\\ge/g, '≥')
+        .replace(/\\le/g, '≤')
+        .replace(/\\pm/g, '±')
+        .replace(/\$+/g, '');
+
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: res.reply,
+        content: cleanReply,
         timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         source: res.source,
       };
@@ -101,7 +109,7 @@ export const AIChatWidget: React.FC = () => {
   ];
 
   return (
-    <div className="fixed bottom-5 right-5 z-50">
+    <div className="fixed bottom-5 right-5 z-40">
       {/* 1. Floating Toggle Button */}
       {!isOpen && (
         <button

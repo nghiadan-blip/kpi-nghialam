@@ -47,9 +47,25 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
     setError(null);
     setSuccess(null);
 
+    // Validate skipping from PENDING directly to COMPLETED
+    if (task.status === 'PENDING' && status === 'COMPLETED') {
+      const confirmSkip = window.confirm(
+        'Nhiệm vụ đang ở trạng thái "Chờ tiếp nhận" (PENDING). Bạn có chắc chắn muốn hoàn thành trực tiếp mà không qua bước "Đang thực hiện" (IN_PROGRESS)?'
+      );
+      if (!confirmSkip) {
+        setStatus('IN_PROGRESS');
+        return;
+      }
+    }
+
+    if (status === 'COMPLETED' && !evidence.trim() && !task.evidence) {
+      setError('Vui lòng nhập minh chứng / tóm tắt kết quả thực hiện khi chuyển sang Đã hoàn thành (COMPLETED).');
+      return;
+    }
+
     setLoading(true);
     try {
-      await tasksApi.updateTaskStatus(task.id, status, evidence);
+      await tasksApi.updateTaskStatus(task.id, status, evidence.trim());
       setSuccess('Cập nhật tiến độ nhiệm vụ thành công!');
       setTimeout(() => {
         setSuccess(null);

@@ -9,6 +9,7 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Save,
   Send,
   UserCheck,
@@ -204,15 +205,21 @@ export const EvaluationFormModal: React.FC<Props> = ({
     setItems(updated);
   };
 
-  // Calculate totals
-  const totalSelfScore = Number(items.reduce((sum, it) => sum + (Number(it.self_points) || 0), 0).toFixed(2));
-  const totalManagerScore = Number(items.reduce((sum, it) => sum + (Number(it.manager_points) || 0), 0).toFixed(2));
-  const totalFinalScore = Number(items.reduce((sum, it) => sum + (Number(it.final_points) || 0), 0).toFixed(2));
+  // Calculate totals and apply 100.0 max cap according to Decree 335
+  const rawSelfScore = Number(items.reduce((sum, it) => sum + (Number(it.self_points) || 0), 0).toFixed(2));
+  const rawManagerScore = Number(items.reduce((sum, it) => sum + (Number(it.manager_points) || 0), 0).toFixed(2));
+  const rawFinalScore = Number(items.reduce((sum, it) => sum + (Number(it.final_points) || 0), 0).toFixed(2));
+
+  const isExceedingCap = rawSelfScore > 100 || (isManager && rawManagerScore > 100) || (isLeadership && rawFinalScore > 100);
+  const totalSelfScore = Math.min(100.0, rawSelfScore);
+  const totalManagerScore = Math.min(100.0, rawManagerScore);
+  const totalFinalScore = Math.min(100.0, rawFinalScore);
 
   const getClassification = (score: number) => {
-    if (score >= 90) return { title: 'Hoàn thành xuất sắc nhiệm vụ (Loại A)', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
-    if (score >= 70) return { title: 'Hoàn thành tốt nhiệm vụ (Loại B)', color: 'text-sky-700 bg-sky-50 border-sky-200' };
-    if (score >= 50) return { title: 'Hoàn thành nhiệm vụ (Loại C)', color: 'text-amber-700 bg-amber-50 border-amber-200' };
+    const capped = Math.min(100.0, Math.max(0, score));
+    if (capped >= 90) return { title: 'Hoàn thành xuất sắc nhiệm vụ (Loại A)', color: 'text-emerald-700 bg-emerald-50 border-emerald-200' };
+    if (capped >= 70) return { title: 'Hoàn thành tốt nhiệm vụ (Loại B)', color: 'text-sky-700 bg-sky-50 border-sky-200' };
+    if (capped >= 50) return { title: 'Hoàn thành nhiệm vụ (Loại C)', color: 'text-amber-700 bg-amber-50 border-amber-200' };
     return { title: 'Không hoàn thành nhiệm vụ (Loại D)', color: 'text-red-700 bg-red-50 border-red-200' };
   };
 
@@ -641,6 +648,19 @@ export const EvaluationFormModal: React.FC<Props> = ({
               </table>
             </div>
           </div>
+
+          {/* Point Cap Warning Banner */}
+          {isExceedingCap && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start space-x-2.5">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0 text-amber-600" />
+              <div>
+                <span className="font-bold">Cảnh báo vượt định mức thang điểm 100:</span>
+                <p className="mt-0.5 text-[11px] text-amber-800">
+                  Tổng điểm sản phẩm quy đổi tính được ({rawSelfScore}đ) vượt quá khung điểm chuẩn tối đa 100 điểm theo Nghị định số 335/2025/NĐ-CP. Hệ thống đã tự động giới hạn về mức trần <strong>100.0 điểm</strong> để xếp loại chính xác.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Real-time Classification Card */}
           <div className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 border-slate-200">

@@ -392,7 +392,16 @@ export async function updateTaskStatus(req: AuthRequest, res: Response): Promise
       updated_at: new Date(),
     };
 
-    if (status) updates.status = status;
+    if (status) {
+      if (status === 'COMPLETED' && !evidence && !task.evidence) {
+        res.status(400).json({
+          message: 'Khi chuyển sang Đã hoàn thành (COMPLETED), bắt buộc phải cung cấp minh chứng hoặc tóm tắt kết quả thực hiện.',
+        });
+        return;
+      }
+      updates.status = status;
+    }
+
     if (evidence !== undefined) updates.evidence = evidence ? evidence.trim() : null;
 
     await db('tasks').where('id', Number(id)).update(updates);
@@ -401,7 +410,7 @@ export async function updateTaskStatus(req: AuthRequest, res: Response): Promise
     await logAudit(
       user.id,
       'UPDATE_TASK_STATUS',
-      `Cập nhật tiến độ nhiệm vụ ID ${id} -> Trạng thái: ${status || task.status}`,
+      `Cập nhật tiến độ nhiệm vụ ID ${id} (${task.status} -> ${status || task.status})`,
       clientIp
     );
 

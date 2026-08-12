@@ -264,25 +264,40 @@ export const evaluationsApi = {
     const res = await api.get<{ evaluation: Evaluation }>(`/evaluations/${id}`);
     return res.data;
   },
-  submitSelfEvaluation: async (dataOrId: any) => {
-    if (typeof dataOrId === 'number') {
-      return { message: 'Đã nộp thành công', evaluation_id: dataOrId };
-    }
-    const res = await api.post<{ message: string; evaluation: Evaluation; evaluation_id?: number }>('/evaluations/self', dataOrId);
-    return { ...res.data, evaluation_id: res.data.evaluation?.id || res.data.evaluation_id };
+  saveDraft: async (data: {
+    month: string;
+    items: Array<{
+      product_catalog_id?: number | null;
+      task_id?: number | null;
+      quantity: number;
+      remarks?: string;
+    }>;
+    remarks?: string;
+  }) => {
+    const res = await api.post<{ message: string; evaluation_id: number; self_score: number; evaluation?: Evaluation }>('/evaluations/draft', data);
+    return res.data;
   },
-  saveDraft: async (data: any) => {
-    return evaluationsApi.submitSelfEvaluation(data);
+  submitSelfEvaluation: async (idOrData: any) => {
+    if (typeof idOrData === 'number') {
+      const res = await api.post<{ message: string }>(`/evaluations/${idOrData}/submit`);
+      return res.data;
+    }
+    const draftRes = await api.post<{ message: string; evaluation_id: number }>('/evaluations/draft', idOrData);
+    if (draftRes.data.evaluation_id) {
+      await api.post(`/evaluations/${draftRes.data.evaluation_id}/submit`);
+    }
+    return draftRes.data;
   },
   submitManagerReview: async (
     id: number,
     data: {
+      items?: any[];
       manager_score?: number;
-      manager_remarks?: string;
+      remarks?: string;
     }
   ) => {
-    const res = await api.post<{ message: string; evaluation: Evaluation }>(
-      `/evaluations/${id}/manager-review`,
+    const res = await api.post<{ message: string; manager_score: number }>(
+      `/evaluations/${id}/review`,
       data
     );
     return res.data;
@@ -293,13 +308,14 @@ export const evaluationsApi = {
   submitLeadershipApproval: async (
     id: number,
     data: {
+      items?: any[];
       final_score?: number;
       final_classification?: string;
-      leadership_remarks?: string;
+      remarks?: string;
     }
   ) => {
     const res = await api.post<{ message: string; evaluation: Evaluation }>(
-      `/evaluations/${id}/leadership-approval`,
+      `/evaluations/${id}/approve`,
       data
     );
     return res.data;

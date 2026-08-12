@@ -198,8 +198,7 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    // Calculate total self score
-    let totalSelfScore = 0;
+    let rawSelfScore = 0;
     const processedItems: any[] = [];
 
     for (const it of items) {
@@ -213,7 +212,7 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       const qty = Number(it.quantity) || 1;
       const unitPoint = (catalog.baseline_score || 5.0) * (catalog.coefficient || 1.0);
       const selfPoints = Number((qty * unitPoint).toFixed(2));
-      totalSelfScore += selfPoints;
+      rawSelfScore += selfPoints;
 
       processedItems.push({
         task_id: it.task_id ? Number(it.task_id) : null,
@@ -226,7 +225,8 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       });
     }
 
-    totalSelfScore = Number(totalSelfScore.toFixed(2));
+    // Decree 335: Cap monthly score at 100.0 maximum
+    const totalSelfScore = Math.min(100.0, Number(rawSelfScore.toFixed(2)));
 
     let evalId: number;
 
@@ -366,12 +366,12 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
       return;
     }
 
-    let totalManagerScore = 0;
+    let rawManagerScore = 0;
 
     if (items && Array.isArray(items)) {
       for (const it of items) {
         const mgrPts = Number(it.manager_points) || 0;
-        totalManagerScore += mgrPts;
+        rawManagerScore += mgrPts;
 
         await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
@@ -382,10 +382,10 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
           });
       }
     } else {
-      totalManagerScore = evaluation.self_score;
+      rawManagerScore = evaluation.self_score;
     }
 
-    totalManagerScore = Number(totalManagerScore.toFixed(2));
+    const totalManagerScore = Math.min(100.0, Number(rawManagerScore.toFixed(2)));
 
     await trx('evaluations')
       .where('id', Number(id))
@@ -446,12 +446,12 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    let calculatedFinalScore = 0;
+    let rawFinalScore = 0;
 
     if (items && Array.isArray(items)) {
       for (const it of items) {
         const finalPts = Number(it.final_points !== undefined ? it.final_points : it.manager_points) || 0;
-        calculatedFinalScore += finalPts;
+        rawFinalScore += finalPts;
 
         await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
@@ -461,10 +461,10 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
           });
       }
     } else {
-      calculatedFinalScore = final_score !== undefined ? Number(final_score) : evaluation.manager_score;
+      rawFinalScore = final_score !== undefined ? Number(final_score) : evaluation.manager_score;
     }
 
-    calculatedFinalScore = Number(calculatedFinalScore.toFixed(2));
+    const calculatedFinalScore = Math.min(100.0, Number(rawFinalScore.toFixed(2)));
     const classification = calculateClassification(calculatedFinalScore);
 
     await trx('evaluations')

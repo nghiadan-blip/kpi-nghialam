@@ -276,9 +276,14 @@ export const TaskModal: React.FC<Props> = ({
       return;
     }
 
-    if (!formData.deadline) {
-      setError('Vui lòng chọn hạn hoàn thành.');
-      return;
+    if (!formData.product_catalog_id) {
+      const confirmNoCatalog = window.confirm(
+        '⚠️ Nhiệm vụ này chưa được gắn Mã sản phẩm NĐ 335 (Hệ số K). Nhiệm vụ sẽ áp dụng trọng số mặc định K=1.0 và cán bộ sẽ phải chọn sản phẩm thủ công khi tự chấm điểm tháng. Bạn có chắc muốn tiếp tục không?'
+      );
+      if (!confirmNoCatalog) {
+        setIsCatalogPickerOpen(true);
+        return;
+      }
     }
 
     setLoading(true);
