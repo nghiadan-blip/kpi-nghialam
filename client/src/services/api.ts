@@ -25,7 +25,11 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !window.location.pathname.includes('/login')) {
+    if (
+      error.response?.status === 401 &&
+      !window.location.pathname.includes('/login') &&
+      !window.location.pathname.includes('/register')
+    ) {
       localStorage.removeItem('cbcc_token');
       localStorage.removeItem('cbcc_user');
       window.location.href = '/login';
@@ -34,10 +38,45 @@ api.interceptors.response.use(
   }
 );
 
+export const fetchHealthCheck = async () => {
+  const res = await api.get<HealthCheckResponse>('/health');
+  return res.data;
+};
+
 // --- Auth APIs ---
 export const authApi = {
   login: async (username: string, password: string) => {
-    const res = await api.post<{ message: string; token: string; user: User }>('/auth/login', { username, password });
+    const res = await api.post<{ message: string; token: string; user: User }>('/auth/login', {
+      username,
+      password,
+    });
+    return res.data;
+  },
+  register: async (data: {
+    fullname: string;
+    email?: string;
+    phone?: string;
+    requested_department?: string;
+    requested_position?: string;
+    password: string;
+  }) => {
+    const res = await api.post<{ message: string; status: string; user_id?: number }>('/auth/register', data);
+    return res.data;
+  },
+  googleAuth: async (data: {
+    email: string;
+    fullname?: string;
+    google_id?: string;
+    avatar_url?: string;
+    requested_department?: string;
+    requested_position?: string;
+  }) => {
+    const res = await api.post<{
+      message: string;
+      status: string;
+      token?: string;
+      user?: User;
+    }>('/auth/google', data);
     return res.data;
   },
   logout: async () => {
@@ -49,7 +88,10 @@ export const authApi = {
     return res.data;
   },
   changePassword: async (currentPassword: string, newPassword: string) => {
-    const res = await api.post<{ message: string }>('/auth/change-password', { currentPassword, newPassword });
+    const res = await api.post<{ message: string }>('/auth/change-password', {
+      currentPassword,
+      newPassword,
+    });
     return res.data;
   },
 };
@@ -58,6 +100,25 @@ export const authApi = {
 export const usersApi = {
   getUsers: async (params?: { department_id?: number; role?: string; status?: string; search?: string }) => {
     const res = await api.get<{ users: User[] }>('/users', { params });
+    return res.data;
+  },
+  getPendingApprovals: async () => {
+    const res = await api.get<{ pending_users: User[]; count: number }>('/users/pending/list');
+    return res.data;
+  },
+  approveMembership: async (id: number, data: { role: string; department_id?: number | null; position: string }) => {
+    const res = await api.post<{ message: string; user: User }>(`/users/${id}/approve`, data);
+    return res.data;
+  },
+  rejectMembership: async (id: number, data: { rejection_reason?: string }) => {
+    const res = await api.post<{ message: string }>(`/users/${id}/reject`, data);
+    return res.data;
+  },
+  importUsersExcel: async (users: any[]) => {
+    const res = await api.post<{ message: string; created_count: number; updated_count: number }>(
+      '/users/import-excel',
+      { users }
+    );
     return res.data;
   },
   getUserById: async (id: number) => {
@@ -149,7 +210,7 @@ export const tasksApi = {
   },
 };
 
-// --- Catalog APIs ---
+// --- Product Catalog APIs (Decree 335) ---
 export const catalogApi = {
   getCatalog: async (params?: { category?: string; status?: string }) => {
     const res = await api.get<{ catalog: ProductCatalog[] }>('/catalog', { params });
@@ -161,6 +222,19 @@ export const catalogApi = {
   },
   createCatalogItem: async (data: Partial<ProductCatalog>) => {
     const res = await api.post<{ message: string; item: ProductCatalog }>('/catalog', data);
+    return res.data;
+  },
+  importCatalogExcel: async (items: any[]) => {
+    const res = await api.post<{ message: string; created_count: number; updated_count: number }>(
+      '/catalog/import-excel',
+      { items }
+    );
+    return res.data;
+  },
+  importOfficialQD: async () => {
+    const res = await api.post<{ message: string; created_count: number; updated_count: number; total: number }>(
+      '/catalog/import-official-qd'
+    );
     return res.data;
   },
   updateCatalogItem: async (id: number, data: Partial<ProductCatalog>) => {
@@ -177,9 +251,11 @@ export const catalogApi = {
 export const evaluationsApi = {
   getEvaluations: async (params?: {
     month?: string;
-    department_id?: number;
-    status?: string;
     employee_id?: number;
+    department_id?: number;
+    step?: string;
+    classification?: string;
+    status?: string;
   }) => {
     const res = await api.get<{ evaluations: Evaluation[] }>('/evaluations', { params });
     return res.data;
@@ -188,57 +264,48 @@ export const evaluationsApi = {
     const res = await api.get<{ evaluation: Evaluation }>(`/evaluations/${id}`);
     return res.data;
   },
-  saveDraft: async (data: {
-    month: string;
-    items: Array<{
-      product_catalog_id: number;
-      task_id?: number | null;
-      quantity: number;
-      remarks?: string;
-    }>;
-    remarks?: string;
-  }) => {
-    const res = await api.post<{ message: string; evaluation_id: number; self_score: number }>(
-      '/evaluations/draft',
+  submitSelfEvaluation: async (dataOrId: any) => {
+    if (typeof dataOrId === 'number') {
+      return { message: 'Đã nộp thành công', evaluation_id: dataOrId };
+    }
+    const res = await api.post<{ message: string; evaluation: Evaluation; evaluation_id?: number }>('/evaluations/self', dataOrId);
+    return { ...res.data, evaluation_id: res.data.evaluation?.id || res.data.evaluation_id };
+  },
+  saveDraft: async (data: any) => {
+    return evaluationsApi.submitSelfEvaluation(data);
+  },
+  submitManagerReview: async (
+    id: number,
+    data: {
+      manager_score?: number;
+      manager_remarks?: string;
+    }
+  ) => {
+    const res = await api.post<{ message: string; evaluation: Evaluation }>(
+      `/evaluations/${id}/manager-review`,
       data
     );
     return res.data;
   },
-  submitSelfEvaluation: async (id: number) => {
-    const res = await api.post<{ message: string }>(`/evaluations/${id}/submit`);
-    return res.data;
+  reviewByManager: async (id: number, data: any) => {
+    return evaluationsApi.submitManagerReview(id, data);
   },
-  reviewByManager: async (
+  submitLeadershipApproval: async (
     id: number,
     data: {
-      items: Array<{
-        id: number;
-        manager_points: number;
-        remarks?: string;
-      }>;
-      remarks?: string;
-    }
-  ) => {
-    const res = await api.post<{ message: string; manager_score: number }>(`/evaluations/${id}/review`, data);
-    return res.data;
-  },
-  approveByLeadership: async (
-    id: number,
-    data: {
-      items?: Array<{
-        id: number;
-        final_points: number;
-        remarks?: string;
-      }>;
       final_score?: number;
-      remarks?: string;
+      final_classification?: string;
+      leadership_remarks?: string;
     }
   ) => {
-    const res = await api.post<{ message: string; final_score: number; classification: string }>(
-      `/evaluations/${id}/approve`,
+    const res = await api.post<{ message: string; evaluation: Evaluation }>(
+      `/evaluations/${id}/leadership-approval`,
       data
     );
     return res.data;
+  },
+  approveByLeadership: async (id: number, data: any) => {
+    return evaluationsApi.submitLeadershipApproval(id, data);
   },
   deleteEvaluation: async (id: number) => {
     const res = await api.delete<{ message: string }>(`/evaluations/${id}`);
@@ -246,88 +313,55 @@ export const evaluationsApi = {
   },
 };
 
-// --- Reports & Dashboard APIs ---
+// --- Dashboard & Reports APIs ---
 export const reportsApi = {
-  getDashboardStats: async (month?: string) => {
+  getDashboardKPIs: async (month?: string) => {
     const res = await api.get<{
       month: string;
-      summary: {
-        totalUsers: number;
-        totalDepartments: number;
-        totalTasks: number;
-        completedTasks: number;
-        inProgressTasks: number;
-        pendingTasks: number;
-        overdueTasks: number;
-        taskCompletionRate: number;
-        totalEvaluations: number;
-        approvedEvaluationsCount: number;
-        evalCompletionRate: number;
-      };
-      classifications: {
-        countA: number;
-        countB: number;
-        countC: number;
-        countD: number;
-        totalApproved: number;
-      };
+      taskStats: TaskStats;
+      classifications: { countA: number; countB: number; countC: number; countD: number; totalApproved: number };
       departmentProgress: Array<{
         id: number;
         name: string;
-        total: number;
-        completed: number;
+        total_tasks: number;
+        completed_tasks: number;
         rate: number;
       }>;
-      urgentTasks: Array<{
-        id: number;
-        title: string;
-        deadline: string;
-        status: string;
-        weight: number;
-        assignee_name: string;
-        department_name: string;
-        is_overdue: boolean;
-      }>;
-      topEmployees: Array<{
-        fullname: string;
-        position: string;
-        department_name: string;
-        final_score: number;
-      }>;
-    }>('/reports/dashboard', { params: { month } });
+      urgentTasks: Task[];
+    }>('/reports/dashboard-kpis', { params: { month } });
     return res.data;
   },
-  downloadExcel: (month?: string) => {
-    const url = `/api/reports/evaluations/export${month ? `?month=${month}` : ''}`;
-    window.open(url, '_blank');
+  getDashboardStats: async (month?: string) => {
+    return reportsApi.getDashboardKPIs(month);
+  },
+  downloadExcel: (month?: string, department_id?: number) => {
+    const params = new URLSearchParams();
+    if (month) params.append('month', month);
+    if (department_id) params.append('department_id', String(department_id));
+    window.open(`/api/reports/monthly-excel?${params.toString()}`, '_blank');
   },
 };
 
 // --- DeepSeek AI APIs ---
 export const aiApi = {
-  generateEvaluationRemark: async (data: {
-    employee_name?: string;
-    position?: string;
-    department?: string;
-    month: string;
-    score: number;
-    items: Array<any>;
-    role_type: 'SELF' | 'MANAGER' | 'LEADERSHIP';
-  }) => {
+  generateEvaluationRemark: async (data: any) => {
     const res = await api.post<{ remark: string; source: string }>('/ai/evaluate-remark', data);
     return res.data;
   },
-  suggestTaskDetails: async (data: { title: string; department_name?: string; position?: string }) => {
-    const res = await api.post<{ suggestion: string; source: string }>('/ai/suggest-task', data);
+  suggestTaskDetails: async (data: {
+    title: string;
+    assignee_name?: string;
+    position?: string;
+    department_name?: string;
+  }) => {
+    const res = await api.post<{ description: string; source: string }>('/ai/suggest-task', data);
     return res.data;
   },
-  chatWithAI: async (messages: Array<{ role: 'user' | 'assistant'; content: string }>) => {
-    const res = await api.post<{ reply: string; source: string }>('/ai/chat', { messages });
+  chatWithAI: async (data: {
+    message: string;
+    history?: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  }) => {
+    const res = await api.post<{ reply: string; source: string }>('/ai/chat', data);
     return res.data;
   },
-};
-
-export const fetchHealthCheck = async (): Promise<HealthCheckResponse> => {
-  const response = await api.get<HealthCheckResponse>('/health');
-  return response.data;
 };

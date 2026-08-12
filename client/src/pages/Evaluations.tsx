@@ -93,15 +93,18 @@ export const Evaluations: React.FC = () => {
   };
 
   // Stats
-  const approvedEvals = evaluations.filter((e) => e.status === 'APPROVED');
-  const countA = approvedEvals.filter((e) => e.final_score >= 90).length;
-  const countB = approvedEvals.filter((e) => e.final_score >= 70 && e.final_score < 90).length;
-  const countC = approvedEvals.filter((e) => e.final_score >= 50 && e.final_score < 70).length;
-  const countD = approvedEvals.filter((e) => e.final_score < 50).length;
+  const approvedEvals = evaluations.filter(
+    (e) => (e.status === 'APPROVED' || e.step === 'STEP_3_LEADERSHIP_FINAL') && e.final_score !== null && e.final_score !== undefined
+  );
+  const countA = approvedEvals.filter((e) => (e.final_score ?? 0) >= 90).length;
+  const countB = approvedEvals.filter((e) => (e.final_score ?? 0) >= 70 && (e.final_score ?? 0) < 90).length;
+  const countC = approvedEvals.filter((e) => (e.final_score ?? 0) >= 50 && (e.final_score ?? 0) < 70).length;
+  const countD = approvedEvals.filter((e) => (e.final_score ?? 0) < 50).length;
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status?: string | null) => {
     switch (status) {
       case 'APPROVED':
+      case 'STEP_3_LEADERSHIP_FINAL':
         return (
           <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
             <CheckCircle className="w-3.5 h-3.5" />
@@ -109,6 +112,7 @@ export const Evaluations: React.FC = () => {
           </span>
         );
       case 'MANAGER_REVIEWED':
+      case 'STEP_2_MANAGER':
         return (
           <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
             <Clock className="w-3.5 h-3.5" />
@@ -116,6 +120,7 @@ export const Evaluations: React.FC = () => {
           </span>
         );
       case 'SUBMITTED':
+      case 'STEP_1_SELF':
         return (
           <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
             <Clock className="w-3.5 h-3.5" />
@@ -131,23 +136,24 @@ export const Evaluations: React.FC = () => {
     }
   };
 
-  const getClassificationBadge = (score: number, status: string) => {
-    if (status !== 'APPROVED') return <span className="text-slate-400 text-xs italic">Chưa xếp loại</span>;
-    if (score >= 90) {
+  const getClassificationBadge = (score?: number | null, status?: string | null) => {
+    if (status !== 'APPROVED' && status !== 'STEP_3_LEADERSHIP_FINAL') return <span className="text-slate-400 text-xs italic">Chưa xếp loại</span>;
+    const finalScore = score ?? 0;
+    if (finalScore >= 90) {
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
           Xuất sắc (Loại A)
         </span>
       );
     }
-    if (score >= 70) {
+    if (finalScore >= 70) {
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200">
           Tốt (Loại B)
         </span>
       );
     }
-    if (score >= 50) {
+    if (finalScore >= 50) {
       return (
         <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
           Hoàn thành (Loại C)

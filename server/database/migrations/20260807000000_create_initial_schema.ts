@@ -43,7 +43,13 @@ export async function up(knex: Knex): Promise<void> {
       .string('status')
       .notNullable()
       .defaultTo('ACTIVE')
-      .checkIn(['ACTIVE', 'INACTIVE']);
+      .checkIn(['ACTIVE', 'INACTIVE', 'PENDING_APPROVAL', 'REJECTED']);
+    table.string('auth_provider').defaultTo('LOCAL');
+    table.string('google_id').nullable();
+    table.string('avatar_url').nullable();
+    table.string('requested_department').nullable();
+    table.string('requested_position').nullable();
+    table.string('rejection_reason').nullable();
     table.timestamp('created_at').defaultTo(knex.fn.now());
     table.timestamp('updated_at').defaultTo(knex.fn.now());
   });

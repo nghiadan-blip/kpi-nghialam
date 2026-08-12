@@ -5,6 +5,9 @@ import { UserModal } from '../components/UserModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { DepartmentModal } from '../components/DepartmentModal';
 import { CatalogModal } from '../components/CatalogModal';
+import { ApproveMemberModal } from '../components/ApproveMemberModal';
+import { ImportPersonnelModal } from '../components/ImportPersonnelModal';
+import { ImportCatalogModal } from '../components/ImportCatalogModal';
 import {
   Users,
   Building2,
@@ -20,17 +23,21 @@ import {
   RefreshCw,
   ShieldCheck,
   AlertTriangle,
+  UserCheck,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'catalog'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'catalog' | 'pending'>('users');
 
-  // Users state
+  // State
   const [users, setUsers] = useState<User[]>([]);
+  const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [catalog, setCatalog] = useState<ProductCatalog[]>([]);
 
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingPending, setLoadingPending] = useState(true);
   const [loadingDepts, setLoadingDepts] = useState(true);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
@@ -53,6 +60,12 @@ export const Admin: React.FC = () => {
   const [catalogModalOpen, setCatalogModalOpen] = useState(false);
   const [editingCatalog, setEditingCatalog] = useState<ProductCatalog | null>(null);
 
+  // Upgrade Modals
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [candidateToApprove, setCandidateToApprove] = useState<User | null>(null);
+  const [importPersonnelModalOpen, setImportPersonnelModalOpen] = useState(false);
+  const [importCatalogModalOpen, setImportCatalogModalOpen] = useState(false);
+
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchUsers = async () => {
@@ -69,6 +82,18 @@ export const Admin: React.FC = () => {
       console.error('Lỗi tải người dùng:', err);
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const fetchPendingUsers = async () => {
+    setLoadingPending(true);
+    try {
+      const data = await usersApi.getPendingApprovals();
+      setPendingUsers(data.pending_users);
+    } catch (err: any) {
+      console.error('Lỗi tải danh sách chờ duyệt:', err);
+    } finally {
+      setLoadingPending(false);
     }
   };
 
@@ -99,6 +124,7 @@ export const Admin: React.FC = () => {
   useEffect(() => {
     fetchDepartments();
     fetchCatalog();
+    fetchPendingUsers();
   }, []);
 
   useEffect(() => {
@@ -174,13 +200,29 @@ export const Admin: React.FC = () => {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case 'ADMIN':
-        return <span className="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-md text-xs font-bold">Quản trị</span>;
+        return (
+          <span className="bg-[#91A8ED]/25 text-[#0C3260] border border-[#91A8ED] px-2.5 py-1 rounded-md text-xs font-bold">
+            Quản trị
+          </span>
+        );
       case 'LEADERSHIP':
-        return <span className="bg-red-100 text-red-700 px-2.5 py-1 rounded-md text-xs font-bold">Lãnh đạo</span>;
+        return (
+          <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1 rounded-md text-xs font-bold">
+            Lãnh đạo
+          </span>
+        );
       case 'DEPARTMENT_HEAD':
-        return <span className="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-md text-xs font-bold">Trưởng BP</span>;
+        return (
+          <span className="bg-[#CFEBFC] text-[#1864AB] border border-[#9FD7F9] px-2.5 py-1 rounded-md text-xs font-bold">
+            Trưởng BP
+          </span>
+        );
       default:
-        return <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-md text-xs font-medium">Chuyên viên</span>;
+        return (
+          <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-md text-xs font-medium">
+            Công chức
+          </span>
+        );
     }
   };
 
@@ -198,41 +240,61 @@ export const Admin: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="bg-white p-6 rounded-2xl border border-[#CFEBFC] shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="w-6 h-6 text-purple-600" />
-            <h1 className="text-xl font-bold text-slate-900">Quản Trị Hệ Thống UBND Xã Nghĩa Lâm</h1>
+            <ShieldCheck className="w-6 h-6 text-[#27A4F2]" />
+            <h1 className="text-xl font-black text-[#0C3260]">Quản Trị Hệ Thống UBND Xã Nghĩa Lâm</h1>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Quản lý hồ sơ cán bộ công chức, cơ cấu phòng ban và cấu hình danh mục tiêu chí đánh giá theo NĐ 335/2025/NĐ-CP.
+          <p className="text-xs md:text-sm text-slate-500 mt-1">
+            Quản lý hồ sơ cán bộ, kiểm duyệt đăng ký thành viên, cơ cấu phòng ban và danh mục tiêu chí đánh giá theo NĐ 335.
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 self-start md:self-auto">
+        <div className="flex flex-wrap bg-[#F0F7FD] p-1.5 rounded-xl border border-[#CFEBFC] self-start md:self-auto gap-1">
           <button
             onClick={() => setActiveTab('users')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs md:text-sm font-semibold transition ${
-              activeTab === 'users' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold transition ${
+              activeTab === 'users' ? 'bg-[#27A4F2] text-white shadow-sm' : 'text-[#1864AB] hover:bg-[#CFEBFC]/60'
             }`}
           >
             <Users className="w-4 h-4" />
             <span>Cán bộ ({users.length})</span>
           </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('pending');
+              fetchPendingUsers();
+            }}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold transition relative ${
+              activeTab === 'pending' ? 'bg-[#27A4F2] text-white shadow-sm' : 'text-[#1864AB] hover:bg-[#CFEBFC]/60'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Kiểm duyệt</span>
+            {pendingUsers.length > 0 && (
+              <span className="bg-red-500 text-white text-[10px] font-extrabold px-1.5 py-0.2 rounded-full animate-pulse">
+                {pendingUsers.length}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={() => setActiveTab('departments')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs md:text-sm font-semibold transition ${
-              activeTab === 'departments' ? 'bg-white text-sky-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold transition ${
+              activeTab === 'departments' ? 'bg-[#27A4F2] text-white shadow-sm' : 'text-[#1864AB] hover:bg-[#CFEBFC]/60'
             }`}
           >
             <Building2 className="w-4 h-4" />
             <span>Phòng ban ({departments.length})</span>
           </button>
+
           <button
             onClick={() => setActiveTab('catalog')}
-            className={`flex items-center space-x-2 px-3.5 py-2 rounded-md text-xs md:text-sm font-semibold transition ${
-              activeTab === 'catalog' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold transition ${
+              activeTab === 'catalog' ? 'bg-[#27A4F2] text-white shadow-sm' : 'text-[#1864AB] hover:bg-[#CFEBFC]/60'
             }`}
           >
             <Layers className="w-4 h-4" />
@@ -261,34 +323,34 @@ export const Admin: React.FC = () => {
 
       {/* TAB 1: USERS */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
+        <div className="bg-white rounded-2xl border border-[#CFEBFC] shadow-sm overflow-hidden space-y-4 p-6">
           {/* Controls & Filter Bar */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <form onSubmit={handleSearchSubmit} className="flex-1 flex items-center space-x-2">
               <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <Search className="w-4 h-4 text-[#6EC2F7] absolute left-3.5 top-3" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Tìm theo họ tên, tài khoản, chức vụ..."
-                  className="w-full pl-9 pr-4 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                  placeholder="Tìm theo họ tên, tài khoản, chức vụ, email..."
+                  className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] focus:border-transparent text-sm bg-[#F0F7FD]/40 text-[#0C3260]"
                 />
               </div>
               <button
                 type="submit"
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition"
+                className="px-3.5 py-2 bg-[#CFEBFC] hover:bg-[#9FD7F9] text-[#0C3260] rounded-xl text-sm font-bold transition"
               >
                 Tìm
               </button>
             </form>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               {/* Department Filter */}
               <select
                 value={selectedDept}
                 onChange={(e) => setSelectedDept(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-sky-500"
+                className="px-3 py-2 border border-[#CFEBFC] rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-[#27A4F2]"
               >
                 <option value="">-- Tất cả phòng ban --</option>
                 {departments.map((d) => (
@@ -302,7 +364,7 @@ export const Admin: React.FC = () => {
               <select
                 value={selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-sky-500"
+                className="px-3 py-2 border border-[#CFEBFC] rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-[#27A4F2]"
               >
                 <option value="">-- Tất cả vai trò --</option>
                 <option value="ADMIN">Quản trị viên (ADMIN)</option>
@@ -315,7 +377,7 @@ export const Admin: React.FC = () => {
               <select
                 value={selectedStatus}
                 onChange={(e) => setSelectedStatus(e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-sky-500"
+                className="px-3 py-2 border border-[#CFEBFC] rounded-xl text-xs sm:text-sm bg-white focus:ring-2 focus:ring-[#27A4F2]"
               >
                 <option value="">-- Tất cả trạng thái --</option>
                 <option value="ACTIVE">Đang hoạt động</option>
@@ -323,11 +385,19 @@ export const Admin: React.FC = () => {
               </select>
 
               <button
+                onClick={() => setImportPersonnelModalOpen(true)}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#CFEBFC] hover:bg-[#9FD7F9] text-[#0C3260] border border-[#9FD7F9] rounded-xl text-xs sm:text-sm font-bold transition shadow-2xs"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-[#27A4F2]" />
+                <span>📥 Nhập Excel Cán Bộ</span>
+              </button>
+
+              <button
                 onClick={() => {
                   setEditingUser(null);
                   setUserModalOpen(true);
                 }}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+                className="flex items-center space-x-1.5 px-4 py-2 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-xs sm:text-sm font-bold transition shadow-sm"
               >
                 <UserPlus className="w-4 h-4" />
                 <span>Thêm Cán Bộ</span>
@@ -336,10 +406,10 @@ export const Admin: React.FC = () => {
           </div>
 
           {/* Users Table */}
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-[#CFEBFC]">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-[#CFEBFC]/50 border-b border-[#CFEBFC] text-xs font-bold text-[#0C3260] uppercase tracking-wider">
                   <th className="py-3 px-4">Cán bộ / Tài khoản</th>
                   <th className="py-3 px-4">Chức vụ</th>
                   <th className="py-3 px-4">Phòng ban / Bộ phận</th>
@@ -348,86 +418,81 @@ export const Admin: React.FC = () => {
                   <th className="py-3 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#CFEBFC]">
                 {loadingUsers ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-500">
-                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-sky-600" />
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
                       Đang tải danh sách cán bộ...
                     </td>
                   </tr>
                 ) : users.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-500">
-                      Không tìm thấy cán bộ công chức nào phù hợp.
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      Không tìm thấy cán bộ nào phù hợp.
                     </td>
                   </tr>
                 ) : (
                   users.map((u) => (
-                    <tr key={u.id} className="hover:bg-slate-50/80 transition">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{u.fullname}</div>
-                        <div className="text-xs text-slate-500 font-mono">@{u.username}</div>
-                      </td>
-                      <td className="py-3 px-4 font-medium text-slate-700">{u.position}</td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {u.department_name ? (
-                          <span className="inline-flex items-center space-x-1">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{u.department_name}</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Chưa xếp phòng</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">{getRoleBadge(u.role)}</td>
-                      <td className="py-3 px-4 text-center">
-                        {u.status === 'ACTIVE' ? (
-                          <span className="inline-flex items-center space-x-1 text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-xs font-semibold">
-                            <CheckCircle className="w-3.5 h-3.5" />
-                            <span>Hoạt động</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center space-x-1 text-slate-500 bg-slate-100 px-2 py-0.5 rounded text-xs font-medium">
-                            <XCircle className="w-3.5 h-3.5" />
-                            <span>Đã khóa</span>
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="inline-flex items-center space-x-1.5">
-                          <button
-                            onClick={() => {
-                              setEditingUser(u);
-                              setUserModalOpen(true);
-                            }}
-                            title="Sửa hồ sơ"
-                            className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-md transition"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setResettingUser(u);
-                              setResetModalOpen(true);
-                            }}
-                            title="Cấp lại mật khẩu"
-                            className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-md transition"
-                          >
-                            <KeyRound className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleToggleUserStatus(u)}
-                            title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Kích hoạt tài khoản'}
-                            className={`p-1.5 rounded-md transition ${
-                              u.status === 'ACTIVE'
-                                ? 'text-slate-600 hover:text-red-600 hover:bg-red-50'
-                                : 'text-slate-600 hover:text-emerald-600 hover:bg-emerald-50'
-                            }`}
-                          >
-                            {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                          </button>
+                    <tr key={u.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-[#0C3260]">{u.fullname}</div>
+                        <div className="text-xs text-slate-500 font-mono flex items-center space-x-2 mt-0.5">
+                          <span>@{u.username}</span>
+                          {u.email && <span>• {u.email}</span>}
                         </div>
+                      </td>
+                      <td className="py-3.5 px-4 font-medium text-slate-700">{u.position}</td>
+                      <td className="py-3.5 px-4 text-slate-600">{u.department_name || '-'}</td>
+                      <td className="py-3.5 px-4 text-center">{getRoleBadge(u.role)}</td>
+                      <td className="py-3.5 px-4 text-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                            u.status === 'ACTIVE'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : u.status === 'PENDING_APPROVAL'
+                              ? 'bg-amber-100 text-amber-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}
+                        >
+                          {u.status === 'ACTIVE'
+                            ? 'Đang hoạt động'
+                            : u.status === 'PENDING_APPROVAL'
+                            ? 'Chờ duyệt'
+                            : 'Đã khóa'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 text-right space-x-1 whitespace-nowrap">
+                        <button
+                          onClick={() => {
+                            setEditingUser(u);
+                            setUserModalOpen(true);
+                          }}
+                          className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition"
+                          title="Sửa thông tin"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setResettingUser(u);
+                            setResetModalOpen(true);
+                          }}
+                          className="p-1.5 text-slate-600 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition"
+                          title="Đặt lại mật khẩu"
+                        >
+                          <KeyRound className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleUserStatus(u)}
+                          className={`p-1.5 rounded-lg transition ${
+                            u.status === 'ACTIVE'
+                              ? 'text-slate-600 hover:text-red-600 hover:bg-red-50'
+                              : 'text-slate-600 hover:text-emerald-600 hover:bg-emerald-50'
+                          }`}
+                          title={u.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+                        >
+                          {u.status === 'ACTIVE' ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -438,93 +503,169 @@ export const Admin: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: DEPARTMENTS */}
-      {activeTab === 'departments' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
-          <div className="flex items-center justify-between">
+      {/* TAB 2: PENDING APPROVALS */}
+      {activeTab === 'pending' && (
+        <div className="bg-white rounded-2xl border border-[#CFEBFC] shadow-sm overflow-hidden space-y-4 p-6">
+          <div className="flex items-center justify-between pb-2 border-b border-[#CFEBFC]">
             <div>
-              <h2 className="text-base font-bold text-slate-800">Cơ cấu Phòng ban / Bộ phận chuyên môn</h2>
-              <p className="text-xs text-slate-500">Cơ cấu tổ chức bộ máy trực thuộc UBND xã Nghĩa Lâm.</p>
+              <h3 className="text-base font-black text-[#0C3260] flex items-center space-x-2">
+                <UserCheck className="w-5 h-5 text-[#27A4F2]" />
+                <span>Danh Sách Đăng Ký Thành Viên Chờ Kiểm Duyệt ({pendingUsers.length})</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Xem xét hồ sơ, phê duyệt và gán chính thức phòng ban, vị trí việc làm theo Nghị định 335
+              </p>
             </div>
+            <button
+              onClick={fetchPendingUsers}
+              className="flex items-center space-x-1 px-3 py-1.5 bg-[#CFEBFC]/50 hover:bg-[#CFEBFC] text-[#0C3260] rounded-xl text-xs font-bold transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Làm mới</span>
+            </button>
+          </div>
+
+          <div className="overflow-x-auto rounded-xl border border-[#CFEBFC]">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-[#CFEBFC]/50 border-b border-[#CFEBFC] text-xs font-bold text-[#0C3260] uppercase tracking-wider">
+                  <th className="py-3 px-4">Họ và tên cán bộ</th>
+                  <th className="py-3 px-4">Hình thức đăng ký</th>
+                  <th className="py-3 px-4">Đơn vị & Vị trí đề xuất</th>
+                  <th className="py-3 px-4">Thời gian đăng ký</th>
+                  <th className="py-3 px-4 text-right">Kiểm duyệt</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#CFEBFC]">
+                {loadingPending ? (
+                  <tr>
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
+                      Đang tải danh sách chờ duyệt...
+                    </td>
+                  </tr>
+                ) : pendingUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-12 text-center text-slate-400">
+                      <CheckCircle className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-70" />
+                      <span>Hiện không có hồ sơ nào đang chờ kiểm duyệt.</span>
+                    </td>
+                  </tr>
+                ) : (
+                  pendingUsers.map((u) => (
+                    <tr key={u.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-[#0C3260]">{u.fullname}</div>
+                        <div className="text-xs text-slate-500 font-mono flex items-center space-x-2 mt-0.5">
+                          {u.email && <span>{u.email}</span>}
+                          {u.phone && <span>• SĐT: {u.phone}</span>}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                            u.auth_provider === 'GOOGLE'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-slate-100 text-slate-800 border border-slate-200'
+                          }`}
+                        >
+                          {u.auth_provider === 'GOOGLE' ? 'Tài khoản Gmail' : 'Đăng ký Biểu mẫu'}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-medium text-slate-800">{u.requested_department || 'Chưa chọn'}</div>
+                        <div className="text-xs text-slate-500">{u.requested_position || 'Chưa ghi rõ'}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-xs text-slate-500 font-mono">
+                        {u.created_at ? new Date(u.created_at).toLocaleDateString('vi-VN') : '-'}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          onClick={() => {
+                            setCandidateToApprove(u);
+                            setApproveModalOpen(true);
+                          }}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                        >
+                          Phê Duyệt & Gán Vị Trí
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: DEPARTMENTS */}
+      {activeTab === 'departments' && (
+        <div className="bg-white rounded-2xl border border-[#CFEBFC] shadow-sm overflow-hidden space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-[#0C3260]">Danh Sách Phòng Ban / Bộ Phận</h3>
             <button
               onClick={() => {
                 setEditingDept(null);
                 setDeptModalOpen(true);
               }}
-              className="flex items-center space-x-1.5 px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+              className="flex items-center space-x-1.5 px-4 py-2 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-sm font-bold transition shadow-sm"
             >
               <Plus className="w-4 h-4" />
               <span>Thêm Phòng Ban</span>
             </button>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-[#CFEBFC]">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                <tr className="bg-[#CFEBFC]/50 border-b border-[#CFEBFC] text-xs font-bold text-[#0C3260] uppercase tracking-wider">
                   <th className="py-3 px-4">ID</th>
-                  <th className="py-3 px-4">Tên Phòng Ban / Bộ Phận</th>
-                  <th className="py-3 px-4">Đơn vị quản lý cấp trên</th>
+                  <th className="py-3 px-4">Tên phòng ban / Bộ phận</th>
+                  <th className="py-3 px-4">Thuộc đơn vị cấp trên</th>
                   <th className="py-3 px-4 text-center">Số lượng nhân sự</th>
                   <th className="py-3 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#CFEBFC]">
                 {loadingDepts ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-slate-500">
-                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-sky-600" />
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
                       Đang tải danh sách phòng ban...
                     </td>
                   </tr>
                 ) : departments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-8 text-slate-500">
+                    <td colSpan={5} className="py-8 text-center text-slate-400">
                       Chưa có phòng ban nào.
                     </td>
                   </tr>
                 ) : (
                   departments.map((d) => (
-                    <tr key={d.id} className="hover:bg-slate-50/80 transition">
-                      <td className="py-3 px-4 font-mono text-xs text-slate-500">{d.id}</td>
-                      <td className="py-3 px-4 font-bold text-slate-800 flex items-center space-x-2">
-                        <Building2 className="w-4 h-4 text-sky-600 flex-shrink-0" />
-                        <span>{d.name}</span>
+                    <tr key={d.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3.5 px-4 font-mono text-slate-400">#{d.id}</td>
+                      <td className="py-3.5 px-4 font-bold text-[#0C3260]">{d.name}</td>
+                      <td className="py-3.5 px-4 text-slate-600">{d.parent_name || 'Ủy ban nhân dân xã'}</td>
+                      <td className="py-3.5 px-4 text-center font-bold text-[#27A4F2]">
+                        {d.user_count || 0} cán bộ
                       </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {d.parent_name ? (
-                          <span className="text-xs bg-slate-100 px-2 py-0.5 rounded font-medium text-slate-700">
-                            {d.parent_name}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-slate-400 italic">Cấp cao nhất</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-sky-700">
-                          {d.user_count || 0} cán bộ
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="inline-flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setEditingDept(d);
-                              setDeptModalOpen(true);
-                            }}
-                            title="Sửa phòng ban"
-                            className="p-1.5 text-slate-600 hover:text-sky-600 hover:bg-sky-50 rounded-md transition"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteDepartment(d)}
-                            title="Xóa phòng ban"
-                            className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-3.5 px-4 text-right space-x-1">
+                        <button
+                          onClick={() => {
+                            setEditingDept(d);
+                            setDeptModalOpen(true);
+                          }}
+                          className="p-1.5 text-slate-600 hover:text-[#27A4F2] hover:bg-[#CFEBFC]/50 rounded-lg transition"
+                          title="Sửa"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDepartment(d)}
+                          className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Xóa"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -535,95 +676,94 @@ export const Admin: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 3: CATALOG (NĐ 335) */}
+      {/* TAB 4: PRODUCT CATALOG (NĐ 335) */}
       {activeTab === 'catalog' && (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-6">
-          <div className="flex items-center justify-between">
+        <div className="bg-white rounded-2xl border border-[#CFEBFC] shadow-sm overflow-hidden space-y-4 p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-800">
-                Danh mục Sản phẩm, Tiêu chí & Hệ số theo NĐ 335/2025/NĐ-CP
-              </h2>
+              <h3 className="text-base font-black text-[#0C3260]">
+                Danh Mục Tiêu Chí & Sản Phẩm Chuẩn (Nghị định 335/2025/NĐ-CP)
+              </h3>
               <p className="text-xs text-slate-500">
-                Khung danh mục tính điểm sản phẩm: Điểm chuẩn = 5.0 × Hệ số quy đổi (K).
+                Quy định hệ số quy đổi (K) cho từng vị trí việc làm và nhóm công việc
               </p>
             </div>
-            <button
-              onClick={() => {
-                setEditingCatalog(null);
-                setCatalogModalOpen(true);
-              }}
-              className="flex items-center space-x-1.5 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Thêm Sản Phẩm NĐ 335</span>
-            </button>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setImportCatalogModalOpen(true)}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#CFEBFC] hover:bg-[#9FD7F9] text-[#0C3260] border border-[#9FD7F9] rounded-xl text-xs sm:text-sm font-bold transition shadow-2xs"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-[#27A4F2]" />
+                <span>📥 Nạp Excel Danh Mục NĐ 335</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingCatalog(null);
+                  setCatalogModalOpen(true);
+                }}
+                className="flex items-center space-x-1.5 px-4 py-2 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-xs sm:text-sm font-bold transition shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Thêm Tiêu Chí</span>
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <div className="overflow-x-auto rounded-xl border border-[#CFEBFC]">
             <table className="w-full text-left border-collapse text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">Mã / Tên Sản Phẩm</th>
-                  <th className="py-3 px-4">Nhóm danh mục</th>
+                <tr className="bg-[#CFEBFC]/50 border-b border-[#CFEBFC] text-xs font-bold text-[#0C3260] uppercase tracking-wider">
+                  <th className="py-3 px-4">Mã</th>
+                  <th className="py-3 px-4">Tên sản phẩm / Tiêu chí</th>
+                  <th className="py-3 px-4">Phân nhóm</th>
+                  <th className="py-3 px-4 text-center">Điểm chuẩn</th>
                   <th className="py-3 px-4 text-center">Hệ số quy đổi (K)</th>
-                  <th className="py-3 px-4 text-center">Điểm chuẩn (5 × K)</th>
-                  <th className="py-3 px-4">Mô tả quy cách</th>
                   <th className="py-3 px-4 text-right">Thao tác</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#CFEBFC]">
                 {loadingCatalog ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-500">
-                      <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-purple-600" />
-                      Đang tải danh mục sản phẩm...
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      Đang tải danh mục tiêu chí NĐ 335...
                     </td>
                   </tr>
                 ) : catalog.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-8 text-slate-500">
-                      Chưa có sản phẩm nào trong danh mục.
+                    <td colSpan={6} className="py-8 text-center text-slate-400">
+                      Chưa có tiêu chí nào được cấu hình.
                     </td>
                   </tr>
                 ) : (
-                  catalog.map((c) => (
-                    <tr key={c.id} className="hover:bg-slate-50/80 transition">
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{c.name}</div>
-                        <div className="text-xs text-purple-700 font-mono bg-purple-50 px-2 py-0.5 rounded inline-block mt-0.5">
-                          {c.code}
-                        </div>
+                  catalog.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50 transition">
+                      <td className="py-3.5 px-4 font-mono font-bold text-[#1864AB]">{item.code}</td>
+                      <td className="py-3.5 px-4 font-bold text-[#0C3260] max-w-xs">{item.name}</td>
+                      <td className="py-3.5 px-4">{getCategoryName(item.category)}</td>
+                      <td className="py-3.5 px-4 text-center font-mono">{item.baseline_score.toFixed(1)}</td>
+                      <td className="py-3.5 px-4 text-center font-mono font-black text-[#27A4F2]">
+                        {item.coefficient.toFixed(2)}
                       </td>
-                      <td className="py-3 px-4">{getCategoryName(c.category)}</td>
-                      <td className="py-3 px-4 text-center font-bold text-slate-900">
-                        <span className="bg-slate-100 px-2.5 py-1 rounded text-xs">x{c.coefficient}</span>
-                      </td>
-                      <td className="py-3 px-4 text-center font-bold text-purple-700">
-                        {(c.coefficient * (c.baseline_score || 5.0)).toFixed(1)} đ
-                      </td>
-                      <td className="py-3 px-4 text-xs text-slate-500 max-w-xs truncate">
-                        {c.description || <span className="italic text-slate-400">Không có mô tả</span>}
-                      </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="inline-flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setEditingCatalog(c);
-                              setCatalogModalOpen(true);
-                            }}
-                            title="Sửa sản phẩm"
-                            className="p-1.5 text-slate-600 hover:text-purple-600 hover:bg-purple-50 rounded-md transition"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCatalog(c)}
-                            title="Khóa sản phẩm"
-                            className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-md transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-3.5 px-4 text-right space-x-1">
+                        <button
+                          onClick={() => {
+                            setEditingCatalog(item);
+                            setCatalogModalOpen(true);
+                          }}
+                          className="p-1.5 text-slate-600 hover:text-[#27A4F2] hover:bg-[#CFEBFC]/50 rounded-lg transition"
+                          title="Sửa"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCatalog(item)}
+                          className="p-1.5 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                          title="Khóa tiêu chí"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -637,15 +777,11 @@ export const Admin: React.FC = () => {
       {/* Modals */}
       <UserModal
         isOpen={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
         user={editingUser}
         departments={departments}
-        onClose={() => {
-          setUserModalOpen(false);
-          setEditingUser(null);
-        }}
         onSuccess={() => {
           fetchUsers();
-          fetchDepartments();
           setActionMessage({
             type: 'success',
             text: editingUser ? 'Cập nhật cán bộ thành công!' : 'Tạo mới cán bộ thành công!',
@@ -656,11 +792,8 @@ export const Admin: React.FC = () => {
 
       <ResetPasswordModal
         isOpen={resetModalOpen}
+        onClose={() => setResetModalOpen(false)}
         user={resettingUser}
-        onClose={() => {
-          setResetModalOpen(false);
-          setResettingUser(null);
-        }}
         onSuccess={() => {
           setActionMessage({ type: 'success', text: 'Cấp lại mật khẩu thành công!' });
           setTimeout(() => setActionMessage(null), 3000);
@@ -669,17 +802,14 @@ export const Admin: React.FC = () => {
 
       <DepartmentModal
         isOpen={deptModalOpen}
+        onClose={() => setDeptModalOpen(false)}
         department={editingDept}
         allDepartments={departments}
-        onClose={() => {
-          setDeptModalOpen(false);
-          setEditingDept(null);
-        }}
         onSuccess={() => {
           fetchDepartments();
           setActionMessage({
             type: 'success',
-            text: editingDept ? 'Cập nhật phòng ban thành công!' : 'Thêm mới phòng ban thành công!',
+            text: editingDept ? 'Cập nhật phòng ban thành công!' : 'Thêm phòng ban thành công!',
           });
           setTimeout(() => setActionMessage(null), 3000);
         }}
@@ -687,16 +817,56 @@ export const Admin: React.FC = () => {
 
       <CatalogModal
         isOpen={catalogModalOpen}
+        onClose={() => setCatalogModalOpen(false)}
         item={editingCatalog}
-        onClose={() => {
-          setCatalogModalOpen(false);
-          setEditingCatalog(null);
-        }}
         onSuccess={() => {
           fetchCatalog();
           setActionMessage({
             type: 'success',
-            text: editingCatalog ? 'Cập nhật sản phẩm thành công!' : 'Thêm sản phẩm danh mục thành công!',
+            text: editingCatalog ? 'Cập nhật sản phẩm NĐ 335 thành công!' : 'Thêm sản phẩm NĐ 335 thành công!',
+          });
+          setTimeout(() => setActionMessage(null), 3000);
+        }}
+      />
+
+      {/* Upgrade Modals */}
+      <ApproveMemberModal
+        isOpen={approveModalOpen}
+        onClose={() => setApproveModalOpen(false)}
+        candidate={candidateToApprove}
+        onSuccess={() => {
+          fetchPendingUsers();
+          fetchUsers();
+          setActionMessage({
+            type: 'success',
+            text: 'Đã hoàn tất kiểm duyệt và kích hoạt thành viên thành công!',
+          });
+          setTimeout(() => setActionMessage(null), 3000);
+        }}
+      />
+
+      <ImportPersonnelModal
+        isOpen={importPersonnelModalOpen}
+        onClose={() => setImportPersonnelModalOpen(false)}
+        onSuccess={() => {
+          fetchUsers();
+          fetchDepartments();
+          setActionMessage({
+            type: 'success',
+            text: 'Đã nhập danh sách cán bộ từ Excel thành công!',
+          });
+          setTimeout(() => setActionMessage(null), 3000);
+        }}
+      />
+
+      <ImportCatalogModal
+        isOpen={importCatalogModalOpen}
+        onClose={() => setImportCatalogModalOpen(false)}
+        onSuccess={() => {
+          fetchCatalog();
+          setActionMessage({
+            type: 'success',
+            text: 'Đã nạp danh mục tiêu chí NĐ 335 thành công!',
           });
           setTimeout(() => setActionMessage(null), 3000);
         }}

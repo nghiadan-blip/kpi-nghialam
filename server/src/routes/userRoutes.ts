@@ -1,11 +1,31 @@
 import { Router } from 'express';
-import { getUsers, getUserById, createUser, updateUser, resetPassword, deleteUser } from '../controllers/userController';
+import {
+  getUsers,
+  getPendingApprovals,
+  approveMembership,
+  rejectMembership,
+  importUsersExcel,
+  getUserById,
+  createUser,
+  updateUser,
+  resetPassword,
+  deleteUser,
+} from '../controllers/userController';
 import { authenticate, requireRole } from '../middleware/auth';
 
 const router = Router();
 
 // Everyone authenticated can view user list (e.g. for task assignments, mentions, department views)
 router.get('/', authenticate, getUsers);
+
+// Pending membership approvals (Admin and Leadership)
+router.get('/pending/list', authenticate, requireRole(['ADMIN', 'LEADERSHIP']), getPendingApprovals);
+router.post('/:id/approve', authenticate, requireRole(['ADMIN', 'LEADERSHIP']), approveMembership);
+router.post('/:id/reject', authenticate, requireRole(['ADMIN', 'LEADERSHIP']), rejectMembership);
+
+// Excel Bulk Import
+router.post('/import-excel', authenticate, requireRole(['ADMIN']), importUsersExcel);
+
 router.get('/:id', authenticate, getUserById);
 
 // Admin-only management endpoints

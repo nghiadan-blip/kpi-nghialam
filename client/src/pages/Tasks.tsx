@@ -28,6 +28,7 @@ export const Tasks: React.FC = () => {
     in_progress: 0,
     completed: 0,
     overdue: 0,
+    completion_rate: 0,
   });
 
   const [users, setUsers] = useState<User[]>([]);

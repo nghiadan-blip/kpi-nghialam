@@ -83,12 +83,12 @@ export const EvaluationFormModal: React.FC<Props> = ({
           setItems(
             data.evaluation.details.map((d: EvaluationDetail) => ({
               id: d.id,
-              product_catalog_id: d.product_catalog_id,
+              product_catalog_id: d.product_catalog_id || 0,
               task_id: d.task_id,
-              quantity: d.quantity,
-              self_points: d.self_points,
-              manager_points: d.manager_points,
-              final_points: d.final_points,
+              quantity: d.quantity || 1,
+              self_points: d.self_points || 0,
+              manager_points: d.manager_points || 0,
+              final_points: d.final_points || 0,
               remarks: d.remarks || '',
               catalog_code: d.catalog_code,
               catalog_name: d.catalog_name,

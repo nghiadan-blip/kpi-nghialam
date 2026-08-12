@@ -94,7 +94,7 @@ export const TaskModal: React.FC<Props> = ({
 
       setFormData((prev) => ({
         ...prev,
-        description: res.suggestion,
+        description: res.description,
       }));
     } catch (err: any) {
       console.error('Lỗi gợi ý AI:', err);

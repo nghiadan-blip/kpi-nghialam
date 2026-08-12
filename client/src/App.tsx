@@ -8,6 +8,7 @@ import { Tasks } from './pages/Tasks';
 import { Evaluations } from './pages/Evaluations';
 import { Admin } from './pages/Admin';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { NotFound } from './pages/NotFound';
 import { AIChatWidget } from './components/AIChatWidget';
 
@@ -20,6 +21,7 @@ export const App: React.FC = () => {
           <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
               <Route
                 path="/"
                 element={

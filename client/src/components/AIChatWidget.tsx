@@ -65,7 +65,10 @@ export const AIChatWidget: React.FC = () => {
         content: m.content,
       }));
 
-      const res = await aiApi.chatWithAI(history);
+      const res = await aiApi.chatWithAI({
+        message: userMsg.content,
+        history,
+      });
 
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
