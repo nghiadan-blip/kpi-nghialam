@@ -49,13 +49,8 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
 
     // Validate skipping from PENDING directly to COMPLETED
     if (task.status === 'PENDING' && status === 'COMPLETED') {
-      const confirmSkip = window.confirm(
-        'Nhiệm vụ đang ở trạng thái "Chờ tiếp nhận" (PENDING). Bạn có chắc chắn muốn hoàn thành trực tiếp mà không qua bước "Đang thực hiện" (IN_PROGRESS)?'
-      );
-      if (!confirmSkip) {
-        setStatus('IN_PROGRESS');
-        return;
-      }
+      setError('Không thể nhảy cóc trạng thái! Nhiệm vụ đang "Chờ tiếp nhận", đồng chí vui lòng chọn "Đang thực hiện (IN_PROGRESS)" trước.');
+      return;
     }
 
     if (status === 'COMPLETED' && !evidence.trim() && !task.evidence) {
@@ -275,7 +270,9 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
                 >
                   <option value="PENDING">Chờ tiếp nhận (PENDING)</option>
                   <option value="IN_PROGRESS">Đang thực hiện (IN_PROGRESS)</option>
-                  <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
+                  <option value="COMPLETED" disabled={task.status === 'PENDING'}>
+                    Đã hoàn thành (COMPLETED) {task.status === 'PENDING' ? '— (Cần chuyển Đang làm trước)' : ''}
+                  </option>
                 </select>
               </div>
 

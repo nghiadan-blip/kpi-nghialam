@@ -289,7 +289,7 @@ export const Dashboard: React.FC = () => {
             {/* Type A */}
             <div>
               <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-emerald-800">Hoàn thành xuất sắc nhiệm vụ (Loại A - $\ge 90$đ)</span>
+                <span className="text-emerald-800">Hoàn thành xuất sắc nhiệm vụ (Loại A: ≥ 90đ)</span>
                 <span className="font-bold text-emerald-700">{classifications.countA} cán bộ ({pctA}%)</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
@@ -300,7 +300,7 @@ export const Dashboard: React.FC = () => {
             {/* Type B */}
             <div>
               <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-sky-800">Hoàn thành tốt nhiệm vụ (Loại B - $70 - 89$đ)</span>
+                <span className="text-sky-800">Hoàn thành tốt nhiệm vụ (Loại B: 70 - 89đ)</span>
                 <span className="font-bold text-sky-700">{classifications.countB} cán bộ ({pctB}%)</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
@@ -311,7 +311,7 @@ export const Dashboard: React.FC = () => {
             {/* Type C */}
             <div>
               <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-amber-800">Hoàn thành nhiệm vụ (Loại C - $50 - 69$đ)</span>
+                <span className="text-amber-800">Hoàn thành nhiệm vụ (Loại C: 50 - 69đ)</span>
                 <span className="font-bold text-amber-700">{classifications.countC} cán bộ ({pctC}%)</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
@@ -322,7 +322,7 @@ export const Dashboard: React.FC = () => {
             {/* Type D */}
             <div>
               <div className="flex justify-between text-xs font-semibold mb-1">
-                <span className="text-red-800">Không hoàn thành nhiệm vụ (Loại D - &lt; 50đ)</span>
+                <span className="text-red-800">Không hoàn thành nhiệm vụ (Loại D: &lt; 50đ)</span>
                 <span className="font-bold text-red-700">{classifications.countD} cán bộ ({pctD}%)</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">

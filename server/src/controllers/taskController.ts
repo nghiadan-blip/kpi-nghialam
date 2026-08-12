@@ -241,6 +241,13 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    if (!product_catalog_id) {
+      res.status(400).json({
+        message: 'Bắt buộc phải gắn Mã sản phẩm theo Nghị định 335 để xác định hệ số quy đổi K khi giao nhiệm vụ.',
+      });
+      return;
+    }
+
     // Verify assignee exists
     const assignee = await db('users').where('id', Number(assigned_to)).first();
     if (!assignee) {
@@ -337,7 +344,15 @@ export async function updateTask(req: AuthRequest, res: Response): Promise<void>
     if (product_catalog_id !== undefined) updates.product_catalog_id = product_catalog_id ? Number(product_catalog_id) : null;
     if (deadline !== undefined) updates.deadline = new Date(deadline).toISOString();
     if (weight !== undefined) updates.weight = Number(weight);
-    if (status !== undefined) updates.status = status;
+    if (status !== undefined) {
+      if (status === 'COMPLETED' && task.status === 'PENDING') {
+        res.status(400).json({
+          message: 'Không thể nhảy cóc trạng thái! Nhiệm vụ đang ở trạng thái "Chờ tiếp nhận" (PENDING). Vui lòng chuyển sang "Đang thực hiện" (IN_PROGRESS) trước khi hoàn thành.',
+        });
+        return;
+      }
+      updates.status = status;
+    }
     if (evidence !== undefined) updates.evidence = evidence ? evidence.trim() : null;
 
     await db('tasks').where('id', Number(id)).update(updates);
@@ -393,6 +408,12 @@ export async function updateTaskStatus(req: AuthRequest, res: Response): Promise
     };
 
     if (status) {
+      if (status === 'COMPLETED' && task.status === 'PENDING') {
+        res.status(400).json({
+          message: 'Không thể nhảy cóc trạng thái! Nhiệm vụ đang ở trạng thái "Chờ tiếp nhận" (PENDING). Vui lòng chuyển sang "Đang thực hiện" (IN_PROGRESS) trước khi hoàn thành.',
+        });
+        return;
+      }
       if (status === 'COMPLETED' && !evidence && !task.evidence) {
         res.status(400).json({
           message: 'Khi chuyển sang Đã hoàn thành (COMPLETED), bắt buộc phải cung cấp minh chứng hoặc tóm tắt kết quả thực hiện.',

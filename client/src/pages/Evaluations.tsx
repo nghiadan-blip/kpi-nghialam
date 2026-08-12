@@ -238,7 +238,7 @@ export const Evaluations: React.FC = () => {
         <div className="p-4 rounded-xl bg-emerald-50/70 border border-emerald-200 shadow-sm">
           <div className="text-xs font-semibold text-emerald-800 uppercase">Loại A (Xuất sắc)</div>
           <div className="text-2xl font-black text-emerald-700 mt-1">{countA}</div>
-          <div className="text-[11px] text-emerald-600 mt-0.5">$\ge 90$ điểm</div>
+          <div className="text-[11px] text-emerald-600 mt-0.5">≥ 90 điểm</div>
         </div>
 
         <div className="p-4 rounded-xl bg-sky-50/70 border border-sky-200 shadow-sm">
