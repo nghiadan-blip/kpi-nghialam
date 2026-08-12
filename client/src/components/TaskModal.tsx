@@ -1,7 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { tasksApi, aiApi } from '../services/api';
 import { Task, User, ProductCatalog } from '../types';
-import { X, CheckSquare, AlertCircle, Scale, Layers, Sparkles, RefreshCw } from 'lucide-react';
+import {
+  X,
+  CheckSquare,
+  AlertCircle,
+  Scale,
+  Layers,
+  Sparkles,
+  Search,
+  Check,
+  Filter,
+  User as UserIcon,
+  Calendar,
+  FileText,
+  Zap,
+} from 'lucide-react';
 
 interface Props {
   isOpen: boolean;
@@ -11,6 +25,50 @@ interface Props {
   onClose: () => void;
   onSuccess: () => void;
 }
+
+// Position-to-category mapping keywords
+const POSITION_GROUPS = [
+  {
+    id: 'AUTO',
+    label: '🎯 Theo vị trí cán bộ',
+    keywords: [],
+  },
+  {
+    id: 'DIA_CHINH',
+    label: 'Địa chính - Xây dựng',
+    keywords: ['địa chính', 'xây dựng', 'môi trường', 'nông nghiệp', 'đất', 'quy hoạch', 'giao thông', 'thủy lợi', 'trật tự'],
+  },
+  {
+    id: 'TU_PHAP',
+    label: 'Tư pháp - Hộ tịch',
+    keywords: ['tư pháp', 'hộ tịch', 'chứng thực', 'khai sinh', 'kết hôn', 'khai tử', 'hòa giải', 'pháp chế', 'chứng thực'],
+  },
+  {
+    id: 'VAN_PHONG',
+    label: 'Văn phòng - Thống kê',
+    keywords: ['văn phòng', 'thống kê', 'nội vụ', 'báo cáo', 'công văn', 'lưu trữ', 'họp', 'tiếp dân', 'giao ban'],
+  },
+  {
+    id: 'TAI_CHINH',
+    label: 'Tài chính - Kế toán',
+    keywords: ['tài chính', 'kế toán', 'ngân sách', 'thu chi', 'kho bạc', 'thanh quyết toán', 'chứng từ'],
+  },
+  {
+    id: 'VAN_HOA',
+    label: 'Văn hóa - Xã hội',
+    keywords: ['văn hóa', 'xã hội', 'lao động', 'thương binh', 'chính sách', 'hộ nghèo', 'y tế', 'giáo dục', 'thể thao'],
+  },
+  {
+    id: 'LANH_DAO',
+    label: 'Lãnh đạo UBND',
+    keywords: ['chủ tịch', 'lãnh đạo', 'hđnd', 'chỉ đạo', 'chủ trì', 'phê duyệt', 'kết luận', 'nghị quyết'],
+  },
+  {
+    id: 'ALL',
+    label: 'Tất cả (460+ mục)',
+    keywords: [],
+  },
+];
 
 export const TaskModal: React.FC<Props> = ({
   isOpen,
@@ -34,11 +92,29 @@ export const TaskModal: React.FC<Props> = ({
 
   const [loading, setLoading] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
+  const [matchingAI, setMatchingAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Catalog Filter & Search States
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [selectedGroup, setSelectedGroup] = useState('AUTO');
+  const [aiSuggestions, setAiSuggestions] = useState<
+    Array<{ item: ProductCatalog; confidence: number; match_reason: string }>
+  >([]);
+  const [isCatalogPickerOpen, setIsCatalogPickerOpen] = useState(false);
+
+  // Selected User Object
+  const selectedUser = useMemo(() => {
+    return users.find((u) => u.id === Number(formData.assigned_to)) || null;
+  }, [users, formData.assigned_to]);
+
+  // Selected Catalog Item Object
+  const selectedCatalogItem = useMemo(() => {
+    return catalog.find((c) => c.id === Number(formData.product_catalog_id)) || null;
+  }, [catalog, formData.product_catalog_id]);
 
   useEffect(() => {
     if (task) {
-      // Format deadline to YYYY-MM-DDTHH:mm for datetime-local input
       let deadlineFormatted = '';
       if (task.deadline) {
         const d = new Date(task.deadline);
@@ -55,7 +131,6 @@ export const TaskModal: React.FC<Props> = ({
         status: task.status,
       });
     } else {
-      // Default deadline: 3 days from now at 17:00
       const defaultDate = new Date();
       defaultDate.setDate(defaultDate.getDate() + 3);
       defaultDate.setHours(17, 0, 0, 0);
@@ -71,25 +146,109 @@ export const TaskModal: React.FC<Props> = ({
       });
     }
     setError(null);
+    setCatalogSearch('');
+    setAiSuggestions([]);
+    setIsCatalogPickerOpen(false);
   }, [task, isOpen, users]);
+
+  // Filter Catalog Items based on Active Group & Search Text
+  const filteredCatalog = useMemo(() => {
+    let list = catalog;
+
+    // 1. Group / Position Filtering
+    if (selectedGroup === 'AUTO') {
+      if (selectedUser) {
+        const posDept = `${selectedUser.position || ''} ${selectedUser.department_name || ''}`.toLowerCase();
+        // Detect matching keywords from posDept
+        let activeKeywords: string[] = [];
+        for (const grp of POSITION_GROUPS) {
+          if (grp.id !== 'AUTO' && grp.id !== 'ALL') {
+            if (grp.keywords.some((kw) => posDept.includes(kw))) {
+              activeKeywords = [...activeKeywords, ...grp.keywords];
+            }
+          }
+        }
+
+        if (activeKeywords.length > 0) {
+          list = list.filter((item) => {
+            const itemText = `${item.name} ${item.code} ${item.description || ''}`.toLowerCase();
+            return activeKeywords.some((kw) => itemText.includes(kw)) || item.category === 'PART_A';
+          });
+        }
+      }
+    } else if (selectedGroup !== 'ALL') {
+      const grp = POSITION_GROUPS.find((g) => g.id === selectedGroup);
+      if (grp && grp.keywords.length > 0) {
+        list = list.filter((item) => {
+          const itemText = `${item.name} ${item.code} ${item.description || ''}`.toLowerCase();
+          return grp.keywords.some((kw) => itemText.includes(kw)) || item.category === 'PART_A';
+        });
+      }
+    }
+
+    // 2. Keyword Search Filtering
+    if (catalogSearch.trim()) {
+      const q = catalogSearch.toLowerCase().trim();
+      list = list.filter((item) => {
+        return (
+          item.name.toLowerCase().includes(q) ||
+          item.code.toLowerCase().includes(q) ||
+          (item.description && item.description.toLowerCase().includes(q))
+        );
+      });
+    }
+
+    return list;
+  }, [catalog, selectedGroup, catalogSearch, selectedUser]);
 
   if (!isOpen) return null;
 
-  const handleAISuggest = async () => {
-    if (!formData.title.trim()) {
-      setError('Vui lòng nhập Tiêu đề nhiệm vụ trước để DeepSeek AI có cơ sở gợi ý.');
+  // AI Smart Matcher
+  const handleAIMatchCatalog = async () => {
+    setMatchingAI(true);
+    setError(null);
+    try {
+      const res = await aiApi.matchCatalogItems({
+        query: catalogSearch || formData.title || '',
+        position: selectedUser?.position,
+        department: selectedUser?.department_name || undefined,
+        limit: 5,
+      });
+
+      setAiSuggestions(res.matches);
+      setIsCatalogPickerOpen(true);
+    } catch (err: any) {
+      console.error('Lỗi tìm kiếm AI:', err);
+    } finally {
+      setMatchingAI(false);
+    }
+  };
+
+  const handleSelectCatalogItem = (item: ProductCatalog) => {
+    setFormData((prev) => ({
+      ...prev,
+      product_catalog_id: item.id,
+      weight: item.coefficient || 1.0,
+      title: prev.title.trim() ? prev.title : item.name,
+      description: prev.description.trim() ? prev.description : (item.description || ''),
+    }));
+    setIsCatalogPickerOpen(false);
+    setAiSuggestions([]);
+  };
+
+  const handleAISuggestDescription = async () => {
+    if (!formData.title.trim() && !selectedCatalogItem) {
+      setError('Vui lòng nhập Tiêu đề nhiệm vụ hoặc chọn Danh mục NĐ 335 trước.');
       return;
     }
 
-    const assignedUser = users.find((u) => u.id === Number(formData.assigned_to));
     setGeneratingAI(true);
     setError(null);
-
     try {
       const res = await aiApi.suggestTaskDetails({
-        title: formData.title,
-        department_name: assignedUser?.department_name ?? undefined,
-        position: assignedUser?.position,
+        title: formData.title || selectedCatalogItem?.name || '',
+        department_name: selectedUser?.department_name ?? undefined,
+        position: selectedUser?.position,
       });
 
       setFormData((prev) => ({
@@ -150,18 +309,26 @@ export const TaskModal: React.FC<Props> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-xl w-full overflow-hidden border border-slate-100 max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-          <div className="flex items-center space-x-2">
-            <CheckSquare className="w-5 h-5 text-red-700" />
-            <h3 className="font-bold text-slate-900 text-base">
-              {isEditing ? 'Chỉnh Sửa Nhiệm Vụ' : 'Giao Nhiệm Vụ Mới'}
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full overflow-hidden border border-[#CFEBFC] max-h-[92vh] flex flex-col relative">
+        {/* Header with Vietnix Blue styling */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#CFEBFC] bg-gradient-to-r from-[#0C3260] via-[#1864AB] to-[#27A4F2] text-white">
+          <div className="flex items-center space-x-2.5">
+            <div className="p-2 bg-white/10 rounded-xl backdrop-blur-xs">
+              <CheckSquare className="w-5 h-5 text-yellow-300" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm md:text-base tracking-wide">
+                {isEditing ? 'Chỉnh Sửa Nhiệm Vụ Công Vụ' : 'Phân Công & Giao Nhiệm Vụ Mới'}
+              </h3>
+              <p className="text-[11px] text-[#CFEBFC]">
+                Gắn mã sản phẩm chuẩn Nghị định số 335/2025/NĐ-CP & gợi ý bằng AI
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 transition p-1 rounded-md hover:bg-slate-100"
+            className="text-white/70 hover:text-white transition p-1.5 rounded-full hover:bg-white/10"
           >
             <X className="w-5 h-5" />
           </button>
@@ -169,14 +336,253 @@ export const TaskModal: React.FC<Props> = ({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs sm:text-sm">
           {error && (
-            <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2">
+            <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
               <span className="font-medium">{error}</span>
             </div>
           )}
 
+          {/* Row 1: Assignee and Deadline */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 tracking-wider flex items-center space-x-1.5">
+                <UserIcon className="w-3.5 h-3.5 text-[#27A4F2]" />
+                <span>Người thực hiện (Cán bộ) <span className="text-red-500">*</span></span>
+              </label>
+              <select
+                required
+                value={formData.assigned_to}
+                onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-medium text-[#0C3260]"
+              >
+                <option value="">-- Chọn cán bộ tiếp nhận --</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullname} — {u.position} ({u.department_name || 'UBND xã'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 tracking-wider flex items-center space-x-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#27A4F2]" />
+                <span>Hạn hoàn thành (Deadline) <span className="text-red-500">*</span></span>
+              </label>
+              <input
+                type="datetime-local"
+                required
+                value={formData.deadline}
+                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-medium text-[#0C3260]"
+              />
+            </div>
+          </div>
+
+          {/* SECTION 2: SMART DECREE 335 CATALOG PICKER WITH AI SEARCH */}
+          <div className="bg-[#F0F7FD] p-4 rounded-2xl border border-[#CFEBFC] space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="text-xs font-bold uppercase text-[#0C3260] flex items-center space-x-1.5 tracking-wider">
+                <Layers className="w-4 h-4 text-[#27A4F2]" />
+                <span>Danh Mục Sản Phẩm NĐ 335 (Hệ số K)</span>
+              </label>
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleAIMatchCatalog}
+                  disabled={matchingAI}
+                  className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-[#27A4F2] to-[#4585E6] hover:from-[#1864AB] hover:to-[#27A4F2] text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-300 animate-pulse" />
+                  <span>{matchingAI ? 'AI đang dò tìm...' : '✨ Tìm nhanh bằng AI'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCatalogPickerOpen(!isCatalogPickerOpen)}
+                  className="inline-flex items-center space-x-1 px-3 py-1.5 bg-white hover:bg-slate-100 border border-[#9FD7F9] text-[#1864AB] rounded-xl text-xs font-bold transition"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>{isCatalogPickerOpen ? 'Thu gọn bộ lọc' : 'Mở danh mục (Tra cứu)'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Selected Catalog Badge */}
+            {selectedCatalogItem ? (
+              <div className="p-3 bg-white rounded-xl border border-[#9FD7F9] flex items-center justify-between shadow-2xs">
+                <div className="space-y-0.5 flex-1 pr-2">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-mono font-bold text-[#1864AB] text-xs bg-[#CFEBFC] px-2 py-0.5 rounded-md">
+                      {selectedCatalogItem.code}
+                    </span>
+                    <span className="font-bold text-xs text-[#0C3260]">{selectedCatalogItem.name}</span>
+                  </div>
+                  {selectedCatalogItem.description && (
+                    <p className="text-[11px] text-slate-500 italic">
+                      Sản phẩm đầu ra: {selectedCatalogItem.description}
+                    </p>
+                  )}
+                  <div className="flex items-center space-x-3 text-[11px] text-slate-600 pt-0.5">
+                    <span>
+                      Hệ số K: <strong className="text-[#27A4F2]">{selectedCatalogItem.coefficient}</strong>
+                    </span>
+                    <span>•</span>
+                    <span>
+                      Điểm chuẩn: <strong>{selectedCatalogItem.baseline_score}đ</strong>
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: selectedCatalogItem.name,
+                        description: selectedCatalogItem.description || prev.description,
+                      }));
+                    }}
+                    title="Sao chép tên và mô tả vào nhiệm vụ"
+                    className="p-1.5 text-xs text-[#1864AB] hover:bg-[#CFEBFC] rounded-lg transition font-semibold flex items-center space-x-1"
+                  >
+                    <Zap className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="hidden sm:inline">Điền mẫu</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, product_catalog_id: '' })}
+                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
+                    title="Bỏ chọn danh mục"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400 italic">
+                Chưa gắn mã sản phẩm NĐ 335 (Bấm <strong>"✨ Tìm nhanh bằng AI"</strong> hoặc chọn danh mục bên dưới để tự động tính điểm).
+              </div>
+            )}
+
+            {/* AI Recommendation Cards (if available) */}
+            {aiSuggestions.length > 0 && (
+              <div className="p-3 bg-white rounded-2xl border border-yellow-200 shadow-xs space-y-2">
+                <div className="flex items-center space-x-1.5 text-xs font-bold text-[#0C3260]">
+                  <Sparkles className="w-4 h-4 text-yellow-500" />
+                  <span>Gợi ý sản phẩm phù hợp nhất từ AI DeepSeek:</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {aiSuggestions.map((sug, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => handleSelectCatalogItem(sug.item)}
+                      className="p-2.5 rounded-xl border border-[#CFEBFC] hover:border-[#27A4F2] bg-[#F0F7FD]/40 hover:bg-[#CFEBFC]/40 cursor-pointer transition flex items-center justify-between group"
+                    >
+                      <div className="space-y-0.5">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-[11px] font-bold text-[#1864AB] bg-white px-1.5 py-0.2 rounded border border-[#CFEBFC]">
+                            {sug.item.code}
+                          </span>
+                          <span className="text-xs font-bold text-[#0C3260] group-hover:text-[#27A4F2] transition">
+                            {sug.item.name}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-500">
+                          {sug.match_reason} • Hệ số K: <strong>{sug.item.coefficient}</strong>
+                        </p>
+                      </div>
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg flex items-center space-x-1 flex-shrink-0">
+                        <Check className="w-3 h-3" />
+                        <span>Chọn</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Expandable Catalog Browser */}
+            {isCatalogPickerOpen && (
+              <div className="p-3 bg-white rounded-2xl border border-[#CFEBFC] space-y-3">
+                {/* Search Bar */}
+                <div className="relative">
+                  <Search className="w-4 h-4 text-[#6EC2F7] absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                    placeholder="Tìm theo tên công việc, sản phẩm đầu ra hoặc mã..."
+                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-[#CFEBFC] text-xs focus:ring-2 focus:ring-[#27A4F2] bg-[#F0F7FD]/30"
+                  />
+                </div>
+
+                {/* Position Group Filter Pills */}
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                  {POSITION_GROUPS.map((grp) => (
+                    <button
+                      key={grp.id}
+                      type="button"
+                      onClick={() => setSelectedGroup(grp.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition ${
+                        selectedGroup === grp.id
+                          ? 'bg-[#27A4F2] text-white shadow-2xs'
+                          : 'bg-[#F0F7FD] text-slate-600 hover:bg-[#CFEBFC]'
+                      }`}
+                    >
+                      {grp.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Filtered Catalog List */}
+                <div className="max-h-48 overflow-y-auto divide-y divide-[#CFEBFC] border border-[#CFEBFC] rounded-xl">
+                  {filteredCatalog.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      Không tìm thấy công việc nào phù hợp với bộ lọc hiện tại.
+                    </div>
+                  ) : (
+                    filteredCatalog.slice(0, 40).map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleSelectCatalogItem(item)}
+                        className={`p-2.5 text-xs hover:bg-[#F0F7FD] cursor-pointer flex items-center justify-between transition ${
+                          Number(formData.product_catalog_id) === item.id ? 'bg-[#CFEBFC]/50 font-bold' : ''
+                        }`}
+                      >
+                        <div className="pr-2">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-[10px] font-bold text-[#1864AB] bg-[#CFEBFC]/70 px-1 rounded">
+                              {item.code}
+                            </span>
+                            <span className="text-[#0C3260]">{item.name}</span>
+                          </div>
+                          {item.description && (
+                            <p className="text-[10px] text-slate-400 truncate max-w-md">
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        <span className="font-mono text-[11px] font-bold text-[#27A4F2] flex-shrink-0">
+                          K={item.coefficient}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 text-right">
+                  Đang hiển thị {Math.min(40, filteredCatalog.length)} / {filteredCatalog.length} mục
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Row 3: Title */}
           <div>
-            <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
+            <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 tracking-wider">
               Tiêu đề nhiệm vụ <span className="text-red-500">*</span>
             </label>
             <input
@@ -184,142 +590,96 @@ export const TaskModal: React.FC<Props> = ({
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-slate-50/50 focus:bg-white"
-              placeholder="VD: Soạn thảo báo cáo tình hình kinh tế - xã hội Quý 3"
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-medium text-[#0C3260]"
+              placeholder="VD: Kiểm tra hiện trường và lập biên bản trật tự xây dựng thôn 3"
             />
           </div>
 
+          {/* Row 4: Weight and Status */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
-                Người thực hiện (Cán bộ) <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={formData.assigned_to}
-                onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
-              >
-                <option value="">-- Chọn cán bộ --</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullname} ({u.position})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
-                Hạn hoàn thành (Deadline) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="datetime-local"
-                required
-                value={formData.deadline}
-                onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase text-slate-700 mb-1 flex items-center space-x-1 tracking-wider">
-              <Layers className="w-3.5 h-3.5 text-purple-600" />
-              <span>Gắn danh mục sản phẩm (Theo NĐ 335/2025/NĐ-CP)</span>
-            </label>
-            <select
-              value={formData.product_catalog_id}
-              onChange={(e) => setFormData({ ...formData, product_catalog_id: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
-            >
-              <option value="">-- Không gắn danh mục --</option>
-              {catalog.map((c) => (
-                <option key={c.id} value={c.id}>
-                  [{c.code}] {c.name} (Hệ số: {c.coefficient})
-                </option>
-              ))}
-            </select>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Sản phẩm gắn với nhiệm vụ sẽ tự động được đưa vào biểu chấm điểm tháng.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 flex items-center space-x-1 tracking-wider">
-                <Scale className="w-3.5 h-3.5 text-slate-500" />
-                <span>Trọng số nhiệm vụ</span>
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 flex items-center space-x-1 tracking-wider">
+                <Scale className="w-3.5 h-3.5 text-[#27A4F2]" />
+                <span>Trọng số / Hệ số K (Mặc định: 1.0)</span>
               </label>
               <input
                 type="number"
-                step="0.1"
+                step="0.05"
                 min="0.1"
-                max="10"
+                max="5.0"
                 value={formData.weight}
                 onChange={(e) => setFormData({ ...formData, weight: parseFloat(e.target.value) || 1.0 })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-mono font-bold text-[#0C3260]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase text-slate-700 mb-1 tracking-wider">
-                Trạng thái nhiệm vụ
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 tracking-wider">
+                Trạng thái tiến độ
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm bg-white"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-medium text-[#0C3260]"
               >
                 <option value="PENDING">Chờ tiếp nhận (PENDING)</option>
                 <option value="IN_PROGRESS">Đang thực hiện (IN_PROGRESS)</option>
                 <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
+                <option value="OVERDUE">Quá hạn (OVERDUE)</option>
               </select>
             </div>
           </div>
 
+          {/* Row 5: Detailed Description with DeepSeek AI Generator */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-bold uppercase text-slate-700 tracking-wider">
-                Mô tả chi tiết nội dung & yêu cầu
+              <label className="text-xs font-bold uppercase text-[#0C3260] tracking-wider flex items-center space-x-1">
+                <FileText className="w-3.5 h-3.5 text-[#27A4F2]" />
+                <span>Mô tả chi tiết & Yêu cầu sản phẩm đầu ra</span>
               </label>
+
               <button
                 type="button"
+                onClick={handleAISuggestDescription}
                 disabled={generatingAI}
-                onClick={handleAISuggest}
-                className="flex items-center space-x-1 px-2.5 py-0.5 bg-gradient-to-r from-amber-50 to-red-50 hover:from-amber-100 hover:to-red-100 text-red-800 border border-amber-300 rounded-md text-[11px] font-bold transition shadow-2xs disabled:opacity-50"
+                className="inline-flex items-center space-x-1 text-[11px] font-bold text-[#27A4F2] hover:text-[#1864AB] bg-[#CFEBFC]/50 hover:bg-[#CFEBFC] px-2.5 py-1 rounded-lg border border-[#9FD7F9] transition"
               >
-                {generatingAI ? (
-                  <RefreshCw className="w-3 h-3 animate-spin text-red-600" />
-                ) : (
-                  <Sparkles className="w-3 h-3 text-amber-600" />
-                )}
-                <span>{generatingAI ? 'AI đang soạn...' : '✨ DeepSeek AI Gợi Ý'}</span>
+                <Sparkles className="w-3 h-3 text-amber-500" />
+                <span>{generatingAI ? 'AI đang soạn thảo...' : 'AI Soạn gợi ý'}</span>
               </button>
             </div>
+
             <textarea
-              rows={4}
+              rows={3}
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:ring-2 focus:ring-red-600 focus:border-transparent text-xs sm:text-sm font-normal leading-relaxed"
-              placeholder="Yêu cầu cụ thể về nội dung, quy cách trình bày, thời gian nghiệm thu..."
+              className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white placeholder:text-slate-400"
+              placeholder="Nhập nội dung chỉ đạo, quy trình các bước thực hiện và sản phẩm nghiệm thu..."
             />
           </div>
 
-          <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
+          {/* Actions */}
+          <div className="pt-3 border-t border-[#CFEBFC] flex items-center justify-end space-x-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
             >
-              Hủy bỏ
+              Hủy
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 bg-gradient-to-r from-red-700 to-red-800 hover:from-red-800 hover:to-red-900 disabled:opacity-50 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition"
+              className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-[#27A4F2] via-[#3EAEF4] to-[#4585E6] hover:from-[#1864AB] hover:to-[#27A4F2] shadow-md shadow-[#27A4F2]/25 transition flex items-center space-x-2 cursor-pointer"
             >
-              {loading ? 'Đang lưu...' : isEditing ? 'Cập Nhật Nhiệm Vụ' : 'Phân Công Nhiệm Vụ'}
+              {loading ? (
+                <span>Đang lưu...</span>
+              ) : (
+                <>
+                  <CheckSquare className="w-4 h-4" />
+                  <span>{isEditing ? 'Lưu Thay Đổi' : 'Giao Nhiệm Vụ Ngay'}</span>
+                </>
+              )}
             </button>
           </div>
         </form>

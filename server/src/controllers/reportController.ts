@@ -20,11 +20,11 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
     const currentMonth = req.query.month ? String(req.query.month) : new Date().toISOString().slice(0, 7);
 
     // 1. General Metrics
-    const userCountResult = await db('users').where('status', 'ACTIVE').count<{ count: number }>('id as count').first();
-    const deptCountResult = await db('departments').count<{ count: number }>('id as count').first();
+    const userRows = await db('users').where('status', 'ACTIVE').select('id');
+    const deptRows = await db('departments').select('id');
 
-    const totalUsers = Number(userCountResult?.count || 0);
-    const totalDepartments = Number(deptCountResult?.count || 0);
+    const totalUsers = userRows.length;
+    const totalDepartments = deptRows.length;
 
     // 2. Task Metrics
     const now = new Date();

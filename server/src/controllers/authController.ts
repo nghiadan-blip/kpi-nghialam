@@ -111,17 +111,59 @@ export async function register(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    // Check duplicate email
-    if (email) {
-      const existingEmail = await db('users').where('email', email.trim()).first();
+    const cleanFullname = fullname.trim();
+    const cleanEmail = email ? email.trim().toLowerCase() : null;
+    const cleanPhone = phone ? phone.trim() : null;
+
+    // Check duplicate email (case-insensitive)
+    if (cleanEmail) {
+      const existingEmail = await db('users')
+        .whereRaw('LOWER(email) = ?', [cleanEmail])
+        .first();
       if (existingEmail) {
-        res.status(400).json({ message: 'Email này đã được đăng ký trong hệ thống.' });
+        if (existingEmail.status === 'PENDING_APPROVAL') {
+          res.status(400).json({
+            message: 'Email này đã gửi hồ sơ đăng ký và đang chờ Lãnh đạo / Quản trị viên duyệt. Vui lòng không gửi lại nhiều lần.',
+            status: 'PENDING_APPROVAL',
+          });
+          return;
+        }
+        res.status(400).json({ message: 'Email này đã có tài khoản trong hệ thống. Vui lòng đăng nhập.' });
         return;
       }
     }
 
+    // Check duplicate phone
+    if (cleanPhone) {
+      const existingPhone = await db('users').where('phone', cleanPhone).first();
+      if (existingPhone) {
+        if (existingPhone.status === 'PENDING_APPROVAL') {
+          res.status(400).json({
+            message: 'Số điện thoại này đã gửi hồ sơ đăng ký và đang chờ phê duyệt. Vui lòng không gửi lại.',
+            status: 'PENDING_APPROVAL',
+          });
+          return;
+        }
+        res.status(400).json({ message: 'Số điện thoại này đã được sử dụng trong hệ thống.' });
+        return;
+      }
+    }
+
+    // Check duplicate pending request by exact same fullname
+    const duplicatePendingName = await db('users')
+      .where('status', 'PENDING_APPROVAL')
+      .whereRaw('LOWER(fullname) = ?', [cleanFullname.toLowerCase()])
+      .first();
+    if (duplicatePendingName) {
+      res.status(400).json({
+        message: `Hồ sơ đăng ký của cán bộ "${cleanFullname}" đã được tiếp nhận và đang trong danh sách chờ duyệt. Vui lòng không gửi lại nhiều lần.`,
+        status: 'PENDING_APPROVAL',
+      });
+      return;
+    }
+
     // Generate unique username
-    let baseUsername = email ? email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '') : 'canbo';
+    let baseUsername = cleanEmail ? cleanEmail.split('@')[0].replace(/[^a-z0-9]/g, '') : 'canbo';
     if (!baseUsername) baseUsername = 'canbo';
     let username = baseUsername;
     let count = 1;

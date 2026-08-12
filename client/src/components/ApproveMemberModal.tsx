@@ -36,23 +36,86 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
       .getDepartments()
       .then((res) => {
         setDepartments(res.departments);
-        if (candidate?.requested_department) {
-          const match = res.departments.find(
-            (d) => d.name.toLowerCase() === candidate.requested_department?.toLowerCase()
-          );
-          if (match) setSelectedDeptId(match.id);
-        }
+        matchAndSetDepartment(candidate, res.departments);
       })
       .catch(() => {});
 
     if (candidate) {
-      setAssignedPosition(candidate.requested_position || candidate.position || 'Công chức chuyên môn');
-      setAssignedRole(candidate.role as any || 'EMPLOYEE');
+      const pos = candidate.requested_position || candidate.position || 'Công chức chuyên môn';
+      setAssignedPosition(pos);
+
+      // Auto-detect role from position
+      const lowerPos = pos.toLowerCase();
+      if (lowerPos.includes('chủ tịch') || lowerPos.includes('lãnh đạo') || lowerPos.includes('hđnd')) {
+        setAssignedRole('LEADERSHIP');
+      } else if (
+        lowerPos.includes('trưởng') ||
+        lowerPos.includes('giám đốc') ||
+        lowerPos.includes('phó phòng') ||
+        lowerPos.includes('chỉ huy')
+      ) {
+        setAssignedRole('DEPARTMENT_HEAD');
+      } else {
+        setAssignedRole((candidate.role as any) || 'EMPLOYEE');
+      }
+
       setIsRejecting(false);
       setRejectionReason('');
       setError(null);
     }
   }, [candidate]);
+
+  const matchAndSetDepartment = (cand: User | null, depts: Department[]) => {
+    if (!cand || depts.length === 0) return;
+
+    if (cand.department_id) {
+      setSelectedDeptId(cand.department_id);
+      return;
+    }
+
+    const req = (cand.requested_department || '').toLowerCase().trim();
+    if (!req) return;
+
+    // 1. Exact match
+    let match = depts.find((d) => d.name.toLowerCase() === req);
+
+    // 2. Substring match
+    if (!match) {
+      match = depts.find(
+        (d) => d.name.toLowerCase().includes(req) || req.includes(d.name.toLowerCase())
+      );
+    }
+
+    // 3. Keyword based match
+    if (!match) {
+      const keywords = [
+        'địa chính',
+        'xây dựng',
+        'tư pháp',
+        'hộ tịch',
+        'văn phòng',
+        'thống kê',
+        'tài chính',
+        'kế toán',
+        'văn hóa',
+        'xã hội',
+        'công an',
+        'quân sự',
+        'hành chính công',
+        'lãnh đạo',
+      ];
+      for (const kw of keywords) {
+        if (req.includes(kw)) {
+          match = depts.find((d) => d.name.toLowerCase().includes(kw));
+          if (match) break;
+        }
+      }
+    }
+
+    if (match) {
+      setSelectedDeptId(match.id);
+    }
+  };
 
   if (!isOpen || !candidate) return null;
 

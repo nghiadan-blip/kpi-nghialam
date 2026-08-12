@@ -318,17 +318,31 @@ export const reportsApi = {
   getDashboardKPIs: async (month?: string) => {
     const res = await api.get<{
       month: string;
+      summary?: {
+        totalUsers: number;
+        totalDepartments: number;
+        totalTasks: number;
+        completedTasks: number;
+        inProgressTasks: number;
+        pendingTasks: number;
+        overdueTasks: number;
+        taskCompletionRate: number;
+        totalEvaluations: number;
+        approvedEvaluationsCount: number;
+        evalCompletionRate: number;
+      };
       taskStats: TaskStats;
       classifications: { countA: number; countB: number; countC: number; countD: number; totalApproved: number };
       departmentProgress: Array<{
         id: number;
         name: string;
-        total_tasks: number;
-        completed_tasks: number;
+        total: number;
+        completed: number;
         rate: number;
       }>;
       urgentTasks: Task[];
-    }>('/reports/dashboard-kpis', { params: { month } });
+      topEmployees?: any[];
+    }>('/reports/dashboard', { params: { month } });
     return res.data;
   },
   getDashboardStats: async (month?: string) => {
@@ -355,6 +369,22 @@ export const aiApi = {
     department_name?: string;
   }) => {
     const res = await api.post<{ description: string; source: string }>('/ai/suggest-task', data);
+    return res.data;
+  },
+  matchCatalogItems: async (data: {
+    query?: string;
+    position?: string;
+    department?: string;
+    limit?: number;
+  }) => {
+    const res = await api.post<{
+      matches: Array<{
+        item: ProductCatalog;
+        confidence: number;
+        match_reason: string;
+      }>;
+      source: string;
+    }>('/ai/match-catalog', data);
     return res.data;
   },
   chatWithAI: async (data: {

@@ -59,18 +59,18 @@ export const Dashboard: React.FC = () => {
     }
   };
 
-  const summary = data?.summary || {
-    totalUsers: 0,
-    totalDepartments: 0,
-    totalTasks: 0,
-    completedTasks: 0,
-    inProgressTasks: 0,
-    pendingTasks: 0,
-    overdueTasks: 0,
-    taskCompletionRate: 0,
-    totalEvaluations: 0,
-    approvedEvaluationsCount: 0,
-    evalCompletionRate: 0,
+  const summary = {
+    totalUsers: data?.summary?.totalUsers ?? data?.totalUsers ?? 0,
+    totalDepartments: data?.summary?.totalDepartments ?? data?.totalDepartments ?? 0,
+    totalTasks: data?.summary?.totalTasks ?? data?.totalTasks ?? 0,
+    completedTasks: data?.summary?.completedTasks ?? data?.completedTasks ?? 0,
+    inProgressTasks: data?.summary?.inProgressTasks ?? data?.inProgressTasks ?? 0,
+    pendingTasks: data?.summary?.pendingTasks ?? data?.pendingTasks ?? 0,
+    overdueTasks: data?.summary?.overdueTasks ?? data?.overdueTasks ?? 0,
+    taskCompletionRate: data?.summary?.taskCompletionRate ?? data?.taskCompletionRate ?? 0,
+    totalEvaluations: data?.summary?.totalEvaluations ?? data?.totalEvaluations ?? 0,
+    approvedEvaluationsCount: data?.summary?.approvedEvaluationsCount ?? data?.approvedEvaluationsCount ?? 0,
+    evalCompletionRate: data?.summary?.evalCompletionRate ?? data?.evalCompletionRate ?? 0,
   };
 
   const classifications = data?.classifications || {

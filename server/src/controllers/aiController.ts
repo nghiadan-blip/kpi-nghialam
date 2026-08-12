@@ -242,3 +242,197 @@ Hãy trả lời ngắn gọn, lịch thiệp, chính xác, có dẫn chứng đ
     res.status(500).json({ message: 'Lỗi máy chủ khi đối thoại AI.' });
   }
 }
+
+// 4. Smart AI Search & Catalog Matching for Task Assignment
+export async function matchCatalogItems(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { query, position, department, limit = 8 } = req.body;
+    const db = (await import('../config/db')).default;
+
+    const allCatalog = await db('product_catalog').where('status', 'ACTIVE').select('*');
+
+    const cleanQuery = (query || '').toLowerCase().trim();
+    const cleanPos = (position || '').toLowerCase().trim();
+    const cleanDept = (department || '').toLowerCase().trim();
+
+    if (!cleanQuery && !cleanPos && !cleanDept) {
+      res.status(200).json({
+        matches: allCatalog.slice(0, Number(limit)).map((item) => ({
+          item,
+          confidence: 0.9,
+          match_reason: 'Danh mục công việc chuẩn',
+        })),
+        source: 'catalog-default',
+      });
+      return;
+    }
+
+    // Try DeepSeek AI first if query is descriptive
+    if (cleanQuery.length >= 4 && DEEPSEEK_API_KEY) {
+      try {
+        const candidateSlice = allCatalog.slice(0, 100).map((c) => ({
+          id: c.id,
+          code: c.code,
+          name: c.name,
+          cat: c.category,
+          k: c.coefficient,
+        }));
+
+        const prompt = `Bạn là hệ thống AI phân loại và tra cứu danh mục công việc theo Nghị định 335/2025/NĐ-CP của UBND xã Nghĩa Lâm.
+Dưới đây là mô tả nhiệm vụ cần giao:
+- Yêu cầu/Tiêu đề: "${cleanQuery}"
+- Vị trí cán bộ: "${cleanPos || 'Công chức chuyên môn'}"
+- Phòng ban: "${cleanDept || 'UBND xã Nghĩa Lâm'}"
+
+Dưới đây là danh sách các mã sản phẩm mẫu trong cơ sở dữ liệu:
+${JSON.stringify(candidateSlice)}
+
+Hãy chọn ra từ 3 đến 6 mã ID phù hợp nhất và trả về định dạng JSON hợp lệ dạng mảng:
+[{"id": 12, "confidence": 0.95, "reason": "Phù hợp trực tiếp với thủ tục hành chính tiếp dân"}, ...]
+Chỉ trả về JSON thuần túy, không kèm văn bản giải thích.`;
+
+        const aiResponse = await callDeepSeek([{ role: 'user', content: prompt }], 400);
+        const jsonMatch = aiResponse.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const results = parsed
+            .map((p: any) => {
+              const matchedItem = allCatalog.find((c) => c.id === p.id);
+              if (!matchedItem) return null;
+              return {
+                item: matchedItem,
+                confidence: p.confidence || 0.85,
+                match_reason: p.reason || 'AI DeepSeek khớp nối ngữ nghĩa chính xác',
+              };
+            })
+            .filter(Boolean);
+
+          if (results.length > 0) {
+            res.status(200).json({
+              matches: results.slice(0, Number(limit)),
+              source: 'deepseek-ai',
+            });
+            return;
+          }
+        }
+      } catch (aiErr) {
+        console.warn('DeepSeek match catalog fallback to local scoring:', aiErr);
+      }
+    }
+
+    // High-performance local semantic scoring engine
+    const scored = allCatalog.map((item) => {
+      let score = 0;
+      const reasons: string[] = [];
+
+      const nameLower = item.name.toLowerCase();
+      const codeLower = item.code.toLowerCase();
+      const descLower = (item.description || '').toLowerCase();
+
+      // Direct query matches
+      if (cleanQuery) {
+        const queryTerms = cleanQuery.split(/\s+/).filter((t: string) => t.length > 1);
+        let termMatches = 0;
+        for (const term of queryTerms) {
+          if (nameLower.includes(term)) {
+            score += 15;
+            termMatches++;
+          }
+          if (descLower.includes(term)) {
+            score += 8;
+            termMatches++;
+          }
+          if (codeLower.includes(term)) {
+            score += 20;
+            termMatches++;
+          }
+        }
+        if (nameLower.includes(cleanQuery)) {
+          score += 40;
+          reasons.push(`Khớp chính xác cụm từ "${cleanQuery}"`);
+        } else if (termMatches > 0) {
+          reasons.push(`Khớp ${termMatches} từ khóa liên quan`);
+        }
+      }
+
+      // Position / Department affinity matching
+      const targetText = `${cleanPos} ${cleanDept}`;
+      if (
+        (targetText.includes('địa chính') || targetText.includes('xây dựng') || targetText.includes('môi trường') || targetText.includes('nông nghiệp')) &&
+        (nameLower.includes('đất') || nameLower.includes('địa chính') || nameLower.includes('xây dựng') || nameLower.includes('quy hoạch') || nameLower.includes('môi trường') || nameLower.includes('nông thôn'))
+      ) {
+        score += 25;
+        reasons.push('Phù hợp chuyên môn Địa chính - Xây dựng');
+      }
+
+      if (
+        (targetText.includes('tư pháp') || targetText.includes('hộ tịch')) &&
+        (nameLower.includes('tư pháp') || nameLower.includes('hộ tịch') || nameLower.includes('chứng thực') || nameLower.includes('khai sinh') || nameLower.includes('kết hôn') || nameLower.includes('hòa giải'))
+      ) {
+        score += 25;
+        reasons.push('Phù hợp chuyên môn Tư pháp - Hộ tịch');
+      }
+
+      if (
+        (targetText.includes('văn phòng') || targetText.includes('thống kê') || targetText.includes('nội vụ')) &&
+        (nameLower.includes('báo cáo') || nameLower.includes('văn phòng') || nameLower.includes('công văn') || nameLower.includes('lưu trữ') || nameLower.includes('tiếp dân') || nameLower.includes('họp'))
+      ) {
+        score += 25;
+        reasons.push('Phù hợp chuyên môn Văn phòng - Thống kê');
+      }
+
+      if (
+        (targetText.includes('tài chính') || targetText.includes('kế toán')) &&
+        (nameLower.includes('tài chính') || nameLower.includes('kế toán') || nameLower.includes('ngân sách') || nameLower.includes('thu chi') || nameLower.includes('thanh quyết toán'))
+      ) {
+        score += 25;
+        reasons.push('Phù hợp chuyên môn Tài chính - Kế toán');
+      }
+
+      if (
+        (targetText.includes('văn hóa') || targetText.includes('xã hội') || targetText.includes('lao động') || targetText.includes('thương binh')) &&
+        (nameLower.includes('văn hóa') || nameLower.includes('xã hội') || nameLower.includes('chính sách') || nameLower.includes('hộ nghèo') || nameLower.includes('thể thao') || nameLower.includes('thông tin'))
+      ) {
+        score += 25;
+        reasons.push('Phù hợp chuyên môn Văn hóa - Xã hội');
+      }
+
+      if (
+        (targetText.includes('lãnh đạo') || targetText.includes('chủ tịch') || targetText.includes('hđnd')) &&
+        (item.category === 'PART_A' || nameLower.includes('chủ trì') || nameLower.includes('chỉ đạo') || nameLower.includes('quyết định') || nameLower.includes('kết luận'))
+      ) {
+        score += 20;
+        reasons.push('Phù hợp nhiệm vụ chỉ đạo Lãnh đạo');
+      }
+
+      return {
+        item,
+        score,
+        match_reason: reasons.length > 0 ? reasons.join(' • ') : 'Danh mục công việc Nghị định 335',
+      };
+    });
+
+    const sorted = scored
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Number(limit))
+      .map((s, idx) => ({
+        item: s.item,
+        confidence: Math.max(0.6, Number((1 - idx * 0.05).toFixed(2))),
+        match_reason: s.match_reason,
+      }));
+
+    res.status(200).json({
+      matches: sorted.length > 0 ? sorted : allCatalog.slice(0, Number(limit)).map((item) => ({
+        item,
+        confidence: 0.7,
+        match_reason: 'Danh mục công việc tiêu chuẩn',
+      })),
+      source: 'smart-semantic-engine',
+    });
+  } catch (err: any) {
+    console.error('Lỗi tìm kiếm danh mục AI:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi tìm kiếm danh mục.' });
+  }
+}
+
