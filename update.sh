@@ -41,7 +41,6 @@ pm2 reload cbcc-server --update-env
 echo "=== 5. KIỂM TRA & TẢI LẠI NGINX (aaPanel) ==="
 if [ -f "/www/server/nginx/sbin/nginx" ]; then
     echo "⏳ Đang kiểm tra cấu hình Nginx..."
-    /www/server/nginx/sbin/sbin/nginx -t -c /www/server/nginx/conf/nginx.conf || \
     /www/server/nginx/sbin/nginx -t -c /www/server/nginx/conf/nginx.conf
 
     echo "⏳ Đang reload Nginx..."
