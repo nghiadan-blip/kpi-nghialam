@@ -9,7 +9,6 @@ export interface Department {
 
 export type UserRole = 'ADMIN' | 'LEADERSHIP' | 'DEPARTMENT_HEAD' | 'EMPLOYEE';
 export type UserStatus = 'ACTIVE' | 'INACTIVE';
-
 export interface User {
   id: number;
   username: string;
@@ -21,6 +20,15 @@ export interface User {
   position: string;
   department_id?: number | null;
   status: UserStatus | string;
+  auth_provider?: string | null;
+  google_id?: string | null;
+  avatar_url?: string | null;
+  requested_department?: string | null;
+  requested_position?: string | null;
+  rejection_reason?: string | null;
+  position_code?: string | null;
+  is_disciplined?: boolean | number | null;
+  discipline_details?: string | null;
   created_at?: string | Date;
   updated_at?: string | Date;
 }
@@ -53,6 +61,12 @@ export interface Task {
   weight: number;
   status: TaskStatus | string;
   evidence?: string | null;
+  assigned_quantity?: number | null;
+  converted_assigned_quantity?: number | null;
+  actual_completed_quantity?: number | null;
+  actual_completed_date?: string | Date | null;
+  delay_count?: number | null;
+  rework_count?: number | null;
   created_at?: string | Date;
   updated_at?: string | Date;
 }
@@ -70,6 +84,34 @@ export interface Evaluation {
   manager_id?: number | null;
   approver_id?: number | null;
   remarks?: string | null;
+
+  criteria_politics_self?: number | null;
+  criteria_politics_mgr?: number | null;
+  criteria_politics_final?: number | null;
+  criteria_expertise_self?: number | null;
+  criteria_expertise_mgr?: number | null;
+  criteria_expertise_final?: number | null;
+  criteria_innovation_self?: number | null;
+  criteria_innovation_mgr?: number | null;
+  criteria_innovation_final?: number | null;
+  general_score_self?: number | null;
+  general_score_mgr?: number | null;
+  general_score_final?: number | null;
+  task_score_self?: number | null;
+  task_score_mgr?: number | null;
+  task_score_final?: number | null;
+
+  leadership_unit_result?: number | null;
+  leadership_execution?: number | null;
+  leadership_solidarity?: number | null;
+  collective_comments?: string | null;
+  party_cell_comments?: string | null;
+  special_case?: string | null;
+  is_disciplined?: boolean | number | null;
+  discipline_details?: string | null;
+  is_special_quota_case?: boolean | number | null;
+  special_quota_justification?: string | null;
+
   created_at?: string | Date;
   updated_at?: string | Date;
 }

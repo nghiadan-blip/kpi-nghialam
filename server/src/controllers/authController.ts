@@ -175,7 +175,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    const [newUserId] = await db('users').insert({
+    const inserted = await db('users').insert({
       username,
       password_hash,
       fullname: fullname.trim(),
@@ -190,6 +190,8 @@ export async function register(req: Request, res: Response): Promise<void> {
       created_at: new Date(),
       updated_at: new Date(),
     });
+
+    const newUserId = Number(inserted[0]);
 
     const clientIp = req.ip || req.socket.remoteAddress;
     await logAudit(
@@ -256,7 +258,7 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
       const randomPassword = Math.random().toString(36).slice(-10) + 'A1!';
       const password_hash = await bcrypt.hash(randomPassword, 10);
 
-      const [newUserId] = await db('users').insert({
+      const inserted = await db('users').insert({
         username,
         password_hash,
         fullname: fullname ? fullname.trim() : cleanEmail.split('@')[0],
@@ -272,6 +274,8 @@ export async function googleAuth(req: Request, res: Response): Promise<void> {
         created_at: new Date(),
         updated_at: new Date(),
       });
+
+      const newUserId = Number(inserted[0]);
 
       const clientIp = req.ip || req.socket.remoteAddress;
       await logAudit(

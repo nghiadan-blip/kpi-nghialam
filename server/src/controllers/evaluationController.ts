@@ -419,9 +419,9 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     }
 
     // Manager General Score (Phụ lục I QĐ 283: 10đ + 10đ + 10đ)
-    const pol = criteria_politics_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_mgr))) : evaluation.criteria_politics_self;
-    const exp = criteria_expertise_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_mgr))) : evaluation.criteria_expertise_self;
-    const inn = criteria_innovation_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_mgr))) : evaluation.criteria_innovation_self;
+    const pol = criteria_politics_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_mgr))) : (evaluation.criteria_politics_self ?? 0.0);
+    const exp = criteria_expertise_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_mgr))) : (evaluation.criteria_expertise_self ?? 0.0);
+    const inn = criteria_innovation_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_mgr))) : (evaluation.criteria_innovation_self ?? 0.0);
     const generalScoreMgr = Number((pol + exp + inn).toFixed(2));
 
     // Manager Task Details
@@ -438,7 +438,7 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
       }
     }
 
-    const taskScoreMgr = evaluation.task_score_self; // default
+    const taskScoreMgr = evaluation.task_score_self ?? 0.0; // default
     const totalManagerScore = Math.min(100.0, Number((generalScoreMgr + (taskScoreMgr * 0.70)).toFixed(2)));
 
     await trx('evaluations')
@@ -521,9 +521,9 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    const pol = criteria_politics_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_final))) : evaluation.criteria_politics_mgr;
-    const exp = criteria_expertise_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_final))) : evaluation.criteria_expertise_mgr;
-    const inn = criteria_innovation_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_final))) : evaluation.criteria_innovation_mgr;
+    const pol = criteria_politics_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_final))) : (evaluation.criteria_politics_mgr ?? 0.0);
+    const exp = criteria_expertise_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_final))) : (evaluation.criteria_expertise_mgr ?? 0.0);
+    const inn = criteria_innovation_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_final))) : (evaluation.criteria_innovation_mgr ?? 0.0);
     const generalScoreFinal = Number((pol + exp + inn).toFixed(2));
 
     if (items && Array.isArray(items)) {
@@ -538,7 +538,7 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
       }
     }
 
-    let calculatedFinalScore = final_score !== undefined ? Number(final_score) : Number((generalScoreFinal + (evaluation.task_score_mgr * 0.70)).toFixed(2));
+    let calculatedFinalScore = final_score !== undefined ? Number(final_score) : Number((generalScoreFinal + ((evaluation.task_score_mgr ?? 0.0) * 0.70)).toFixed(2));
     calculatedFinalScore = Math.min(100.0, Math.max(0, calculatedFinalScore));
 
     const isDisciplined = evaluation.is_disciplined || evaluation.employee_is_disciplined;
