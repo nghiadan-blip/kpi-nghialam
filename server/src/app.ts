@@ -9,6 +9,7 @@ import catalogRoutes from './routes/catalogRoutes';
 import evaluationRoutes from './routes/evaluationRoutes';
 import reportRoutes from './routes/reportRoutes';
 import aiRoutes from './routes/aiRoutes';
+import jobPositionRoutes from './routes/jobPositionRoutes';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api/catalog', catalogRoutes);
 app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/job-positions', jobPositionRoutes);
 
 export default app;
 

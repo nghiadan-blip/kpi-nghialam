@@ -86,7 +86,7 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
       const deptTasks = tasks.filter((t) => t.department_id === d.id);
       const deptCompleted = deptTasks.filter((t) => t.status === 'COMPLETED').length;
       const deptTotal = deptTasks.length;
-      const rate = deptTotal > 0 ? Number(((deptCompleted / deptTotal) * 100).toFixed(1)) : 100;
+      const rate = deptTotal > 0 ? Number(((deptCompleted / deptTotal) * 100).toFixed(1)) : 0;
 
       departmentProgress.push({
         id: d.id,
@@ -94,6 +94,7 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
         total: deptTotal,
         completed: deptCompleted,
         rate,
+        has_tasks: deptTotal > 0,
       });
     }
 

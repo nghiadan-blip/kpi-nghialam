@@ -9,6 +9,7 @@ export async function getUsers(req: AuthRequest, res: Response): Promise<void> {
 
     let query = db('users')
       .leftJoin('departments', 'users.department_id', 'departments.id')
+      .leftJoin('job_positions', 'users.position_code', 'job_positions.code')
       .select(
         'users.id',
         'users.username',
@@ -17,15 +18,21 @@ export async function getUsers(req: AuthRequest, res: Response): Promise<void> {
         'users.phone',
         'users.role',
         'users.position',
+        'users.position_code',
         'users.department_id',
         'users.status',
         'users.auth_provider',
         'users.requested_department',
         'users.requested_position',
         'users.rejection_reason',
+        'users.is_disciplined',
+        'users.discipline_details',
         'users.created_at',
         'users.updated_at',
-        'departments.name as department_name'
+        'departments.name as department_name',
+        'job_positions.name as official_position_name',
+        'job_positions.civil_service_rank',
+        'job_positions.allocated_quota'
       );
 
     if (department_id) {
@@ -91,10 +98,10 @@ export async function getPendingApprovals(req: AuthRequest, res: Response): Prom
 export async function approveMembership(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { role, department_id, position } = req.body;
+    const { role, department_id, position, position_code, is_disciplined, discipline_details } = req.body;
 
-    if (!role || !position) {
-      res.status(400).json({ message: 'Vui lòng chọn vai trò phân quyền và chức vụ/vị trí việc làm.' });
+    if (!role || (!position && !position_code)) {
+      res.status(400).json({ message: 'Vui lòng chọn vai trò phân quyền và vị trí việc làm chuẩn.' });
       return;
     }
 
@@ -104,12 +111,25 @@ export async function approveMembership(req: AuthRequest, res: Response): Promis
       return;
     }
 
+    let finalPosCode = position_code || null;
+    let finalPosName = position ? position.trim() : '';
+
+    if (finalPosCode) {
+      const posObj = await db('job_positions').where('code', finalPosCode).first();
+      if (posObj && !finalPosName) {
+        finalPosName = posObj.name;
+      }
+    }
+
     await db('users')
       .where('id', Number(id))
       .update({
         role,
         department_id: department_id ? Number(department_id) : null,
-        position: position.trim(),
+        position: finalPosName,
+        position_code: finalPosCode,
+        is_disciplined: Boolean(is_disciplined),
+        discipline_details: discipline_details ? discipline_details.trim() : null,
         status: 'ACTIVE',
         rejection_reason: null,
         updated_at: new Date(),
@@ -119,14 +139,15 @@ export async function approveMembership(req: AuthRequest, res: Response): Promis
     await logAudit(
       req.user?.id || null,
       'APPROVE_MEMBER',
-      `Phê duyệt tài khoản: ${user.fullname} (${user.email || user.username}) - Gán chức vụ: ${position}, Vai trò: ${role}`,
+      `Phê duyệt tài khoản: ${user.fullname} (${user.email || user.username}) - Vị trí: [${finalPosCode || 'N/A'}] ${finalPosName}, Vai trò: ${role}`,
       clientIp
     );
 
     const updatedUser = await db('users')
       .leftJoin('departments', 'users.department_id', 'departments.id')
+      .leftJoin('job_positions', 'users.position_code', 'job_positions.code')
       .where('users.id', Number(id))
-      .select('users.*', 'departments.name as department_name')
+      .select('users.*', 'departments.name as department_name', 'job_positions.name as official_position_name')
       .first();
 
     res.status(200).json({

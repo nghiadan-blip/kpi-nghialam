@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { User, Department } from '../types';
-import { usersApi, departmentsApi } from '../services/api';
+import { User, Department, JobPosition } from '../types';
+import { usersApi, departmentsApi, jobPositionsApi } from '../services/api';
 import {
   ShieldCheck,
   UserCheck,
@@ -10,6 +10,7 @@ import {
   Phone,
   X,
   AlertTriangle,
+  Briefcase,
 } from 'lucide-react';
 
 interface Props {
@@ -21,7 +22,9 @@ interface Props {
 
 export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate, onSuccess }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
   const [selectedDeptId, setSelectedDeptId] = useState<number | ''>('');
+  const [selectedPositionCode, setSelectedPositionCode] = useState('');
   const [assignedPosition, setAssignedPosition] = useState('');
   const [assignedRole, setAssignedRole] = useState<'EMPLOYEE' | 'DEPARTMENT_HEAD' | 'LEADERSHIP' | 'ADMIN'>(
     'EMPLOYEE'
@@ -37,6 +40,14 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
       .then((res) => {
         setDepartments(res.departments);
         matchAndSetDepartment(candidate, res.departments);
+      })
+      .catch(() => {});
+
+    jobPositionsApi
+      .getJobPositions()
+      .then((res) => {
+        setJobPositions(res.job_positions);
+        matchAndSetJobPosition(candidate, res.job_positions);
       })
       .catch(() => {});
 
@@ -67,7 +78,6 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
 
   const matchAndSetDepartment = (cand: User | null, depts: Department[]) => {
     if (!cand || depts.length === 0) return;
-
     if (cand.department_id) {
       setSelectedDeptId(cand.department_id);
       return;
@@ -76,34 +86,14 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
     const req = (cand.requested_department || '').toLowerCase().trim();
     if (!req) return;
 
-    // 1. Exact match
     let match = depts.find((d) => d.name.toLowerCase() === req);
-
-    // 2. Substring match
     if (!match) {
       match = depts.find(
         (d) => d.name.toLowerCase().includes(req) || req.includes(d.name.toLowerCase())
       );
     }
-
-    // 3. Keyword based match
     if (!match) {
-      const keywords = [
-        'địa chính',
-        'xây dựng',
-        'tư pháp',
-        'hộ tịch',
-        'văn phòng',
-        'thống kê',
-        'tài chính',
-        'kế toán',
-        'văn hóa',
-        'xã hội',
-        'công an',
-        'quân sự',
-        'hành chính công',
-        'lãnh đạo',
-      ];
+      const keywords = ['địa chính', 'xây dựng', 'tư pháp', 'hộ tịch', 'văn phòng', 'thống kê', 'tài chính', 'kế toán', 'văn hóa', 'xã hội', 'công an', 'quân sự', 'hành chính công', 'lãnh đạo'];
       for (const kw of keywords) {
         if (req.includes(kw)) {
           match = depts.find((d) => d.name.toLowerCase().includes(kw));
@@ -111,18 +101,72 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
         }
       }
     }
+    if (match) setSelectedDeptId(match.id);
+  };
+
+  const matchAndSetJobPosition = (cand: User | null, positions: JobPosition[]) => {
+    if (!cand || positions.length === 0) return;
+    if (cand.position_code) {
+      setSelectedPositionCode(cand.position_code);
+      return;
+    }
+
+    const req = (cand.requested_position || cand.position || '').toLowerCase().trim();
+    if (!req) return;
+
+    // Try finding closest position
+    let match = positions.find((p) => p.name.toLowerCase() === req);
+    if (!match) {
+      match = positions.find((p) => p.name.toLowerCase().includes(req) || req.includes(p.name.toLowerCase()));
+    }
+    if (!match) {
+      if (req.includes('đất đai') || req.includes('địa chính') || req.includes('khoáng sản')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.15');
+      } else if (req.includes('tư pháp') || req.includes('hộ tịch')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.04');
+      } else if (req.includes('tài chính') || req.includes('kế toán')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.06');
+      } else if (req.includes('văn hóa') || req.includes('cntt') || req.includes('truyền thông')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.22');
+      } else if (req.includes('nông nghiệp') || req.includes('thủy lợi')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.13');
+      } else if (req.includes('văn phòng')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.02');
+      } else if (req.includes('hành chính công') || req.includes('dịch vụ công')) {
+        match = positions.find((p) => p.code === 'NA-NL-II.25');
+      }
+    }
 
     if (match) {
-      setSelectedDeptId(match.id);
+      setSelectedPositionCode(match.code);
+      setAssignedPosition(match.name);
+    }
+  };
+
+  const handlePositionCodeChange = (code: string) => {
+    setSelectedPositionCode(code);
+    const pos = jobPositions.find((p) => p.code === code);
+    if (pos) {
+      setAssignedPosition(pos.name);
+      if (pos.group_type === 'NHOM_I_LANH_DAO') {
+        if (pos.name.toLowerCase().includes('trưởng phòng') || pos.name.toLowerCase().includes('giám đốc')) {
+          setAssignedRole('DEPARTMENT_HEAD');
+        } else {
+          setAssignedRole('LEADERSHIP');
+        }
+      }
     }
   };
 
   if (!isOpen || !candidate) return null;
 
+  const currentSelectedPos = jobPositions.find((p) => p.code === selectedPositionCode);
+  const isPosOverQuota = currentSelectedPos && currentSelectedPos.allocated_quota > 0 && currentSelectedPos.current_assigned >= currentSelectedPos.allocated_quota;
+
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!assignedPosition.trim()) {
-      setError('Vui lòng nhập chức vụ / vị trí việc làm chính thức.');
+      setError('Vui lòng nhập hoặc chọn vị trí việc làm chính thức.');
       return;
     }
 
@@ -133,6 +177,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
         role: assignedRole,
         department_id: selectedDeptId ? Number(selectedDeptId) : null,
         position: assignedPosition.trim(),
+        position_code: selectedPositionCode || undefined,
       });
       onSuccess();
       onClose();
@@ -161,7 +206,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in">
-      <div className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl border border-[#CFEBFC] relative">
+      <div className="bg-white rounded-3xl max-w-xl w-full p-6 md:p-8 shadow-2xl border border-[#CFEBFC] relative max-h-[90vh] overflow-y-auto">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -177,10 +222,10 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
           </div>
           <div>
             <h3 className="text-base md:text-lg font-black text-[#0C3260]">
-              Kiểm Duyệt & Gán Vị Trí Việc Làm
+              Kiểm Duyệt & Gán Vị Trí Việc Làm (33 Vị Trí NĐ 335)
             </h3>
             <p className="text-xs text-slate-500">
-              Phê duyệt hồ sơ đăng ký thành viên và phân công vào ngạch chức danh NĐ 335
+              Phê duyệt hồ sơ đăng ký và phân công vào danh mục vị trí việc làm xã Nghĩa Lâm
             </p>
           </div>
         </div>
@@ -211,7 +256,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
             </div>
             <div className="flex items-center space-x-1.5 col-span-2">
               <Building className="w-3.5 h-3.5 text-[#6EC2F7]" />
-              <span>Đề xuất ban đầu: {candidate.requested_department || 'Chưa đăng ký'} — {candidate.requested_position || 'Chưa đăng ký'}</span>
+              <span>Đề xuất ban đầu: <strong>{candidate.requested_department || 'Chưa đăng ký'}</strong> — <em>{candidate.requested_position || 'Chưa đăng ký'}</em></span>
             </div>
           </div>
         </div>
@@ -226,7 +271,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
               <select
                 value={selectedDeptId}
                 onChange={(e) => setSelectedDeptId(e.target.value ? Number(e.target.value) : '')}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-sm focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-xs md:text-sm focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
               >
                 <option value="">-- Chưa gán phòng ban cụ thể --</option>
                 {departments.map((d) => (
@@ -237,17 +282,77 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
               </select>
             </div>
 
+            {/* 33 Official Position Selection */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 flex items-center justify-between">
+                <span className="flex items-center space-x-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-sky-600" />
+                  <span>Vị trí việc làm chuẩn (Quyết định UBND xã)</span> <span className="text-red-500">*</span>
+                </span>
+                {currentSelectedPos && (
+                  <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
+                    isPosOverQuota ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    Biên chế: {currentSelectedPos.current_assigned}/{currentSelectedPos.allocated_quota} ({currentSelectedPos.allocated_ratio_percent}%)
+                  </span>
+                )}
+              </label>
+              <select
+                value={selectedPositionCode}
+                onChange={(e) => handlePositionCodeChange(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-xs focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
+              >
+                <option value="">-- Chọn trong danh mục 33 vị trí việc làm chuẩn --</option>
+                <optgroup label="Nhóm I: Lãnh đạo, quản lý (12 biên chế - 36,36%)">
+                  {jobPositions
+                    .filter((p) => p.group_type === 'NHOM_I_LANH_DAO')
+                    .map((p) => (
+                      <option key={p.code} value={p.code}>
+                        [{p.code}] {p.name} ({p.current_assigned}/{p.allocated_quota} biên chế)
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Nhóm II: Chuyên môn, nghiệp vụ (21 biên chế - 63,64%)">
+                  {jobPositions
+                    .filter((p) => p.group_type === 'NHOM_II_CHUYEN_MON')
+                    .map((p) => (
+                      <option key={p.code} value={p.code}>
+                        [{p.code}] {p.name} ({p.current_assigned}/{p.allocated_quota} biên chế)
+                      </option>
+                    ))}
+                </optgroup>
+                <optgroup label="Nhóm III: Hỗ trợ, phục vụ">
+                  {jobPositions
+                    .filter((p) => p.group_type === 'NHOM_III_PHUC_VU')
+                    .map((p) => (
+                      <option key={p.code} value={p.code}>
+                        [{p.code}] {p.name}
+                      </option>
+                    ))}
+                </optgroup>
+              </select>
+
+              {isPosOverQuota && (
+                <div className="mt-1.5 p-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] flex items-center space-x-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                  <span>
+                    Vị trí này đã bố trí <strong>{currentSelectedPos.current_assigned}/{currentSelectedPos.allocated_quota}</strong> biên chế được phê duyệt.
+                  </span>
+                </div>
+              )}
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1">
-                Chức vụ / Vị trí việc làm chính thức <span className="text-red-500">*</span>
+                Tên chức vụ / vị trí hiển thị <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 required
                 value={assignedPosition}
                 onChange={(e) => setAssignedPosition(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-sm focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
-                placeholder="VD: Công chức Địa chính - Xây dựng"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-xs md:text-sm focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
+                placeholder="VD: Chuyên viên đất đai, tài nguyên khoáng sản"
               />
             </div>
 
@@ -258,7 +363,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
               <select
                 value={assignedRole}
                 onChange={(e) => setAssignedRole(e.target.value as any)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-sm focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] text-xs md:text-sm focus:ring-2 focus:ring-[#27A4F2] bg-white font-medium"
               >
                 <option value="EMPLOYEE">Công chức (Tự chấm điểm & thực hiện nhiệm vụ)</option>
                 <option value="DEPARTMENT_HEAD">Trưởng bộ phận (Giao việc & thẩm định bước 2)</option>
@@ -290,7 +395,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition flex items-center space-x-1.5"
                 >
                   <UserCheck className="w-4 h-4" />
-                  <span>{loading ? 'Đang duyệt...' : 'Phê Duyệt & Kích Hoạt'}</span>
+                  <span>{loading ? 'Đang duyệt...' : 'Phê Duyệt & Gán Vị Trí'}</span>
                 </button>
               </div>
             </div>

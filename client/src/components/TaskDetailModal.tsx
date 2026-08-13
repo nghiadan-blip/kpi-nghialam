@@ -27,6 +27,9 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
   const { user } = useAuth();
   const [status, setStatus] = useState<string>(task?.status || 'PENDING');
   const [evidence, setEvidence] = useState<string>(task?.evidence || '');
+  const [actualCompletedQty, setActualCompletedQty] = useState<number>(task?.actual_completed_quantity || task?.assigned_quantity || 1.0);
+  const [delayCount, setDelayCount] = useState<number>(task?.delay_count || 0);
+  const [reworkCount, setReworkCount] = useState<number>(task?.rework_count || 0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -35,6 +38,9 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
     if (task) {
       setStatus(task.status);
       setEvidence(task.evidence || '');
+      setActualCompletedQty(task.actual_completed_quantity || task.assigned_quantity || 1.0);
+      setDelayCount(task.delay_count || 0);
+      setReworkCount(task.rework_count || 0);
     }
     setError(null);
     setSuccess(null);
@@ -60,7 +66,11 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
 
     setLoading(true);
     try {
-      await tasksApi.updateTaskStatus(task.id, status, evidence.trim());
+      await tasksApi.updateTaskStatus(task.id, status, evidence.trim(), {
+        actual_completed_quantity: Number(actualCompletedQty),
+        delay_count: Number(delayCount),
+        rework_count: Number(reworkCount),
+      });
       setSuccess('Cập nhật tiến độ nhiệm vụ thành công!');
       setTimeout(() => {
         setSuccess(null);

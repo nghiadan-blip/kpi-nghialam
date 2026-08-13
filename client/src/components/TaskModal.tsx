@@ -15,6 +15,7 @@ import {
   Calendar,
   FileText,
   Zap,
+  RefreshCw,
 } from 'lucide-react';
 
 interface Props {
@@ -88,6 +89,7 @@ export const TaskModal: React.FC<Props> = ({
     deadline: '',
     weight: 1.0,
     status: 'PENDING',
+    assigned_quantity: 1.0,
   });
 
   const [loading, setLoading] = useState(false);
@@ -129,6 +131,7 @@ export const TaskModal: React.FC<Props> = ({
         deadline: deadlineFormatted,
         weight: task.weight,
         status: task.status,
+        assigned_quantity: task.assigned_quantity || 1.0,
       });
     } else {
       const defaultDate = new Date();
@@ -143,6 +146,7 @@ export const TaskModal: React.FC<Props> = ({
         deadline: defaultDate.toISOString().slice(0, 16),
         weight: 1.0,
         status: 'PENDING',
+        assigned_quantity: 1.0,
       });
     }
     setError(null);
@@ -264,6 +268,7 @@ export const TaskModal: React.FC<Props> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
     setError(null);
 
     if (!formData.title.trim()) {
@@ -292,6 +297,7 @@ export const TaskModal: React.FC<Props> = ({
         deadline: new Date(formData.deadline).toISOString(),
         weight: Number(formData.weight) || 1.0,
         status: formData.status,
+        assigned_quantity: Number(formData.assigned_quantity) || 1.0,
       };
 
       if (isEditing && task) {
@@ -596,12 +602,30 @@ export const TaskModal: React.FC<Props> = ({
             />
           </div>
 
-          {/* Row 4: Weight and Status */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Row 4: Quantity, Weight and Status */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 tracking-wider">
+                Số lượng giao (Định mức kỳ)
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0.1"
+                required
+                value={formData.assigned_quantity}
+                onChange={(e) => setFormData({ ...formData, assigned_quantity: parseFloat(e.target.value) || 1.0 })}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-mono font-bold text-[#0C3260]"
+              />
+              <span className="text-[10px] text-sky-700 font-semibold block mt-0.5">
+                Quy đổi: {Number(((formData.assigned_quantity || 1) * (formData.weight || 1)).toFixed(1))} SP chuẩn
+              </span>
+            </div>
+
             <div>
               <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1 flex items-center space-x-1 tracking-wider">
                 <Scale className="w-3.5 h-3.5 text-[#27A4F2]" />
-                <span>Trọng số / Hệ số K (Mặc định: 1.0)</span>
+                <span>Hệ số quy đổi K</span>
               </label>
               <input
                 type="number"
@@ -671,10 +695,13 @@ export const TaskModal: React.FC<Props> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-[#27A4F2] via-[#3EAEF4] to-[#4585E6] hover:from-[#1864AB] hover:to-[#27A4F2] shadow-md shadow-[#27A4F2]/25 transition flex items-center space-x-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-[#27A4F2] via-[#3EAEF4] to-[#4585E6] hover:from-[#1864AB] hover:to-[#27A4F2] disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-[#27A4F2]/25 transition flex items-center space-x-2 cursor-pointer"
             >
               {loading ? (
-                <span>Đang lưu...</span>
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Đang giao việc...</span>
+                </>
               ) : (
                 <>
                   <CheckSquare className="w-4 h-4" />

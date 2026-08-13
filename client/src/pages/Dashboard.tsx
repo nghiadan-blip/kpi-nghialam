@@ -91,13 +91,13 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-6">
       {/* 1. Hero Welcome Banner — Vietnix Blue Gradient */}
       <div className="bg-gradient-to-r from-[#0C3260] via-[#1864AB] to-[#27A4F2] rounded-2xl p-6 lg:p-7 text-white shadow-xl relative overflow-hidden border border-[#9FD7F9]/30">
-        <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
-          <VietnameseEmblem size={240} />
+        <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none" aria-hidden="true">
+          <VietnameseEmblem size={240} alt="" />
         </div>
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex items-start space-x-4">
-            <div className="hidden sm:block p-2 bg-[#0C3260]/70 rounded-2xl border border-[#9FD7F9]/40 shadow-inner flex-shrink-0">
-              <VietnameseEmblem size={56} />
+            <div className="hidden sm:block p-2 bg-[#0C3260]/70 rounded-2xl border border-[#9FD7F9]/40 shadow-inner flex-shrink-0" aria-hidden="true">
+              <VietnameseEmblem size={56} alt="" />
             </div>
             <div className="space-y-1.5">
               <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 bg-white/20 text-[#CFEBFC] border border-[#9FD7F9]/40 rounded-full text-xs font-semibold">
@@ -348,24 +348,39 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="space-y-3 max-h-56 overflow-y-auto pr-1">
-            {(data?.departmentProgress || []).map((d: any) => (
-              <div key={d.id}>
-                <div className="flex justify-between text-xs font-medium mb-1">
-                  <span className="text-slate-800 truncate max-w-[240px]">{d.name}</span>
-                  <span className="text-slate-600 font-bold">
-                    {d.completed}/{d.total} ({d.rate}%)
-                  </span>
+            {(data?.departmentProgress || []).map((d: any) => {
+              const hasTasks = d.total > 0;
+              return (
+                <div key={d.id}>
+                  <div className="flex justify-between text-xs font-medium mb-1">
+                    <span className="text-slate-800 truncate max-w-[220px] font-semibold">{d.name}</span>
+                    {hasTasks ? (
+                      <span className="text-slate-700 font-bold">
+                        {d.completed}/{d.total} ({d.rate}%)
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 font-medium italic">
+                        Chưa có nhiệm vụ (0/0)
+                      </span>
+                    )}
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${
+                        !hasTasks
+                          ? 'bg-slate-200'
+                          : d.rate >= 80
+                          ? 'bg-emerald-500'
+                          : d.rate >= 50
+                          ? 'bg-sky-500'
+                          : 'bg-amber-500'
+                      }`}
+                      style={{ width: `${hasTasks ? d.rate : 0}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                  <div
-                    className={`h-2 rounded-full ${
-                      d.rate >= 80 ? 'bg-emerald-500' : d.rate >= 50 ? 'bg-sky-500' : 'bg-amber-500'
-                    }`}
-                    style={{ width: `${d.rate}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

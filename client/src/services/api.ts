@@ -1,5 +1,16 @@
 import axios from 'axios';
-import { User, Department, Task, TaskStats, ProductCatalog, Evaluation, HealthCheckResponse } from '../types';
+import { 
+  User, 
+  Department, 
+  Task, 
+  TaskStats, 
+  ProductCatalog, 
+  Evaluation, 
+  JobPosition, 
+  QuotaStats, 
+  EvaluationAppeal, 
+  HealthCheckResponse 
+} from '../types';
 
 export type { HealthCheckResponse };
 
@@ -45,11 +56,9 @@ export const fetchHealthCheck = async () => {
 
 // --- Auth APIs ---
 export const authApi = {
-  login: async (username: string, password: string) => {
-    const res = await api.post<{ message: string; token: string; user: User }>('/auth/login', {
-      username,
-      password,
-    });
+  login: async (usernameOrData: any, passwordArg?: string) => {
+    const payload = typeof usernameOrData === 'object' ? usernameOrData : { username: usernameOrData, password: passwordArg };
+    const res = await api.post<{ message: string; user: User; token: string }>('/auth/login', payload);
     return res.data;
   },
   register: async (data: {
@@ -59,6 +68,7 @@ export const authApi = {
     requested_department?: string;
     requested_position?: string;
     password: string;
+    username?: string;
   }) => {
     const res = await api.post<{ message: string; status: string; user_id?: number }>('/auth/register', data);
     return res.data;
@@ -79,19 +89,26 @@ export const authApi = {
     }>('/auth/google', data);
     return res.data;
   },
-  logout: async () => {
-    const res = await api.post<{ message: string }>('/auth/logout');
-    return res.data;
-  },
   getMe: async () => {
     const res = await api.get<{ user: User }>('/auth/me');
     return res.data;
   },
-  changePassword: async (currentPassword: string, newPassword: string) => {
-    const res = await api.post<{ message: string }>('/auth/change-password', {
-      currentPassword,
-      newPassword,
-    });
+  getProfile: async () => {
+    const res = await api.get<{ user: User }>('/auth/profile');
+    return res.data;
+  },
+  changePassword: async (currentPasswordOrData: any, newPasswordArg?: string) => {
+    const payload = typeof currentPasswordOrData === 'object' ? currentPasswordOrData : {
+      currentPassword: currentPasswordOrData,
+      newPassword: newPasswordArg,
+      old_password: currentPasswordOrData,
+      new_password: newPasswordArg,
+    };
+    const res = await api.post<{ message: string }>('/auth/change-password', payload);
+    return res.data;
+  },
+  logout: async () => {
+    const res = await api.post<{ message: string }>('/auth/logout');
     return res.data;
   },
 };
@@ -106,7 +123,17 @@ export const usersApi = {
     const res = await api.get<{ pending_users: User[]; count: number }>('/users/pending/list');
     return res.data;
   },
-  approveMembership: async (id: number, data: { role: string; department_id?: number | null; position: string }) => {
+  approveMembership: async (
+    id: number,
+    data: {
+      role: string;
+      department_id?: number | null;
+      position: string;
+      position_code?: string;
+      is_disciplined?: boolean;
+      discipline_details?: string;
+    }
+  ) => {
     const res = await api.post<{ message: string; user: User }>(`/users/${id}/approve`, data);
     return res.data;
   },
@@ -200,8 +227,22 @@ export const tasksApi = {
     const res = await api.put<{ message: string; task: Task }>(`/tasks/${id}`, data);
     return res.data;
   },
-  updateTaskStatus: async (id: number, status: string, evidence?: string) => {
-    const res = await api.patch<{ message: string }>(`/tasks/${id}/status`, { status, evidence });
+  updateTaskStatus: async (
+    id: number,
+    status: string,
+    evidence?: string,
+    extra?: {
+      actual_completed_quantity?: number;
+      actual_completed_date?: string;
+      delay_count?: number;
+      rework_count?: number;
+    }
+  ) => {
+    const res = await api.patch<{ message: string }>(`/tasks/${id}/status`, {
+      status,
+      evidence,
+      ...extra,
+    });
     return res.data;
   },
   deleteTask: async (id: number) => {
@@ -266,6 +307,15 @@ export const evaluationsApi = {
   },
   saveDraft: async (data: {
     month: string;
+    criteria_politics_self?: number;
+    criteria_expertise_self?: number;
+    criteria_innovation_self?: number;
+    leadership_unit_result?: number;
+    leadership_execution?: number;
+    leadership_solidarity?: number;
+    collective_comments?: string;
+    party_cell_comments?: string;
+    special_case?: string;
     items: Array<{
       product_catalog_id?: number | null;
       task_id?: number | null;
@@ -323,8 +373,57 @@ export const evaluationsApi = {
   approveByLeadership: async (id: number, data: any) => {
     return evaluationsApi.submitLeadershipApproval(id, data);
   },
+  getQuotaStats: async (month: string) => {
+    const res = await api.get<QuotaStats>('/evaluations/quota-stats', { params: { month } });
+    return res.data;
+  },
+  submitAppeal: async (id: number, data: { reason: string; evidence_url?: string }) => {
+    const res = await api.post<{ message: string; appeal_id: number; deadline_at: string }>(
+      `/evaluations/${id}/appeal`,
+      data
+    );
+    return res.data;
+  },
+  getAppeals: async () => {
+    const res = await api.get<{ appeals: EvaluationAppeal[] }>('/evaluations/appeals');
+    return res.data;
+  },
+  resolveAppeal: async (
+    appealId: number,
+    data: { status: 'ACCEPTED' | 'REJECTED'; response_text: string; adjusted_score?: number }
+  ) => {
+    const res = await api.post<{ message: string }>(`/evaluations/appeals/${appealId}/resolve`, data);
+    return res.data;
+  },
   deleteEvaluation: async (id: number) => {
     const res = await api.delete<{ message: string }>(`/evaluations/${id}`);
+    return res.data;
+  },
+  sendEvaluationEmail: async (id: number) => {
+    const res = await api.post<{ message: string; success: boolean }>(`/evaluations/${id}/send-email`);
+    return res.data;
+  },
+  batchSendEvaluationEmails: async (month: string) => {
+    const res = await api.post<{ message: string; result: any }>('/evaluations/batch-send-emails', { month });
+    return res.data;
+  },
+};
+
+// --- Job Positions APIs (33 Official Positions) ---
+export const jobPositionsApi = {
+  getJobPositions: async (group_type?: string) => {
+    const res = await api.get<{
+      job_positions: JobPosition[];
+      total_positions: number;
+      total_allocated_quota: number;
+      total_assigned: number;
+    }>('/job-positions', { params: { group_type } });
+    return res.data;
+  },
+  getJobPositionByCode: async (code: string) => {
+    const res = await api.get<{ position: JobPosition & { assigned_users: User[] } }>(
+      `/job-positions/${code}`
+    );
     return res.data;
   },
 };

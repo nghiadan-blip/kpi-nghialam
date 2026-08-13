@@ -234,7 +234,16 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
-    const { title, description, assigned_to, product_catalog_id, deadline, weight, status } = req.body;
+    const {
+      title,
+      description,
+      assigned_to,
+      product_catalog_id,
+      deadline,
+      weight,
+      status,
+      assigned_quantity = 1.0,
+    } = req.body;
 
     if (!title || !title.trim() || !assigned_to || !deadline) {
       res.status(400).json({ message: 'Vui lòng điền đầy đủ: Tiêu đề nhiệm vụ, Người tiếp nhận và Hạn hoàn thành.' });
@@ -255,14 +264,21 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    const cat = await db('product_catalog').where('id', Number(product_catalog_id)).first();
+    const coeff = cat?.coefficient || (weight !== undefined ? Number(weight) : 1.0);
+    const qty = Math.max(0.1, Number(assigned_quantity) || 1.0);
+    const convertedQty = Number((qty * coeff).toFixed(2));
+
     const [id] = await db('tasks').insert({
       title: title.trim(),
       description: description ? description.trim() : null,
       assigned_to: Number(assigned_to),
       assigned_by: user.id,
-      product_catalog_id: product_catalog_id ? Number(product_catalog_id) : null,
+      product_catalog_id: Number(product_catalog_id),
+      assigned_quantity: qty,
+      converted_assigned_quantity: convertedQty,
       deadline: new Date(deadline).toISOString(),
-      weight: weight !== undefined ? Number(weight) : 1.0,
+      weight: coeff,
       status: status || 'PENDING',
     });
 
@@ -377,7 +393,14 @@ export async function updateTaskStatus(req: AuthRequest, res: Response): Promise
   try {
     const user = req.user;
     const { id } = req.params;
-    const { status, evidence } = req.body;
+    const {
+      status,
+      evidence,
+      actual_completed_quantity,
+      actual_completed_date,
+      delay_count,
+      rework_count,
+    } = req.body;
 
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
@@ -421,9 +444,19 @@ export async function updateTaskStatus(req: AuthRequest, res: Response): Promise
         return;
       }
       updates.status = status;
+
+      if (status === 'COMPLETED') {
+        updates.actual_completed_quantity =
+          actual_completed_quantity !== undefined
+            ? Number(actual_completed_quantity)
+            : task.assigned_quantity || 1.0;
+        updates.actual_completed_date = actual_completed_date || new Date().toISOString();
+      }
     }
 
     if (evidence !== undefined) updates.evidence = evidence ? evidence.trim() : null;
+    if (delay_count !== undefined) updates.delay_count = Number(delay_count);
+    if (rework_count !== undefined) updates.rework_count = Number(rework_count);
 
     await db('tasks').where('id', Number(id)).update(updates);
 

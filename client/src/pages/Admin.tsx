@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { usersApi, departmentsApi, catalogApi } from '../services/api';
-import { User, Department, ProductCatalog } from '../types';
+import { usersApi, departmentsApi, catalogApi, jobPositionsApi } from '../services/api';
+import { User, Department, ProductCatalog, JobPosition } from '../types';
 import { UserModal } from '../components/UserModal';
 import { ResetPasswordModal } from '../components/ResetPasswordModal';
 import { DepartmentModal } from '../components/DepartmentModal';
@@ -25,21 +25,24 @@ import {
   AlertTriangle,
   UserCheck,
   FileSpreadsheet,
+  Briefcase,
 } from 'lucide-react';
 
 export const Admin: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'catalog' | 'pending'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'departments' | 'catalog' | 'pending' | 'positions'>('users');
 
   // State
   const [users, setUsers] = useState<User[]>([]);
   const [pendingUsers, setPendingUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [catalog, setCatalog] = useState<ProductCatalog[]>([]);
+  const [jobPositions, setJobPositions] = useState<JobPosition[]>([]);
 
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingPending, setLoadingPending] = useState(true);
   const [loadingDepts, setLoadingDepts] = useState(true);
   const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [loadingPositions, setLoadingPositions] = useState(true);
 
   // Filters
   const [search, setSearch] = useState('');
@@ -121,10 +124,23 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const fetchJobPositions = async () => {
+    setLoadingPositions(true);
+    try {
+      const data = await jobPositionsApi.getJobPositions();
+      setJobPositions(data.job_positions);
+    } catch (err: any) {
+      console.error('Lỗi tải danh mục vị trí việc làm:', err);
+    } finally {
+      setLoadingPositions(false);
+    }
+  };
+
   useEffect(() => {
     fetchDepartments();
     fetchCatalog();
     fetchPendingUsers();
+    fetchJobPositions();
   }, []);
 
   useEffect(() => {
@@ -299,6 +315,19 @@ export const Admin: React.FC = () => {
           >
             <Layers className="w-4 h-4" />
             <span>Danh mục NĐ 335 ({catalog.length})</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveTab('positions');
+              fetchJobPositions();
+            }}
+            className={`flex items-center space-x-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold transition ${
+              activeTab === 'positions' ? 'bg-[#27A4F2] text-white shadow-sm' : 'text-[#1864AB] hover:bg-[#CFEBFC]/60'
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Vị trí việc làm ({jobPositions.length})</span>
           </button>
         </div>
       </div>
@@ -770,6 +799,142 @@ export const Admin: React.FC = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: 33 JOB POSITIONS & QUOTA MONITORING */}
+      {activeTab === 'positions' && (
+        <div className="space-y-4">
+          {/* Summary Metric Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-4 rounded-2xl bg-white border border-[#CFEBFC] shadow-2xs">
+              <div className="text-xs font-bold text-slate-500 uppercase">Tổng số vị trí chuẩn</div>
+              <div className="text-2xl font-black text-[#0C3260] mt-1">{jobPositions.length}</div>
+              <div className="text-[11px] text-[#27A4F2] mt-0.5 font-bold">Theo Quyết định UBND xã</div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white border border-[#CFEBFC] shadow-2xs">
+              <div className="text-xs font-bold text-slate-500 uppercase">Tổng biên chế giao</div>
+              <div className="text-2xl font-black text-[#1864AB] mt-1">
+                {jobPositions.reduce((s, p) => s + p.allocated_quota, 0)}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Nhóm I (12) + Nhóm II (21)</div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 shadow-2xs">
+              <div className="text-xs font-bold text-emerald-800 uppercase">Đã bố trí cán bộ</div>
+              <div className="text-2xl font-black text-emerald-700 mt-1">
+                {jobPositions.reduce((s, p) => s + p.current_assigned, 0)}
+              </div>
+              <div className="text-[11px] text-emerald-600 mt-0.5">
+                Đạt {jobPositions.reduce((s, p) => s + p.allocated_quota, 0) > 0 ? Math.round((jobPositions.reduce((s, p) => s + p.current_assigned, 0) / jobPositions.reduce((s, p) => s + p.allocated_quota, 0)) * 100) : 0}% tổng biên chế
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 shadow-2xs">
+              <div className="text-xs font-bold text-amber-800 uppercase">Vị trí còn khuyết</div>
+              <div className="text-2xl font-black text-amber-700 mt-1">
+                {jobPositions.filter((p) => p.allocated_quota > 0 && p.current_assigned === 0).length}
+              </div>
+              <div className="text-[11px] text-amber-600 mt-0.5">Cần tuyển dụng / kiện toàn</div>
+            </div>
+          </div>
+
+          {/* Positions Table */}
+          <div className="bg-white rounded-2xl border border-[#CFEBFC] shadow-sm overflow-hidden p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-black text-sm md:text-base text-[#0C3260] uppercase tracking-wide flex items-center space-x-2">
+                  <Briefcase className="w-5 h-5 text-[#27A4F2]" />
+                  <span>Danh Mục 33 Vị Trí Việc Làm & Cơ Cấu Biên Chế Xã Nghĩa Lâm</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Căn cứ Nghị định số 335/2025/NĐ-CP và Quyết định phê duyệt tỷ lệ bố trí công chức của UBND xã Nghĩa Lâm
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700 uppercase">
+                    <th className="py-3 px-4">Mã vị trí</th>
+                    <th className="py-3 px-4">Tên vị trí việc làm</th>
+                    <th className="py-3 px-4">Nhóm vị trí</th>
+                    <th className="py-3 px-4">Ngạch công chức</th>
+                    <th className="py-3 px-4 text-center">Biên chế</th>
+                    <th className="py-3 px-4 text-center">Tỷ lệ %</th>
+                    <th className="py-3 px-4 text-center">Hiện có</th>
+                    <th className="py-3 px-4 text-center">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {loadingPositions ? (
+                    <tr>
+                      <td colSpan={8} className="text-center py-8 text-slate-500">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#27A4F2]" />
+                        Đang tải danh mục vị trí việc làm...
+                      </td>
+                    </tr>
+                  ) : (
+                    jobPositions.map((pos) => {
+                      const isVacant = pos.allocated_quota > 0 && pos.current_assigned === 0;
+                      const isOver = pos.allocated_quota > 0 && pos.current_assigned > pos.allocated_quota;
+
+                      return (
+                        <tr key={pos.code} className="hover:bg-slate-50 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-[#1864AB]">{pos.code}</td>
+                          <td className="py-3 px-4 font-bold text-[#0C3260]">{pos.name}</td>
+                          <td className="py-3 px-4">
+                            {pos.group_type === 'NHOM_I_LANH_DAO' && (
+                              <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 font-bold rounded-md text-[10px]">
+                                Nhóm I: Lãnh đạo
+                              </span>
+                            )}
+                            {pos.group_type === 'NHOM_II_CHUYEN_MON' && (
+                              <span className="px-2 py-0.5 bg-sky-100 text-sky-800 border border-sky-200 font-bold rounded-md text-[10px]">
+                                Nhóm II: Chuyên môn
+                              </span>
+                            )}
+                            {pos.group_type === 'NHOM_III_PHUC_VU' && (
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 font-bold rounded-md text-[10px]">
+                                Nhóm III: Phục vụ
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-slate-600">{pos.civil_service_rank || 'Công chức'}</td>
+                          <td className="py-3 px-4 text-center font-bold font-mono text-slate-800">
+                            {pos.allocated_quota > 0 ? pos.allocated_quota : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-center font-mono text-slate-600">
+                            {pos.allocated_ratio_percent > 0 ? `${pos.allocated_ratio_percent}%` : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-center font-bold font-mono text-[#27A4F2]">
+                            {pos.current_assigned}
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            {isVacant ? (
+                              <span className="px-2 py-0.5 bg-amber-100 text-amber-800 border border-amber-200 font-bold rounded-md text-[10px]">
+                                Khuyết vị trí (0%)
+                              </span>
+                            ) : isOver ? (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-800 border border-red-200 font-bold rounded-md text-[10px]">
+                                Vượt biên chế
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold rounded-md text-[10px]">
+                                Đã bố trí ({pos.current_assigned}/{pos.allocated_quota})
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
