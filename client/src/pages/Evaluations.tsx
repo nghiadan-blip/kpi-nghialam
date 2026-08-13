@@ -606,7 +606,7 @@ export const Evaluations: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-4 text-center">
-                            {getClassificationBadge(ev.final_score, ev.status, ev.is_disciplined || ev.employee_is_disciplined)}
+                            {getClassificationBadge(ev.final_score, ev.status, Boolean(ev.is_disciplined || ev.employee_is_disciplined))}
                           </td>
 
                           <td className="py-3 px-4 text-center">{getStatusBadge(ev.status)}</td>

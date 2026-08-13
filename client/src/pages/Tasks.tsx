@@ -164,7 +164,7 @@ export const Tasks: React.FC = () => {
     }
   };
 
-  const formatDeadline = (dateStr: string) => {
+  const formatDeadline = (dateStr: string | Date) => {
     try {
       const d = new Date(dateStr);
       return d.toLocaleDateString('vi-VN', {
@@ -175,7 +175,7 @@ export const Tasks: React.FC = () => {
         minute: '2-digit',
       });
     } catch {
-      return dateStr;
+      return String(dateStr);
     }
   };
 

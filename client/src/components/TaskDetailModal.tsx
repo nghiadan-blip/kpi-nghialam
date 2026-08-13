@@ -118,7 +118,7 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
     }
   };
 
-  const formatDateTime = (dateStr: string) => {
+  const formatDateTime = (dateStr: string | Date) => {
     try {
       const d = new Date(dateStr);
       return d.toLocaleDateString('vi-VN', {
@@ -129,7 +129,7 @@ export const TaskDetailModal: React.FC<Props> = ({ isOpen, task, onClose, onSucc
         year: 'numeric',
       });
     } catch {
-      return dateStr;
+      return String(dateStr);
     }
   };
 
