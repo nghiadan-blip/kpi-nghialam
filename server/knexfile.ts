@@ -2,9 +2,8 @@ import type { Knex } from 'knex';
 import path from 'path';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: path.join(__dirname, '.env') });
-
-const dbPath = process.env.DB_PATH || path.join(__dirname, 'database', 'cbcc.sqlite');
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+const dbPath = process.env.DB_PATH || path.resolve(process.cwd(), 'database', 'cbcc.sqlite');
 
 const config: { [key: string]: Knex.Config } = {
   development: {
