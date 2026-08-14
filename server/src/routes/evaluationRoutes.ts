@@ -13,12 +13,18 @@ import {
   deleteEvaluation,
   sendEvaluationEmail,
   batchSendEvaluationEmails,
+  getEvaluationPeriods,
+  lockEvaluationPeriod,
+  unlockEvaluationPeriod,
 } from '../controllers/evaluationController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
 router.get('/', authenticate, getEvaluations);
+router.get('/periods', authenticate, getEvaluationPeriods);
+router.post('/periods/lock', authenticate, lockEvaluationPeriod);
+router.post('/periods/unlock', authenticate, unlockEvaluationPeriod);
 router.get('/quota-stats', authenticate, getQuotaStats);
 router.get('/appeals', authenticate, getAppeals);
 router.get('/:id', authenticate, getEvaluationById);

@@ -52,9 +52,9 @@ export const EvaluationFormModal: React.FC<Props> = ({
   const [month, setMonth] = useState(evaluation?.month || defaultMonth);
 
   // 1. Part I: General Criteria (Max 30.0đ)
-  const [criteriaPolitics, setCriteriaPolitics] = useState<number>(evaluation?.criteria_politics_self ?? 15.0);
-  const [criteriaExpertise, setCriteriaExpertise] = useState<number>(evaluation?.criteria_expertise_self ?? 10.0);
-  const [criteriaInnovation, setCriteriaInnovation] = useState<number>(evaluation?.criteria_innovation_self ?? 5.0);
+  const [criteriaPolitics, setCriteriaPolitics] = useState<number>(evaluation?.criteria_politics_self ?? 9.5);
+  const [criteriaExpertise, setCriteriaExpertise] = useState<number>(evaluation?.criteria_expertise_self ?? 9.5);
+  const [criteriaInnovation, setCriteriaInnovation] = useState<number>(evaluation?.criteria_innovation_self ?? 9.0);
 
   // 2. Leadership management indicators (if leadership role)
   const [leadershipUnitResult, setLeadershipUnitResult] = useState<number>(evaluation?.leadership_unit_result ?? 100.0);
@@ -262,27 +262,71 @@ export const EvaluationFormModal: React.FC<Props> = ({
   };
 
   // --- Calculations according to Decree 335 and Home Affairs Handbook ---
-  // Part I: General Score (Max 30.0đ)
-  const pol = Math.min(15.0, Math.max(0, Number(criteriaPolitics) || 0));
+  // Part I: General Score (Max 30.0đ - 10đ mỗi tiêu chí theo QĐ 283)
+  const pol = Math.min(10.0, Math.max(0, Number(criteriaPolitics) || 0));
   const exp = Math.min(10.0, Math.max(0, Number(criteriaExpertise) || 0));
-  const inn = Math.min(5.0, Math.max(0, Number(criteriaInnovation) || 0));
+  const inn = Math.min(10.0, Math.max(0, Number(criteriaInnovation) || 0));
   const subtotalGeneralScore = Number((pol + exp + inn).toFixed(2));
 
-  // Part II: Task Results Score (100đ scale -> 70%)
-  let totalAssignedConverted = 0;
-  let totalCompletedConverted = 0;
+  // Tính toán trừ điểm chậm hạn / sai sót từ danh sách Task liên kết
+  let totalDelays = 0;
+  let totalReworks = 0;
   for (const it of items) {
-    const cat = catalog.find((c) => c.id === Number(it.product_catalog_id));
-    const coeff = cat?.coefficient || it.catalog_coefficient || 1.0;
-    const qty = Number(it.quantity) || 1;
-    totalAssignedConverted += qty * coeff;
-    totalCompletedConverted += qty * coeff;
+    if (it.task_id) {
+      const task = completedTasks.find((t) => t.id === Number(it.task_id));
+      if (task) {
+        totalDelays += Number(task.delay_count) || 0;
+        totalReworks += Number(task.rework_count) || 0;
+      }
+    }
   }
 
-  const rawTaskScore100 = 100.0; // 100% completion base
-  const subtotalTaskScore70 = Number(((rawTaskScore100 * 0.70)).toFixed(2));
+  const qtyRate = 100.0;
+  const progRate = Math.max(0, 100.0 - (totalDelays * 25));
+  const qualRate = Math.max(0, 100.0 - (totalReworks * 25));
 
-  // Total Score (Max 100.0đ)
+  let selfTaskScore100 = (qtyRate + progRate + qualRate) / 3;
+  const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(evaluation?.employee_role || user?.role || '');
+  
+  if (isLeadershipRole) {
+    selfTaskScore100 = (qtyRate + progRate + qualRate + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
+  }
+  selfTaskScore100 = Number(selfTaskScore100.toFixed(2));
+
+  // Tính tỷ lệ điểm của Trưởng phòng hoặc Lãnh đạo điều chỉnh
+  let sumSelfPoints = 0;
+  let sumCurrentPoints = 0;
+  for (const it of items) {
+    sumSelfPoints += Number(it.self_points) || 0;
+    if (isLeadership) {
+      sumCurrentPoints += Number(it.final_points) || 0;
+    } else if (isManager) {
+      sumCurrentPoints += Number(it.manager_points) || 0;
+    } else {
+      sumCurrentPoints += Number(it.self_points) || 0;
+    }
+  }
+
+  const pointsRatio = sumSelfPoints > 0 ? (sumCurrentPoints / sumSelfPoints) : 1.0;
+  let currentTaskScore100 = selfTaskScore100;
+
+  if (isManager || isLeadership) {
+    if (isLeadershipRole) {
+      const selfUnit = Number(evaluation?.leadership_unit_result) || 100;
+      const selfExec = Number(evaluation?.leadership_execution) || 100;
+      const selfSol = Number(evaluation?.leadership_solidarity) || 100;
+      const baseSelf = Math.max(0, (selfTaskScore100 * 6 - selfUnit - selfExec - selfSol) / 3);
+      const baseFinal = baseSelf * pointsRatio;
+      
+      currentTaskScore100 = (baseFinal * 3 + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
+    } else {
+      currentTaskScore100 = selfTaskScore100 * pointsRatio;
+    }
+  }
+  currentTaskScore100 = Math.min(100.0, Math.max(0, Number(currentTaskScore100.toFixed(2))));
+  const subtotalTaskScore70 = Number((currentTaskScore100 * 0.70).toFixed(2));
+
+  // Tổng điểm (Max 100.0đ)
   const calculatedTotalScore = Math.min(100.0, Number((subtotalGeneralScore + subtotalTaskScore70).toFixed(2)));
 
   const isDisciplined = evaluation?.is_disciplined || evaluation?.employee_is_disciplined;

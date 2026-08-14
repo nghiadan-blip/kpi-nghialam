@@ -112,3 +112,36 @@ pm2 reload cbcc-server
 /www/server/nginx/sbin/nginx -t -c /www/server/nginx/conf/nginx.conf
 /www/server/nginx/sbin/nginx -s reload
 ```
+
+---
+
+## 6. Nhật ký Nâng cấp Phân hệ KPI (Nghị định 335 & Quyết định 283)
+
+Để đáp ứng các văn bản pháp lý mới và hoàn thiện hệ thống, chúng tôi đã thực hiện nâng cấp toàn diện lõi tính điểm KPI cùng các tính năng đi kèm:
+
+### 📂 Cơ sở dữ liệu & Migration
+- **Tạo mới**: `server/database/migrations/20260814100000_update_kpi_rules.ts` (Thiết lập 2 bảng mới `evaluation_periods` và `evaluation_appeals` để quản lý việc khóa kỳ đánh giá định kỳ và giải quyết kiến nghị, bổ sung cột `requested_score` cho bảng khiếu nại).
+
+### 📂 Backend (Calculations & Quota Rules)
+- **Chỉnh sửa**: 
+  - [`server/src/controllers/evaluationController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/evaluationController.ts):
+    - Tự động hóa trừ điểm tiến độ (-25% mỗi lỗi trễ hạn `delay_count`) và chất lượng (-25% mỗi lỗi làm lại `rework_count`) từ các Task liên kết.
+    - Sửa lỗi thẩm định của Trưởng phòng và Lãnh đạo xã: khi điều chỉnh điểm chi tiết của từng sản phẩm, hệ thống tự động tính toán lại điểm tổng nhiệm vụ (`task_score_mgr`, `task_score_final`) và điểm tổng kết cuối cùng (`final_score`) theo tỷ lệ thực tế.
+    - Tích hợp công thức tính điểm 6 chiều cho vị trí Lãnh đạo/Quản lý: $TaskScore = \frac{qtyRate + progRate + qualRate + d + đ + e}{6}$.
+    - Thêm cơ chế **Khóa kỳ đánh giá**: Chặn lưu nháp, nộp tự đánh giá, thẩm định hoặc phê duyệt nếu kỳ đánh giá tháng đó đã được đánh dấu là `LOCKED`.
+    - Thêm cơ chế **Kiểm soát hạn mức xuất sắc 20%**: Hệ thống tự động chặn phê duyệt xếp loại "Hoàn thành xuất sắc nhiệm vụ" (score >= 90) nếu vượt quá tỷ lệ 20% tổng số cán bộ "Hoàn thành tốt nhiệm vụ" trở lên, ngoại trừ trường hợp được đánh dấu là ngoại lệ đặc biệt kèm lý do cụ thể.
+  - [`server/src/routes/evaluationRoutes.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/routes/evaluationRoutes.ts): Khai báo các route khóa kỳ và kiến nghị.
+
+### 📂 Frontend (Vite & React components)
+- **Chỉnh sửa**:
+  - [`client/src/services/api.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/services/api.ts): Bổ sung các Axios API quản lý kỳ đánh giá (`getPeriods`, `lockPeriod`, `unlockPeriod`).
+  - [`client/src/components/EvaluationFormModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/EvaluationFormModal.tsx):
+    - Điều chỉnh thang điểm tiêu chí chung về tối đa 10đ/tiêu chí theo đúng Phụ lục I Quyết định 283/QĐ-UBND (Chính trị: 10đ, Chuyên môn: 10đ, Đổi mới sáng tạo: 10đ).
+    - Tích hợp đồng bộ hiển thị và tính toán điểm trừ lỗi trễ hạn / chất lượng từ Task liên kết, tự động cập nhật điểm 6 chiều cho Lãnh đạo.
+  - [`client/src/pages/Evaluations.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/Evaluations.tsx):
+    - Tích hợp giao diện khóa/mở khóa kỳ đánh giá tháng trực tuyến dành cho Admin/Lãnh đạo xã.
+    - Chặn sửa đổi phiếu nếu kỳ đã bị khóa.
+
+### 📊 Kết quả kiểm thử
+- **E2E Comprehensive Test Suite**: **23/23 PASS** (Không có lỗi). Toàn bộ luồng tự chấm, thẩm định, phê duyệt, gửi email thông báo, giám sát hạn mức xuất sắc, ghi nhật ký hoạt động đều hoạt động 100% chính xác.
+

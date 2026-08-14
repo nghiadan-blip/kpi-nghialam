@@ -11,6 +11,11 @@ export function calculateClassification(score: number, isDisciplined?: boolean):
   return 'Không hoàn thành nhiệm vụ';
 }
 
+export async function isPeriodLocked(month: string, knexInstance: any = db): Promise<boolean> {
+  const period = await knexInstance('evaluation_periods').where({ month, status: 'LOCKED' }).first();
+  return !!period;
+}
+
 export async function getEvaluations(req: AuthRequest, res: Response): Promise<void> {
   try {
     const user = req.user;
@@ -174,6 +179,12 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       return;
     }
 
+    if (await isPeriodLocked(month, trx)) {
+      await trx.rollback();
+      res.status(400).json({ message: `Kỳ đánh giá tháng ${month} đã bị khóa, không thể chỉnh sửa hoặc lưu nháp.` });
+      return;
+    }
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       await trx.rollback();
       res.status(400).json({ message: 'Phiếu đánh giá phải có ít nhất 1 sản phẩm / tiêu chí NĐ 335.' });
@@ -220,6 +231,14 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
         final_points: rawPoints,
         remarks: it.remarks ? it.remarks.trim() : null,
       });
+
+      if (it.task_id) {
+        const task = await trx('tasks').where('id', Number(it.task_id)).first();
+        if (task) {
+          totalDelays += Number(task.delay_count) || 0;
+          totalReworks += Number(task.rework_count) || 0;
+        }
+      }
     }
 
     // 3D calculation according to Home Affairs Handbook
@@ -349,6 +368,11 @@ export async function submitSelfEvaluation(req: AuthRequest, res: Response): Pro
       return;
     }
 
+    if (await isPeriodLocked(evaluation.month)) {
+      res.status(400).json({ message: `Kỳ đánh giá tháng ${evaluation.month} đã bị khóa, không thể thực hiện nộp.` });
+      return;
+    }
+
     if (evaluation.employee_id !== user.id && user.role !== 'ADMIN') {
       res.status(403).json({ message: 'Bạn không có quyền nộp phiếu đánh giá của người khác.' });
       return;
@@ -389,6 +413,9 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
       criteria_politics_mgr,
       criteria_expertise_mgr,
       criteria_innovation_mgr,
+      leadership_unit_result_mgr,
+      leadership_execution_mgr,
+      leadership_solidarity_mgr,
       collective_comments,
       remarks,
     } = req.body;
@@ -412,11 +439,20 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
       return;
     }
 
+    if (await isPeriodLocked(evaluation.month, trx)) {
+      await trx.rollback();
+      res.status(400).json({ message: `Kỳ đánh giá tháng ${evaluation.month} đã bị khóa, không thể thực hiện thẩm định.` });
+      return;
+    }
+
     if (evaluation.status === 'APPROVED') {
       await trx.rollback();
       res.status(400).json({ message: 'Phiếu đánh giá đã được Lãnh đạo phê duyệt, không thể sửa đổi.' });
       return;
     }
+
+    const employee = await trx('users').where('id', evaluation.employee_id).first();
+    const employeeRole = employee ? employee.role : 'EMPLOYEE';
 
     // Manager General Score (Phụ lục I QĐ 283: 10đ + 10đ + 10đ)
     const pol = criteria_politics_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_mgr))) : (evaluation.criteria_politics_self ?? 0.0);
@@ -438,7 +474,41 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
       }
     }
 
-    const taskScoreMgr = evaluation.task_score_self ?? 0.0; // default
+    let taskScoreMgr = evaluation.task_score_self ?? 0.0;
+    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
+    let sumSelfPoints = 0;
+    let sumMgrPoints = 0;
+    for (const d of allDetails) {
+      sumSelfPoints += Number(d.self_points) || 0;
+      
+      const bodyItem = items && Array.isArray(items) ? items.find(it => Number(it.id) === Number(d.id)) : null;
+      const mgrPts = bodyItem !== null && bodyItem !== undefined && bodyItem.manager_points !== undefined 
+        ? Number(bodyItem.manager_points) 
+        : Number(d.manager_points);
+      
+      sumMgrPoints += mgrPts;
+    }
+    
+    const managerRatio = sumSelfPoints > 0 ? (sumMgrPoints / sumSelfPoints) : 1.0;
+    const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
+
+    const l_unit = leadership_unit_result_mgr !== undefined ? Number(leadership_unit_result_mgr) : (evaluation.leadership_unit_result ?? 100);
+    const l_exec = leadership_execution_mgr !== undefined ? Number(leadership_execution_mgr) : (evaluation.leadership_execution ?? 100);
+    const l_sol = leadership_solidarity_mgr !== undefined ? Number(leadership_solidarity_mgr) : (evaluation.leadership_solidarity ?? 100);
+
+    if (isLeadershipRole) {
+      const selfUnit = Number(evaluation.leadership_unit_result) || 100;
+      const selfExec = Number(evaluation.leadership_execution) || 100;
+      const selfSol = Number(evaluation.leadership_solidarity) || 100;
+      const baseSelf = Math.max(0, ((evaluation.task_score_self ?? 0.0) * 6 - selfUnit - selfExec - selfSol) / 3);
+      
+      const baseFinal = baseSelf * managerRatio;
+      taskScoreMgr = Math.min(100.0, Math.max(0, (baseFinal * 3 + l_unit + l_exec + l_sol) / 6));
+    } else {
+      taskScoreMgr = Math.min(100.0, Math.max(0, (evaluation.task_score_self ?? 0.0) * managerRatio));
+    }
+    taskScoreMgr = Number(taskScoreMgr.toFixed(2));
+
     const totalManagerScore = Math.min(100.0, Number((generalScoreMgr + (taskScoreMgr * 0.70)).toFixed(2)));
 
     await trx('evaluations')
@@ -450,6 +520,11 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
         criteria_innovation_mgr: inn,
         general_score_mgr: generalScoreMgr,
         general_score_final: generalScoreMgr,
+        task_score_mgr: taskScoreMgr,
+        task_score_final: taskScoreMgr,
+        leadership_unit_result: l_unit,
+        leadership_execution: l_exec,
+        leadership_solidarity: l_sol,
         manager_score: totalManagerScore,
         final_score: totalManagerScore,
         manager_id: user.id,
@@ -512,12 +587,18 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
     const evaluation = await trx('evaluations')
       .join('users as u', 'evaluations.employee_id', 'u.id')
       .where('evaluations.id', Number(id))
-      .select('evaluations.*', 'u.is_disciplined as employee_is_disciplined')
+      .select('evaluations.*', 'u.role as employee_role', 'u.is_disciplined as employee_is_disciplined')
       .first();
 
     if (!evaluation) {
       await trx.rollback();
       res.status(404).json({ message: 'Không tìm thấy phiếu đánh giá.' });
+      return;
+    }
+
+    if (await isPeriodLocked(evaluation.month, trx)) {
+      await trx.rollback();
+      res.status(400).json({ message: `Kỳ đánh giá tháng ${evaluation.month} đã bị khóa, không thể thực hiện phê duyệt.` });
       return;
     }
 
@@ -538,11 +619,77 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
       }
     }
 
-    let calculatedFinalScore = final_score !== undefined ? Number(final_score) : Number((generalScoreFinal + ((evaluation.task_score_mgr ?? 0.0) * 0.70)).toFixed(2));
+    let taskScoreFinal = evaluation.task_score_mgr ?? 0.0;
+    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
+    let sumSelfPoints = 0;
+    let sumFinalPoints = 0;
+    for (const d of allDetails) {
+      sumSelfPoints += Number(d.self_points) || 0;
+      
+      const bodyItem = items && Array.isArray(items) ? items.find(it => Number(it.id) === Number(d.id)) : null;
+      const finalPts = bodyItem !== null && bodyItem !== undefined && bodyItem.final_points !== undefined 
+        ? Number(bodyItem.final_points) 
+        : Number(d.final_points);
+        
+      sumFinalPoints += finalPts;
+    }
+    
+    const finalRatio = sumSelfPoints > 0 ? (sumFinalPoints / sumSelfPoints) : 1.0;
+    const employeeRole = evaluation.employee_role || 'EMPLOYEE';
+    const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
+    
+    if (isLeadershipRole) {
+      const selfUnit = Number(evaluation.leadership_unit_result) || 100;
+      const selfExec = Number(evaluation.leadership_execution) || 100;
+      const selfSol = Number(evaluation.leadership_solidarity) || 100;
+      const baseSelf = Math.max(0, ((evaluation.task_score_self ?? 0.0) * 6 - selfUnit - selfExec - selfSol) / 3);
+      
+      const baseFinal = baseSelf * finalRatio;
+      
+      const l_unit = Number(evaluation.leadership_unit_result) || 100;
+      const l_exec = Number(evaluation.leadership_execution) || 100;
+      const l_sol = Number(evaluation.leadership_solidarity) || 100;
+      
+      taskScoreFinal = Math.min(100.0, Math.max(0, (baseFinal * 3 + l_unit + l_exec + l_sol) / 6));
+    } else {
+      taskScoreFinal = Math.min(100.0, Math.max(0, (evaluation.task_score_self ?? 0.0) * finalRatio));
+    }
+    taskScoreFinal = Number(taskScoreFinal.toFixed(2));
+
+    let calculatedFinalScore = final_score !== undefined ? Number(final_score) : Number((generalScoreFinal + (taskScoreFinal * 0.70)).toFixed(2));
     calculatedFinalScore = Math.min(100.0, Math.max(0, calculatedFinalScore));
 
     const isDisciplined = evaluation.is_disciplined || evaluation.employee_is_disciplined;
     const classification = calculateClassification(calculatedFinalScore, isDisciplined);
+
+    // Kiểm tra hạn mức Xuất sắc 20% theo NĐ 335
+    if (classification === 'Hoàn thành xuất sắc nhiệm vụ' && !is_special_quota_case) {
+      const approvedList = await trx('evaluations')
+        .join('users as u', 'evaluations.employee_id', 'u.id')
+        .where('evaluations.month', evaluation.month)
+        .where('evaluations.status', 'APPROVED')
+        .whereNot('evaluations.id', Number(id))
+        .select('evaluations.final_score', 'evaluations.is_disciplined', 'u.is_disciplined as user_disciplined');
+        
+      let countA = 1; // Tính cả phiếu hiện tại
+      let countB = 0;
+      for (const ev of approvedList) {
+        const cls = calculateClassification(ev.final_score, ev.is_disciplined || ev.user_disciplined);
+        if (cls === 'Hoàn thành xuất sắc nhiệm vụ') countA++;
+        else if (cls === 'Hoàn thành tốt nhiệm vụ') countB++;
+      }
+      
+      const totalEligible = countA + countB;
+      const maxAllowed = Math.max(1, Math.floor(totalEligible * 0.20));
+      if (countA > maxAllowed && totalEligible > 1) {
+        await trx.rollback();
+        res.status(400).json({ 
+          message: `Không thể phê duyệt "Hoàn thành xuất sắc nhiệm vụ" do vượt quá hạn ngạch 20% của tháng này (Hiện tại: ${countA}/${totalEligible} xuất sắc). Vui lòng đánh dấu là trường hợp ngoại lệ đặc biệt (is_special_quota_case) và cung cấp lý do giải trình.`,
+          quota_exceeded: true
+        });
+        return;
+      }
+    }
 
     await trx('evaluations')
       .where('id', Number(id))
@@ -552,6 +699,7 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
         criteria_expertise_final: exp,
         criteria_innovation_final: inn,
         general_score_final: generalScoreFinal,
+        task_score_final: taskScoreFinal,
         final_score: calculatedFinalScore,
         approver_id: user.id,
         party_cell_comments: party_cell_comments ? party_cell_comments.trim() : evaluation.party_cell_comments,
@@ -967,5 +1115,104 @@ export async function batchSendEvaluationEmails(req: AuthRequest, res: Response)
   } catch (err: any) {
     console.error('Lỗi gửi email hàng loạt:', err);
     res.status(500).json({ message: 'Lỗi máy chủ khi gửi email hàng loạt: ' + err.message });
+  }
+}
+
+/**
+ * Lấy danh sách kỳ đánh giá
+ */
+export async function getEvaluationPeriods(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const periods = await db('evaluation_periods').orderBy('month', 'desc');
+    res.status(200).json({ periods });
+  } catch (err) {
+    console.error('Lỗi lấy danh sách kỳ đánh giá:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi lấy kỳ đánh giá.' });
+  }
+}
+
+/**
+ * Khóa kỳ đánh giá
+ */
+export async function lockEvaluationPeriod(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user || !['ADMIN', 'LEADERSHIP'].includes(user.role)) {
+      res.status(403).json({ message: 'Chỉ Admin hoặc Lãnh đạo mới có quyền khóa kỳ đánh giá.' });
+      return;
+    }
+    const { month } = req.body;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ message: 'Tháng không hợp lệ (định dạng đúng YYYY-MM).' });
+      return;
+    }
+    
+    const existing = await db('evaluation_periods').where({ month }).first();
+    if (existing) {
+      await db('evaluation_periods')
+        .where({ id: existing.id })
+        .update({
+          status: 'LOCKED',
+          locked_at: new Date(),
+          locked_by: user.id
+        });
+    } else {
+      await db('evaluation_periods').insert({
+        month,
+        status: 'LOCKED',
+        created_by: user.id,
+        locked_at: new Date(),
+        locked_by: user.id
+      });
+    }
+
+    const clientIp = req.ip || req.socket.remoteAddress;
+    await logAudit(user.id, 'LOCK_PERIOD', `Khóa kỳ đánh giá tháng ${month}`, clientIp);
+    res.status(200).json({ message: `Đã khóa kỳ đánh giá tháng ${month} thành công.` });
+  } catch (err) {
+    console.error('Lỗi khóa kỳ đánh giá:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi khóa kỳ đánh giá.' });
+  }
+}
+
+/**
+ * Mở khóa kỳ đánh giá
+ */
+export async function unlockEvaluationPeriod(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user || !['ADMIN', 'LEADERSHIP'].includes(user.role)) {
+      res.status(403).json({ message: 'Chỉ Admin hoặc Lãnh đạo mới có quyền mở khóa kỳ đánh giá.' });
+      return;
+    }
+    const { month } = req.body;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ message: 'Tháng không hợp lệ (định dạng đúng YYYY-MM).' });
+      return;
+    }
+    
+    const existing = await db('evaluation_periods').where({ month }).first();
+    if (existing) {
+      await db('evaluation_periods')
+        .where({ id: existing.id })
+        .update({
+          status: 'ACTIVE',
+          locked_at: null,
+          locked_by: null
+        });
+    } else {
+      await db('evaluation_periods').insert({
+        month,
+        status: 'ACTIVE',
+        created_by: user.id
+      });
+    }
+
+    const clientIp = req.ip || req.socket.remoteAddress;
+    await logAudit(user.id, 'UNLOCK_PERIOD', `Mở khóa kỳ đánh giá tháng ${month}`, clientIp);
+    res.status(200).json({ message: `Đã mở khóa kỳ đánh giá tháng ${month} thành công.` });
+  } catch (err) {
+    console.error('Lỗi mở khóa kỳ đánh giá:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi mở khóa kỳ đánh giá.' });
   }
 }

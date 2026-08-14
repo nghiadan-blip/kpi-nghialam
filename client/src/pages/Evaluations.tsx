@@ -20,6 +20,8 @@ import {
   CheckCircle2,
   Scale,
   Mail,
+  Lock as LockIcon,
+  Unlock as UnlockIcon,
 } from 'lucide-react';
 
 export const Evaluations: React.FC = () => {
@@ -38,6 +40,7 @@ export const Evaluations: React.FC = () => {
   const [quotaStats, setQuotaStats] = useState<QuotaStats | null>(null);
   const [appeals, setAppeals] = useState<EvaluationAppeal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isCurrentPeriodLocked, setIsCurrentPeriodLocked] = useState<boolean>(false);
 
   // Modal State
   const [modalOpen, setModalOpen] = useState(false);
@@ -75,6 +78,14 @@ export const Evaluations: React.FC = () => {
         evaluationsApi
           .getQuotaStats(selectedMonth)
           .then((q) => setQuotaStats(q))
+          .catch(() => {});
+
+        evaluationsApi
+          .getPeriods()
+          .then((res) => {
+            const matched = (res.periods || []).find((p: any) => p.month === selectedMonth);
+            setIsCurrentPeriodLocked(matched?.status === 'LOCKED');
+          })
           .catch(() => {});
       }
     } catch (err: any) {
@@ -226,6 +237,37 @@ export const Evaluations: React.FC = () => {
     }
   };
 
+  const handleToggleLock = async () => {
+    if (!['ADMIN', 'LEADERSHIP'].includes(user?.role || '')) {
+      alert('Chỉ Admin hoặc Lãnh đạo mới có quyền khóa/mở khóa kỳ đánh giá.');
+      return;
+    }
+    
+    const confirmMsg = isCurrentPeriodLocked
+      ? `Bạn có chắc chắn muốn MỞ KHÓA kỳ đánh giá tháng ${selectedMonth}?`
+      : `Bạn có chắc chắn muốn KHÓA kỳ đánh giá tháng ${selectedMonth}? Khi đã khóa, cán bộ sẽ không thể tự chấm hoặc chỉnh sửa phiếu tự đánh giá.`;
+      
+    if (!window.confirm(confirmMsg)) return;
+    
+    try {
+      if (isCurrentPeriodLocked) {
+        await evaluationsApi.unlockPeriod(selectedMonth);
+        setActionMessage({ type: 'success', text: `Đã mở khóa kỳ đánh giá tháng ${selectedMonth} thành công.` });
+      } else {
+        await evaluationsApi.lockPeriod(selectedMonth);
+        setActionMessage({ type: 'success', text: `Đã khóa kỳ đánh giá tháng ${selectedMonth} thành công.` });
+      }
+      fetchEvaluations();
+      setTimeout(() => setActionMessage(null), 3000);
+    } catch (err: any) {
+      setActionMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Có lỗi xảy ra khi thay đổi trạng thái khóa kỳ.',
+      });
+      setTimeout(() => setActionMessage(null), 4000);
+    }
+  };
+
   // Stats
   const approvedEvals = evaluations.filter(
     (e) => (e.status === 'APPROVED' || e.step === 'STEP_3_LEADERSHIP_FINAL') && e.final_score !== null && e.final_score !== undefined
@@ -349,6 +391,10 @@ export const Evaluations: React.FC = () => {
 
           <button
             onClick={() => {
+              if (isCurrentPeriodLocked && !['ADMIN', 'LEADERSHIP'].includes(user?.role || '')) {
+                alert(`Kỳ đánh giá tháng ${selectedMonth} đã bị khóa. Bạn không thể thực hiện chỉnh sửa hoặc tạo phiếu mới.`);
+                return;
+              }
               setSelectedEval(userEvalThisMonth || null);
               setModalOpen(true);
             }}
@@ -497,7 +543,7 @@ export const Evaluations: React.FC = () => {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
             {/* Controls & Filter Bar */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-wrap items-center gap-2">
                 <div className="flex items-center space-x-2">
                   <Calendar className="w-4 h-4 text-slate-500" />
                   <span className="text-xs font-semibold text-slate-700 uppercase">Kỳ đánh giá:</span>
@@ -508,6 +554,26 @@ export const Evaluations: React.FC = () => {
                   onChange={(e) => setSelectedMonth(e.target.value)}
                   className="px-3 py-1.5 border border-[#CFEBFC] rounded-xl text-xs bg-white font-bold text-slate-800 focus:ring-2 focus:ring-[#27A4F2]"
                 />
+                <span className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                  isCurrentPeriodLocked
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {isCurrentPeriodLocked ? <LockIcon className="w-3 h-3" /> : <UnlockIcon className="w-3 h-3" />}
+                  <span>{isCurrentPeriodLocked ? 'Đã khóa' : 'Đang mở'}</span>
+                </span>
+                {['ADMIN', 'LEADERSHIP'].includes(user?.role || '') && (
+                  <button
+                    onClick={handleToggleLock}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold text-white shadow-xs transition ${
+                      isCurrentPeriodLocked
+                        ? 'bg-emerald-600 hover:bg-emerald-700'
+                        : 'bg-rose-600 hover:bg-rose-700'
+                    }`}
+                  >
+                    {isCurrentPeriodLocked ? 'Mở khóa kỳ' : 'Khóa kỳ'}
+                  </button>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-3">

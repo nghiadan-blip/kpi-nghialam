@@ -413,6 +413,18 @@ export const evaluationsApi = {
     const res = await api.post<{ message: string; result: any }>('/evaluations/batch-send-emails', { month });
     return res.data;
   },
+  getPeriods: async () => {
+    const res = await api.get<{ periods: any[] }>('/evaluations/periods');
+    return res.data;
+  },
+  lockPeriod: async (month: string) => {
+    const res = await api.post<{ message: string }>('/evaluations/periods/lock', { month });
+    return res.data;
+  },
+  unlockPeriod: async (month: string) => {
+    const res = await api.post<{ message: string }>('/evaluations/periods/unlock', { month });
+    return res.data;
+  },
 };
 
 // --- Job Positions APIs (33 Official Positions) ---

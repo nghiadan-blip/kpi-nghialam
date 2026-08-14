@@ -180,6 +180,7 @@ export interface MonthlyEvaluation {
   employee_name?: string;
   employee_position?: string;
   employee_position_code?: string;
+  employee_role?: UserRole | string;
   employee_is_disciplined?: boolean | number | null;
   department_name?: string;
   manager_name?: string;
