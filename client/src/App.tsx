@@ -11,6 +11,10 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { NotFound } from './pages/NotFound';
 import { AIChatWidget } from './components/AIChatWidget';
+import { Budget } from './pages/Budget';
+import { PublicInvestment } from './pages/PublicInvestment';
+import { LandCertificates } from './pages/LandCertificates';
+import { OfficeManagement } from './pages/OfficeManagement';
 
 export const App: React.FC = () => {
   return (
@@ -43,6 +47,38 @@ export const App: React.FC = () => {
                 element={
                   <ProtectedRoute>
                     <Evaluations />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/budget"
+                element={
+                  <ProtectedRoute>
+                    <Budget />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/public-investment"
+                element={
+                  <ProtectedRoute>
+                    <PublicInvestment />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/land-certificates"
+                element={
+                  <ProtectedRoute>
+                    <LandCertificates />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/office"
+                element={
+                  <ProtectedRoute>
+                    <OfficeManagement />
                   </ProtectedRoute>
                 }
               />

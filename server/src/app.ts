@@ -10,6 +10,11 @@ import evaluationRoutes from './routes/evaluationRoutes';
 import reportRoutes from './routes/reportRoutes';
 import aiRoutes from './routes/aiRoutes';
 import jobPositionRoutes from './routes/jobPositionRoutes';
+import budgetRoutes from './routes/budgetRoutes';
+import publicInvestmentRoutes from './routes/publicInvestmentRoutes';
+import landCertificateRoutes from './routes/landCertificateRoutes';
+import officeRoutes from './routes/officeRoutes';
+import executiveDashboardRoutes from './routes/executiveDashboardRoutes';
 
 const app = express();
 
@@ -42,6 +47,11 @@ app.use('/api/evaluations', evaluationRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/job-positions', jobPositionRoutes);
+app.use('/api/budget', budgetRoutes);
+app.use('/api/public-investment', publicInvestmentRoutes);
+app.use('/api/land-certificates', landCertificateRoutes);
+app.use('/api/office', officeRoutes);
+app.use('/api/executive-dashboard', executiveDashboardRoutes);
 
 export default app;
 

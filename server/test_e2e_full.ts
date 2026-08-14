@@ -3,6 +3,14 @@ import db from './src/config/db';
 import http from 'http';
 
 async function runFullE2ETests() {
+  console.log('⏳ Resetting database via knex seed...');
+  try {
+    await db.seed.run();
+    console.log('✅ Database reset successfully.');
+  } catch (err: any) {
+    console.warn('⚠️ Warning resetting database:', err.message);
+  }
+
   const server = http.createServer(app);
   await new Promise<void>((resolve) => server.listen(5095, () => resolve()));
   console.log('🧪 Full E2E Test Server started on http://localhost:5095');

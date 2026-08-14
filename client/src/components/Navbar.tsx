@@ -10,6 +10,10 @@ import {
   User as UserIcon,
   ChevronDown,
   Clock,
+  Wallet,
+  Building2,
+  Map,
+  Briefcase
 } from 'lucide-react';
 import { VietnameseEmblem } from './VietnameseEmblem';
 import { StatusPing } from './StatusPing';
@@ -72,9 +76,13 @@ export const Navbar: React.FC = () => {
 
   const navItems = [
     { to: '/', label: 'Trang chủ', icon: LayoutDashboard, show: true },
-    { to: '/tasks', label: 'Quản lý Nhiệm vụ', icon: CheckSquare, show: true },
-    { to: '/evaluations', label: 'Đánh giá & Chấm điểm (NĐ 335)', icon: Award, show: true },
-    { to: '/admin', label: 'Quản trị hệ thống', icon: Shield, show: hasRole(['ADMIN']) },
+    { to: '/tasks', label: 'Nhiệm vụ', icon: CheckSquare, show: true },
+    { to: '/evaluations', label: 'Đánh giá KPI', icon: Award, show: true },
+    { to: '/budget', label: 'Ngân sách', icon: Wallet, show: isAuthenticated && (hasRole(['LEADERSHIP', 'ADMIN']) || user?.department_id === 6) },
+    { to: '/public-investment', label: 'Đầu tư công', icon: Building2, show: isAuthenticated },
+    { to: '/land-certificates', label: 'Đất đai (KH965)', icon: Map, show: isAuthenticated },
+    { to: '/office', label: 'Văn phòng', icon: Briefcase, show: isAuthenticated },
+    { to: '/admin', label: 'Quản trị', icon: Shield, show: hasRole(['ADMIN']) },
   ];
 
   return (

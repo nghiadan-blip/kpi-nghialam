@@ -9,7 +9,13 @@ import {
   JobPosition, 
   QuotaStats, 
   EvaluationAppeal, 
-  HealthCheckResponse 
+  HealthCheckResponse,
+  BudgetRevenueItem,
+  BudgetExpenditureItem,
+  PublicInvestmentProject,
+  LandCertificateCase,
+  KH965Progress,
+  OfficeRequest
 } from '../types';
 
 export type { HealthCheckResponse };
@@ -509,4 +515,131 @@ export const aiApi = {
     const res = await api.post<{ reply: string; source: string }>('/ai/chat', data);
     return res.data;
   },
+};
+
+// --- Municipal Budget APIs ---
+export const budgetApi = {
+  getBudgets: async (year?: number, category?: string, status?: string) => {
+    const res = await api.get<{
+      revenues: BudgetRevenueItem[];
+      expenditures: BudgetExpenditureItem[];
+      stats: any;
+    }>('/budget', { params: { year, category, status } });
+    return res.data;
+  },
+  createRevenue: async (data: any) => {
+    const res = await api.post<{ message: string; id: number }>('/budget/revenue', data);
+    return res.data;
+  },
+  updateRevenue: async (id: number, data: any) => {
+    const res = await api.put<{ message: string }>('/budget/revenue/' + id, data);
+    return res.data;
+  },
+  deleteRevenue: async (id: number) => {
+    const res = await api.delete<{ message: string }>('/budget/revenue/' + id);
+    return res.data;
+  },
+  createExpenditure: async (data: any) => {
+    const res = await api.post<{ message: string; id: number }>('/budget/expenditure', data);
+    return res.data;
+  },
+  updateExpenditure: async (id: number, data: any) => {
+    const res = await api.put<{ message: string }>('/budget/expenditure/' + id, data);
+    return res.data;
+  },
+  deleteExpenditure: async (id: number) => {
+    const res = await api.delete<{ message: string }>('/budget/expenditure/' + id);
+    return res.data;
+  },
+  exportExcel: (year?: number) => {
+    window.open(`/api/budget/export?year=${year || new Date().getFullYear()}`, '_blank');
+  }
+};
+
+// --- Public Investment APIs ---
+export const publicInvestmentApi = {
+  getProjects: async (status?: string, obstacle_type?: string, search?: string) => {
+    const res = await api.get<{ projects: PublicInvestmentProject[] }>('/public-investment', { params: { status, obstacle_type, search } });
+    return res.data;
+  },
+  createProject: async (data: any) => {
+    const res = await api.post<{ message: string; id: number }>('/public-investment', data);
+    return res.data;
+  },
+  updateProject: async (id: number, data: any) => {
+    const res = await api.put<{ message: string }>('/public-investment/' + id, data);
+    return res.data;
+  },
+  deleteProject: async (id: number) => {
+    const res = await api.delete<{ message: string }>('/public-investment/' + id);
+    return res.data;
+  },
+  exportExcel: () => {
+    window.open('/api/public-investment/export', '_blank');
+  }
+};
+
+// --- Land Certificate & KH965 APIs ---
+export const landCertificateApi = {
+  getCases: async (case_group?: string, status?: string, village?: string, search?: string) => {
+    const res = await api.get<{ cases: LandCertificateCase[] }>('/land-certificates/cases', { params: { case_group, status, village, search } });
+    return res.data;
+  },
+  createCase: async (data: any) => {
+    const res = await api.post<{ message: string; id: number }>('/land-certificates/cases', data);
+    return res.data;
+  },
+  updateCase: async (id: number, data: any) => {
+    const res = await api.put<{ message: string }>('/land-certificates/cases/' + id, data);
+    return res.data;
+  },
+  deleteCase: async (id: number) => {
+    const res = await api.delete<{ message: string }>('/land-certificates/cases/' + id);
+    return res.data;
+  },
+  getKH965Progress: async () => {
+    const res = await api.get<{ progress: KH965Progress[] }>('/land-certificates/kh965');
+    return res.data;
+  },
+  updateKH965Progress: async (data: any) => {
+    const res = await api.post<{ message: string }>('/land-certificates/kh965', data);
+    return res.data;
+  },
+  exportExcel: () => {
+    window.open('/api/land-certificates/export', '_blank');
+  }
+};
+
+// --- Office and Logistics APIs ---
+export const officeApi = {
+  getRequests: async (request_type?: string, status?: string) => {
+    const res = await api.get<{ requests: OfficeRequest[] }>('/office', { params: { request_type, status } });
+    return res.data;
+  },
+  createRequest: async (data: any) => {
+    const res = await api.post<{ message: string; id: number }>('/office', data);
+    return res.data;
+  },
+  updateRequest: async (id: number, data: any) => {
+    const res = await api.put<{ message: string }>('/office/' + id, data);
+    return res.data;
+  },
+  deleteRequest: async (id: number) => {
+    const res = await api.delete<{ message: string }>('/office/' + id);
+    return res.data;
+  },
+  exportExcel: () => {
+    window.open('/api/office/export', '_blank');
+  }
+};
+
+// --- Commune Chairman Executive Dashboard APIs ---
+export const executiveDashboardApi = {
+  getDashboard: async () => {
+    const res = await api.get<{
+      summary: string;
+      metrics: any;
+    }>('/executive-dashboard');
+    return res.data;
+  }
 };

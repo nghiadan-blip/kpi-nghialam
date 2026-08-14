@@ -258,3 +258,133 @@ export interface HealthCheckResponse {
   version: string;
 }
 
+export interface BudgetRevenueItem {
+  id: number;
+  year: number;
+  category: string;
+  source_name: string;
+  payer_or_unit?: string | null;
+  planned_amount: number;
+  collected_amount: number;
+  remaining_amount: number;
+  due_date?: string | null;
+  responsible_department_id?: number | null;
+  responsible_department_name?: string | null;
+  responsible_user_id?: number | null;
+  responsible_user_name?: string | null;
+  status: 'planned' | 'partial' | 'completed' | 'overdue' | 'cancelled' | string;
+  note?: string | null;
+  evidence_ref?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BudgetExpenditureItem {
+  id: number;
+  year: number;
+  category: string;
+  expense_name: string;
+  funding_source: string;
+  estimated_amount: number;
+  approved_amount: number;
+  paid_amount: number;
+  remaining_amount: number;
+  request_user_id?: number | null;
+  request_user_name?: string | null;
+  approve_user_id?: number | null;
+  approve_user_name?: string | null;
+  status: 'draft' | 'submitted' | 'approved' | 'paid' | 'rejected' | 'missing_document' | string;
+  document_status: 'full' | 'missing_evidence' | 'pending_invoice' | string;
+  payment_date?: string | null;
+  note?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PublicInvestmentProject {
+  id: number;
+  project_code: string;
+  project_name: string;
+  investor_name: string;
+  funding_source: string;
+  planned_capital: number;
+  allocated_capital: number;
+  disbursed_amount: number;
+  disbursement_rate: number;
+  contractor?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  actual_progress_percent: number;
+  acceptance_value: number;
+  payment_document_status?: string | null;
+  obstacle_type: 'gpmb' | 'procedure' | 'payment_document' | 'contractor' | 'weather' | 'funding' | 'none' | 'other' | string;
+  obstacle_note?: string | null;
+  responsible_user_id?: number | null;
+  responsible_user_name?: string | null;
+  status: 'preparing' | 'executing' | 'delayed' | 'completed' | 'settled' | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface LandCertificateCase {
+  id: number;
+  case_code: string;
+  citizen_name: string;
+  village: string;
+  land_plot_ref: string;
+  case_group: 'Xanh' | 'Vàng' | 'Đỏ' | string;
+  legal_basis_group: 'article_137' | 'article_138' | 'article_139' | 'article_140' | 'other' | string;
+  current_step: string;
+  status: 'received' | 'checking' | 'public_notice' | 'financial_obligation' | 'submitted' | 'issued' | 'returned' | 'delayed' | 'paused' | string;
+  deadline?: string | null;
+  responsible_user_id?: number | null;
+  responsible_user_name?: string | null;
+  responsible_department_id?: number | null;
+  responsible_department_name?: string | null;
+  delay_reason?: string | null;
+  evidence_ref?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface KH965Progress {
+  id: number;
+  village: string;
+  total_plots: number;
+  reviewed_plots: number;
+  classified_plots: number;
+  eligible_cases: number;
+  need_supplement_cases: number;
+  complex_cases: number;
+  green_count: number;
+  yellow_count: number;
+  red_count: number;
+  responsible_user_id?: number | null;
+  responsible_user_name?: string | null;
+  report_date?: string | null;
+  note?: string | null;
+}
+
+export interface OfficeRequest {
+  id: number;
+  request_type: 'guest_reception' | 'travel_paper' | 'business_trip' | 'vehicle' | 'meeting_room' | 'stationery' | 'equipment' | 'conference_logistics' | 'other' | string;
+  title: string;
+  description?: string | null;
+  request_user_id: number;
+  request_user_name?: string | null;
+  responsible_user_id?: number | null;
+  responsible_user_name?: string | null;
+  approve_user_id?: number | null;
+  approve_user_name?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  estimated_cost: number;
+  approved_cost: number;
+  funding_source?: string | null;
+  document_ref?: string | null;
+  settlement_status: 'pending' | 'submitting' | 'completed' | string;
+  status: 'draft' | 'submitted' | 'approved' | 'in_progress' | 'completed' | 'settled' | 'rejected' | string;
+  created_at?: string;
+  updated_at?: string;
+}
+
