@@ -145,3 +145,28 @@ pm2 reload cbcc-server
 ### 📊 Kết quả kiểm thử
 - **E2E Comprehensive Test Suite**: **23/23 PASS** (Không có lỗi). Toàn bộ luồng tự chấm, thẩm định, phê duyệt, gửi email thông báo, giám sát hạn mức xuất sắc, ghi nhật ký hoạt động đều hoạt động 100% chính xác.
 
+---
+
+## 7. Đề xuất Kế hoạch Nâng cấp Hệ thống KPI trong tương lai
+
+Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệp vụ và pháp lý (`KPI_LEGAL_BASIS.md`, `KPI_MODULE_DEEP_SPEC.md`, `ANTIGRAVITY_THUC_THI_CAP_NHAT_KPI_NGHIALAM.md`), dưới đây là danh sách các nội dung đề xuất nâng cấp trong tương lai (khi được kích hoạt và cho phép sửa code):
+
+### 7.1. Tích hợp Quản lý Vị trí Việc làm (VTVL) & Khung năng lực
+- **Thiết lập mô hình dữ liệu VTVL**:
+  - Tạo các bảng `positions`, `position_duties` (sản phẩm đầu ra và tiêu chí hoàn thành tương ứng phụ lục 1A, 1B, 1C), `position_competencies` (năng lực và cấp độ từ 1-5 theo phụ lục 2A, 2B), `user_position_assignments`.
+- **Ràng buộc nghiệp vụ**:
+  - Tự động kiểm tra và đưa ra cảnh báo nếu giao việc sai VTVL của cán bộ, thiếu người phụ trách chính hoặc thiếu minh chứng.
+  - Hỗ trợ kết xuất bảng đối chiếu: **Người - VTVL - Nhiệm vụ - Sản phẩm - Hệ số - Minh chứng - Điểm - Căn cứ**.
+
+### 7.2. Cấu hình Phiên bản Công thức Tính điểm động (`kpi_formula_versions`)
+- Tách biệt logic công thức tính điểm (như tỷ lệ trừ 25% trễ hạn, ngưỡng điểm xếp loại) ra khỏi mã nguồn cứng và lưu trữ trong bảng `kpi_formula_versions` để quản trị viên có thể điều chỉnh linh hoạt theo sự thay đổi của văn bản trung ương/địa phương.
+
+### 7.3. Nâng cấp Nghiệp vụ Giao việc phức tạp
+- **Nhiệm vụ chuyển giao**: Ghi nhận lịch sử chuyển giao việc giữa các cán bộ (lý do chuyển giao, khối lượng đã làm của người cũ, khối lượng bàn giao cho người mới).
+- **Nhiệm vụ nhóm**: Hỗ trợ phân rã và xác định rõ tỷ trọng tham gia (%) của các thành viên trong nhóm thực hiện (tổng tỷ trọng = 100%).
+- **Nhiệm vụ kéo dài**: Phân bổ chỉ tiêu/tiến độ thực hiện theo từng tuần hoặc tháng.
+
+### 7.4. Hệ thống nhắc việc tự động (Zalo/Telegram Webhook)
+- Xây dựng phân hệ cấu hình webhook gửi tin nhắn nhắc nhở trực tiếp đến tài khoản công chức khi có việc sắp quá hạn hoặc phiếu đánh giá chưa nộp.
+
+
