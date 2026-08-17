@@ -179,7 +179,7 @@ export const Admin: React.FC = () => {
   };
 
   const handleDeleteDepartment = async (dept: Department) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa phòng ban "${dept.name}"?`)) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
 
     try {
       await departmentsApi.deleteDepartment(dept.id);
@@ -197,7 +197,7 @@ export const Admin: React.FC = () => {
   };
 
   const handleDeleteCatalog = async (item: ProductCatalog) => {
-    if (!window.confirm(`Bạn có chắc muốn khóa sản phẩm danh mục "${item.name}"?`)) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
 
     try {
       await catalogApi.deleteCatalogItem(item.id);

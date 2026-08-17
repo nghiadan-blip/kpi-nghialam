@@ -16,6 +16,7 @@ export const PublicInvestment: React.FC = () => {
   const [projects, setProjects] = useState<PublicInvestmentProject[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle');
 
   // Filters
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -76,7 +77,7 @@ export const PublicInvestment: React.FC = () => {
     setAllocatedCapital(0);
     setDisbursedAmount(0);
     setContractor('');
-    setStartDate(new Date().toISOString().slice(0, 10));
+    setStartDate('');
     setEndDate('');
     setActualProgress(0);
     setAcceptanceValue(0);
@@ -112,6 +113,28 @@ export const PublicInvestment: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (plannedCapital < 0) {
+      alert('Vốn kế hoạch không được là số âm.');
+      return;
+    }
+    if (allocatedCapital < 0) {
+      alert('Vốn phân bổ không được là số âm.');
+      return;
+    }
+    if (disbursedAmount < 0) {
+      alert('Số tiền đã giải ngân không được là số âm.');
+      return;
+    }
+    if (acceptanceValue < 0) {
+      alert('Giá trị nghiệm thu không được là số âm.');
+      return;
+    }
+    if (disbursedAmount > allocatedCapital) {
+      alert('Số tiền đã giải ngân không được lớn hơn vốn phân bổ (tỷ lệ giải ngân không vượt 100%).');
+      return;
+    }
+
     try {
       const payload = {
         project_code: projectCode,
@@ -146,7 +169,7 @@ export const PublicInvestment: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa công trình đầu tư công này?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
     try {
       await publicInvestmentApi.deleteProject(id);
       loadData();
@@ -156,10 +179,29 @@ export const PublicInvestment: React.FC = () => {
   };
 
   const formatVND = (num: number) => {
-    if (num >= 1000000000) {
-      return (num / 1000000000).toFixed(2) + ' tỷ đ';
+    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+  };
+
+  const handleExport = async () => {
+    setExportStatus('loading');
+    try {
+      const res = await publicInvestmentApi.exportExcel();
+      const blob = new Blob([res.data], { type: res.headers['content-type'] as string });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Bao_cao_dau_tu_cong.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setExportStatus('success');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    } catch (err) {
+      console.error(err);
+      setExportStatus('failed');
+      setTimeout(() => setExportStatus('idle'), 3000);
     }
-    return (num / 1000000).toFixed(1) + ' triệu đ';
   };
 
   return (
@@ -178,11 +220,17 @@ export const PublicInvestment: React.FC = () => {
 
         <div className="flex items-center space-x-2 mt-4 md:mt-0">
           <button
-            onClick={() => publicInvestmentApi.exportExcel()}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition"
+            onClick={handleExport}
+            disabled={exportStatus === 'loading'}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Xuất báo cáo đầu tư</span>
+            <span>
+              {exportStatus === 'idle' && 'Xuất báo cáo đầu tư'}
+              {exportStatus === 'loading' && 'Đang xuất...'}
+              {exportStatus === 'success' && 'Thành công ✓'}
+              {exportStatus === 'failed' && 'Thất bại ✗'}
+            </span>
           </button>
           {hasRole(['LEADERSHIP', 'ADMIN', 'DEPARTMENT_HEAD']) && (
             <button
@@ -283,7 +331,12 @@ export const PublicInvestment: React.FC = () => {
                         {formatVND(p.disbursed_amount)}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <div className="font-bold text-[#1864AB]">{p.disbursement_rate}%</div>
+                        <div className="font-bold text-[#1864AB] flex items-center justify-center space-x-1">
+                          <span>{Math.min(100, p.disbursement_rate)}%</span>
+                          {(p.disbursed_amount > p.allocated_capital || p.disbursement_rate > 100) && (
+                            <span className="text-rose-500 font-bold" title="Dữ liệu bất thường: Đã giải ngân vượt quá vốn phân bổ!">⚠️</span>
+                          )}
+                        </div>
                         <div className="w-16 bg-slate-100 h-1.5 rounded-full mx-auto mt-1 overflow-hidden">
                           <div 
                             className="bg-emerald-500 h-full rounded-full" 
@@ -368,7 +421,7 @@ export const PublicInvestment: React.FC = () => {
               <button onClick={() => setShowModal(false)} className="text-white hover:text-slate-200 text-xs font-bold">Đóng</button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form noValidate onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-1">
                   <label className="block text-slate-500 font-bold mb-1">Mã dự án (Chuẩn)</label>
@@ -422,6 +475,8 @@ export const PublicInvestment: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Dự toán trung hạn (đ)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     value={plannedCapital}
                     onChange={(e) => setPlannedCapital(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2"
@@ -431,6 +486,8 @@ export const PublicInvestment: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Vốn phân bổ năm (đ)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     value={allocatedCapital}
                     onChange={(e) => setAllocatedCapital(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-700"
@@ -440,6 +497,8 @@ export const PublicInvestment: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Đã giải ngân (đ)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     value={disbursedAmount}
                     onChange={(e) => setDisbursedAmount(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-emerald-700"
@@ -462,6 +521,8 @@ export const PublicInvestment: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Giá trị khối lượng nghiệm thu</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     value={acceptanceValue}
                     onChange={(e) => setAcceptanceValue(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-700"

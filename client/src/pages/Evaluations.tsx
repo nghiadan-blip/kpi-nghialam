@@ -129,7 +129,7 @@ export const Evaluations: React.FC = () => {
   }, [selectedMonth, selectedDept, selectedStatus]);
 
   const handleDeleteEvaluation = async (ev: Evaluation) => {
-    if (!window.confirm(`Bạn có chắc muốn xóa phiếu đánh giá tháng ${ev.month}?`)) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
 
     try {
       await evaluationsApi.deleteEvaluation(ev.id);

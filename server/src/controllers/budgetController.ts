@@ -123,8 +123,31 @@ export async function createRevenue(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const planned = Number(planned_amount) || 0;
-    const collected = Number(collected_amount) || 0;
+    if (planned_amount === undefined || planned_amount === null || planned_amount === '') {
+      res.status(400).json({ message: 'Số tiền kế hoạch không được bỏ trống.' });
+      return;
+    }
+    if (collected_amount === undefined || collected_amount === null || collected_amount === '') {
+      res.status(400).json({ message: 'Số tiền thực thu không được bỏ trống.' });
+      return;
+    }
+
+    const planned = Number(planned_amount);
+    const collected = Number(collected_amount);
+
+    if (isNaN(planned) || !isFinite(planned) || planned < 0) {
+      res.status(400).json({ message: 'Số tiền kế hoạch phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(collected) || !isFinite(collected) || collected < 0) {
+      res.status(400).json({ message: 'Số tiền thực thu phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (collected > planned && (!note || !note.trim())) {
+      res.status(400).json({ message: 'Số thực thu không được lớn hơn số kế hoạch trừ khi có ghi chú/lý do điều chỉnh được phê duyệt.' });
+      return;
+    }
+
     const remaining = Math.max(0, planned - collected);
     let status = 'planned';
     if (collected > 0) {
@@ -205,6 +228,21 @@ export async function updateRevenue(req: AuthRequest, res: Response): Promise<vo
 
     const planned = planned_amount !== undefined ? Number(planned_amount) : revenue.planned_amount;
     const collected = collected_amount !== undefined ? Number(collected_amount) : revenue.collected_amount;
+
+    if (isNaN(planned) || !isFinite(planned) || planned < 0) {
+      res.status(400).json({ message: 'Số tiền kế hoạch phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(collected) || !isFinite(collected) || collected < 0) {
+      res.status(400).json({ message: 'Số tiền thực thu phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    const finalNote = note !== undefined ? (note ? note.trim() : null) : revenue.note;
+    if (collected > planned && (!finalNote || !finalNote.trim())) {
+      res.status(400).json({ message: 'Số thực thu không được lớn hơn số kế hoạch trừ khi có ghi chú/lý do điều chỉnh được phê duyệt.' });
+      return;
+    }
+
     const remaining = Math.max(0, planned - collected);
 
     let status = reqStatus;
@@ -273,6 +311,11 @@ export async function deleteRevenue(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    if (revenue.status === 'completed' || revenue.status === 'partial') {
+      res.status(400).json({ message: 'Không được phép xóa nguồn thu đã thực hiện thu (hoàn thành hoặc thu một phần).' });
+      return;
+    }
+
     const lockCheck = await checkPeriodLockForRecord('budget_revenue_items', Number(id), req.body.reason || req.query.reason, user.role);
     if (lockCheck.locked) {
       res.status(400).json({ message: lockCheck.message });
@@ -326,9 +369,36 @@ export async function createExpenditure(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    const est = Number(estimated_amount) || 0;
-    const app = Number(approved_amount) || 0;
-    const paid = Number(paid_amount) || 0;
+    if (estimated_amount === undefined || estimated_amount === null || estimated_amount === '') {
+      res.status(400).json({ message: 'Số dự toán đề xuất không được bỏ trống.' });
+      return;
+    }
+
+    const est = Number(estimated_amount);
+    const app = approved_amount !== undefined && approved_amount !== null && approved_amount !== '' ? Number(approved_amount) : 0;
+    const paid = paid_amount !== undefined && paid_amount !== null && paid_amount !== '' ? Number(paid_amount) : 0;
+
+    if (isNaN(est) || !isFinite(est) || est < 0) {
+      res.status(400).json({ message: 'Số dự toán đề xuất phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(app) || !isFinite(app) || app < 0) {
+      res.status(400).json({ message: 'Số phê duyệt phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(paid) || !isFinite(paid) || paid < 0) {
+      res.status(400).json({ message: 'Số thực tế đã chi phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (app > est && (!note || !note.trim())) {
+      res.status(400).json({ message: 'Số tiền duyệt chi không được lớn hơn số dự toán đề xuất trừ khi có ghi chú/lý do bổ sung dự toán.' });
+      return;
+    }
+    if (paid > app) {
+      res.status(400).json({ message: 'Số thực tế đã chi không được lớn hơn số tiền được phê duyệt.' });
+      return;
+    }
+
     const remaining = Math.max(0, app - paid);
 
     let status = 'submitted'; // Mặc định trình duyệt chi
@@ -408,6 +478,29 @@ export async function updateExpenditure(req: AuthRequest, res: Response): Promis
     const est = estimated_amount !== undefined ? Number(estimated_amount) : exp.estimated_amount;
     const app = approved_amount !== undefined ? Number(approved_amount) : exp.approved_amount;
     const paid = paid_amount !== undefined ? Number(paid_amount) : exp.paid_amount;
+
+    if (isNaN(est) || !isFinite(est) || est < 0) {
+      res.status(400).json({ message: 'Số dự toán đề xuất phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(app) || !isFinite(app) || app < 0) {
+      res.status(400).json({ message: 'Số phê duyệt phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(paid) || !isFinite(paid) || paid < 0) {
+      res.status(400).json({ message: 'Số thực tế đã chi phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    const finalNote = note !== undefined ? (note ? note.trim() : null) : exp.note;
+    if (app > est && (!finalNote || !finalNote.trim())) {
+      res.status(400).json({ message: 'Số tiền duyệt chi không được lớn hơn số dự toán đề xuất trừ khi có ghi chú/lý do bổ sung dự toán.' });
+      return;
+    }
+    if (paid > app) {
+      res.status(400).json({ message: 'Số thực tế đã chi không được lớn hơn số tiền được phê duyệt.' });
+      return;
+    }
+
     const remaining = Math.max(0, app - paid);
 
     let status = reqStatus || exp.status;
@@ -469,6 +562,11 @@ export async function deleteExpenditure(req: AuthRequest, res: Response): Promis
     const exp = await db('budget_expenditure_items').where('id', Number(id)).first();
     if (!exp) {
       res.status(404).json({ message: 'Không tìm thấy khoản chi.' });
+      return;
+    }
+
+    if (exp.status === 'approved' || exp.status === 'paid') {
+      res.status(400).json({ message: 'Không được phép xóa khoản chi đã phê duyệt hoặc đã chi trả.' });
       return;
     }
 

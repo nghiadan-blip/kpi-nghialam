@@ -563,8 +563,12 @@ export const budgetApi = {
     const res = await api.delete<{ message: string }>('/budget/expenditure/' + id);
     return res.data;
   },
-  exportExcel: (year?: number) => {
-    window.open(`/api/budget/export?year=${year || new Date().getFullYear()}`, '_blank');
+  exportExcel: async (year?: number) => {
+    const res = await api.get('/budget/export', {
+      params: { year: year || new Date().getFullYear() },
+      responseType: 'blob'
+    });
+    return res;
   }
 };
 
@@ -586,8 +590,9 @@ export const publicInvestmentApi = {
     const res = await api.delete<{ message: string }>('/public-investment/' + id);
     return res.data;
   },
-  exportExcel: () => {
-    window.open('/api/public-investment/export', '_blank');
+  exportExcel: async () => {
+    const res = await api.get('/public-investment/export', { responseType: 'blob' });
+    return res;
   }
 };
 
@@ -617,8 +622,9 @@ export const landCertificateApi = {
     const res = await api.post<{ message: string }>('/land-certificates/kh965', data);
     return res.data;
   },
-  exportExcel: () => {
-    window.open('/api/land-certificates/export', '_blank');
+  exportExcel: async () => {
+    const res = await api.get('/land-certificates/export', { responseType: 'blob' });
+    return res;
   }
 };
 
@@ -640,8 +646,9 @@ export const officeApi = {
     const res = await api.delete<{ message: string }>('/office/' + id);
     return res.data;
   },
-  exportExcel: () => {
-    window.open('/api/office/export', '_blank');
+  exportExcel: async () => {
+    const res = await api.get('/office/export', { responseType: 'blob' });
+    return res;
   }
 };
 

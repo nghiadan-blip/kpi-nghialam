@@ -83,8 +83,50 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    const allocated = Number(allocated_capital) || 0;
-    const disbursed = Number(disbursed_amount) || 0;
+    if (planned_capital === undefined || planned_capital === null || planned_capital === '') {
+      res.status(400).json({ message: 'Vốn kế hoạch không được bỏ trống.' });
+      return;
+    }
+    if (allocated_capital === undefined || allocated_capital === null || allocated_capital === '') {
+      res.status(400).json({ message: 'Vốn phân bổ không được bỏ trống.' });
+      return;
+    }
+    if (disbursed_amount === undefined || disbursed_amount === null || disbursed_amount === '') {
+      res.status(400).json({ message: 'Số tiền đã giải ngân không được bỏ trống.' });
+      return;
+    }
+    if (acceptance_value === undefined || acceptance_value === null || acceptance_value === '') {
+      res.status(400).json({ message: 'Giá trị nghiệm thu không được bỏ trống.' });
+      return;
+    }
+
+    const planned = Number(planned_capital);
+    const allocated = Number(allocated_capital);
+    const disbursed = Number(disbursed_amount);
+    const acceptance = Number(acceptance_value);
+
+    if (isNaN(planned) || !isFinite(planned) || planned < 0) {
+      res.status(400).json({ message: 'Vốn kế hoạch phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(allocated) || !isFinite(allocated) || allocated < 0) {
+      res.status(400).json({ message: 'Vốn phân bổ phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(disbursed) || !isFinite(disbursed) || disbursed < 0) {
+      res.status(400).json({ message: 'Số tiền đã giải ngân phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(acceptance) || !isFinite(acceptance) || acceptance < 0) {
+      res.status(400).json({ message: 'Giá trị nghiệm thu phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+
+    if (disbursed > allocated) {
+      res.status(400).json({ message: 'Số tiền đã giải ngân không được lớn hơn vốn phân bổ (tỷ lệ giải ngân không vượt 100%).' });
+      return;
+    }
+
     const rate = allocated > 0 ? Number(((disbursed / allocated) * 100).toFixed(2)) : 0.0;
 
     const [newId] = await db('public_investment_projects').insert({
@@ -166,8 +208,33 @@ export async function updateProject(req: AuthRequest, res: Response): Promise<vo
       status
     } = req.body;
 
+    const planned = planned_capital !== undefined ? Number(planned_capital) : project.planned_capital;
     const allocated = allocated_capital !== undefined ? Number(allocated_capital) : project.allocated_capital;
     const disbursed = disbursed_amount !== undefined ? Number(disbursed_amount) : project.disbursed_amount;
+    const acceptance = acceptance_value !== undefined ? Number(acceptance_value) : project.acceptance_value;
+
+    if (isNaN(planned) || !isFinite(planned) || planned < 0) {
+      res.status(400).json({ message: 'Vốn kế hoạch phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(allocated) || !isFinite(allocated) || allocated < 0) {
+      res.status(400).json({ message: 'Vốn phân bổ phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(disbursed) || !isFinite(disbursed) || disbursed < 0) {
+      res.status(400).json({ message: 'Số tiền đã giải ngân phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+    if (isNaN(acceptance) || !isFinite(acceptance) || acceptance < 0) {
+      res.status(400).json({ message: 'Giá trị nghiệm thu phải là số hợp lệ và không được là số âm.' });
+      return;
+    }
+
+    if (disbursed > allocated) {
+      res.status(400).json({ message: 'Số tiền đã giải ngân không được lớn hơn vốn phân bổ (tỷ lệ giải ngân không vượt 100%).' });
+      return;
+    }
+
     const rate = allocated > 0 ? Number(((disbursed / allocated) * 100).toFixed(2)) : 0.0;
 
     await db('public_investment_projects')
@@ -226,6 +293,11 @@ export async function deleteProject(req: AuthRequest, res: Response): Promise<vo
     const project = await db('public_investment_projects').where('id', Number(id)).first();
     if (!project) {
       res.status(404).json({ message: 'Không tìm thấy công trình.' });
+      return;
+    }
+
+    if (project.disbursed_amount > 0 || project.status === 'completed') {
+      res.status(400).json({ message: 'Không thể xóa công trình đầu tư công đã thực hiện giải ngân vốn.' });
       return;
     }
 

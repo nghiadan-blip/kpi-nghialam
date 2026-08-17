@@ -21,6 +21,7 @@ export const OfficeManagement: React.FC = () => {
   const [requests, setRequests] = useState<OfficeRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle');
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -69,7 +70,7 @@ export const OfficeManagement: React.FC = () => {
     setRequestType('vehicle');
     setTitle('');
     setDescription('');
-    setStartTime(new Date().toISOString().slice(0, 16));
+    setStartTime('');
     setEndTime('');
     setEstimatedCost(0);
     setApprovedCost(0);
@@ -100,6 +101,22 @@ export const OfficeManagement: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (startTime && endTime) {
+      if (new Date(endTime) <= new Date(startTime)) {
+        alert('Thời gian kết thúc phải sau thời gian bắt đầu.');
+        return;
+      }
+    }
+    if (estimatedCost < 0) {
+      alert('Kinh phí dự kiến không được là số âm.');
+      return;
+    }
+    if (approvedCost < 0) {
+      alert('Phê duyệt chi phí không được là số âm.');
+      return;
+    }
+
     try {
       const payload = {
         request_type: requestType,
@@ -128,8 +145,30 @@ export const OfficeManagement: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    setExportStatus('loading');
+    try {
+      const res = await officeApi.exportExcel();
+      const blob = new Blob([res.data], { type: res.headers['content-type'] as string });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Bao_cao_hau_can_van_phong.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setExportStatus('success');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    } catch (err) {
+      console.error(err);
+      setExportStatus('failed');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    }
+  };
+
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa đề xuất này?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
     try {
       await officeApi.deleteRequest(id);
       loadData();
@@ -168,11 +207,17 @@ export const OfficeManagement: React.FC = () => {
 
         <div className="flex items-center space-x-2 mt-4 md:mt-0">
           <button
-            onClick={() => officeApi.exportExcel()}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition"
+            onClick={handleExport}
+            disabled={exportStatus === 'loading'}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Xuất báo cáo văn phòng</span>
+            <span>
+              {exportStatus === 'idle' && 'Xuất báo cáo văn phòng'}
+              {exportStatus === 'loading' && 'Đang xuất...'}
+              {exportStatus === 'success' && 'Thành công ✓'}
+              {exportStatus === 'failed' && 'Thất bại ✗'}
+            </span>
           </button>
           <button
             onClick={openAddModal}
@@ -326,7 +371,7 @@ export const OfficeManagement: React.FC = () => {
               <button onClick={() => setShowModal(false)} className="text-white hover:text-slate-200 text-xs font-bold">Đóng</button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form noValidate onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               <div>
                 <label className="block text-slate-500 font-bold mb-1">Loại hậu cần hành chính</label>
                 <select
@@ -392,6 +437,8 @@ export const OfficeManagement: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Kinh phí dự kiến (đ)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     value={estimatedCost}
                     onChange={(e) => setEstimatedCost(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 text-slate-700 font-bold"
@@ -401,6 +448,8 @@ export const OfficeManagement: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Phê duyệt chi phí (đ)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1000"
                     disabled={!hasRole(['LEADERSHIP', 'ADMIN', 'DEPARTMENT_HEAD'])}
                     value={approvedCost}
                     onChange={(e) => setApprovedCost(Number(e.target.value))}

@@ -77,6 +77,19 @@ export async function createRequest(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    if (start_time && end_time) {
+      const start = new Date(start_time);
+      const end = new Date(end_time);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+        res.status(400).json({ message: 'Thời gian bắt đầu hoặc kết thúc không hợp lệ.' });
+        return;
+      }
+      if (end <= start) {
+        res.status(400).json({ message: 'Thời gian kết thúc phải sau thời gian bắt đầu.' });
+        return;
+      }
+    }
+
     const [newId] = await db('office_requests').insert({
       request_type,
       title: title.trim(),
@@ -207,6 +220,11 @@ export async function deleteRequest(req: AuthRequest, res: Response): Promise<vo
     const request = await db('office_requests').where('id', Number(id)).first();
     if (!request) {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu.' });
+      return;
+    }
+
+    if (['approved', 'settled'].includes(request.status)) {
+      res.status(400).json({ message: 'Không thể xóa yêu cầu văn phòng đã được duyệt hoặc đã quyết toán.' });
       return;
     }
 

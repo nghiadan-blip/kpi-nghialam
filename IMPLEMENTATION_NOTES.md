@@ -194,3 +194,30 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 7. **Đóng gói dự án (Vite & TSC build)**:
    - Build thành công toàn bộ ứng dụng (Exit code 0).
    - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
+
+## 9. Nhật ký Triển khai UAT Batch 2: Validation & Data Safety (17/08/2026)
+
+- **Nhánh làm việc chính (Branch)**: `fix/batch-2-validation-data-safety`
+- **Nội dung hoàn thành**:
+
+### 9.1. Khóa dữ liệu tài chính & đầu tư công ở Backend & Frontend:
+- **Ngân sách thu**: Validate `planned_amount >= 0`, `collected_amount >= 0`. Chặn `collected_amount > planned_amount` trừ khi có ghi chú/lý do điều chỉnh cụ thể.
+- **Ngân sách chi**: Validate `estimated_amount >= 0`, `approved_amount >= 0`, `paid_amount >= 0`. Chặn `approved_amount > estimated_amount` nếu không có ghi chú. Chặn `paid_amount > approved_amount`.
+- **Đầu tư công**: Validate `planned_capital >= 0`, `allocated_capital >= 0`, `disbursed_amount >= 0`, `acceptance_value >= 0`. Chặn `disbursed_amount > allocated_capital`. Tỷ lệ giải ngân (`disbursement_rate`) tự động giới hạn tối đa 100%. Hiển thị cảnh báo dữ liệu bất thường (⚠️) nếu `disbursed_amount > allocated_capital`.
+
+### 9.2. Chuẩn hóa Ngày giờ & Trạng thái:
+- **Lịch văn phòng**: Kiểm tra ràng buộc `end_time > start_time` khi đăng ký mới đề xuất xe, phòng họp, tiếp khách.
+- **Khởi tạo form ngày**: Loại bỏ khởi tạo mặc định bằng ngày hiện tại (`new Date()`) trong các form thêm mới của Đất đai, Đầu tư công, Văn phòng, Nhiệm vụ và Ngân sách để đảm bảo giữ đúng giá trị người dùng nhập (hoặc để trống `null` nếu chưa xác định).
+- **Trạng thái Đất đai**: Chặn gán trạng thái "Chậm giải quyết" (`delayed`) cho hồ sơ mới hoặc khi chưa quá hạn hoàn thành (`now <= deadline`).
+
+### 9.3. An toàn thao tác xóa:
+- **Frontend**: Đồng bộ hộp thoại xác nhận tiếng Việt: *"Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác."* tại tất cả nút xóa dữ liệu.
+- **Backend**: Tích hợp các ràng buộc an toàn khi xóa: chặn xóa nguồn thu đã thực hiện thu, khoản chi đã duyệt/chi trả, dự án đầu tư công đã giải ngân, hồ sơ đất đai đã ra sổ, yêu cầu văn phòng đã duyệt/quyết toán và nhiệm vụ đã hoàn thành.
+
+### 9.4. Đồng bộ xuất báo cáo Excel:
+- Chuyển đổi toàn bộ nút xuất Excel (Ngân sách, Đầu tư công, Đất đai, Văn phòng) sang cơ chế tải blob (`responseType: 'blob'`) thay cho `window.open`, đồng thời bổ sung chỉ báo trạng thái tải (Đang xuất... / Thành công / Thất bại) trực tiếp trên nút bấm.
+
+### 9.5. Kết quả kiểm thử & Build:
+- Viết bộ kiểm thử validation mới `test_batch2_validation.ts` kiểm thử toàn bộ 11 biên điều kiện và an toàn dữ liệu: **11/11 bài test PASS**.
+- Chạy lại bộ kiểm thử toàn diện E2E `test_e2e_full.ts`: **23/23 bài test PASS**.
+- Build client và server biên dịch thành công 100%.

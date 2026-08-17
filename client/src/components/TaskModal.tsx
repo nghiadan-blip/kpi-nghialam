@@ -165,16 +165,12 @@ export const TaskModal: React.FC<Props> = ({
         related_office_request_id: task.related_office_request_id ? String(task.related_office_request_id) : '',
       });
     } else {
-      const defaultDate = new Date();
-      defaultDate.setDate(defaultDate.getDate() + 3);
-      defaultDate.setHours(17, 0, 0, 0);
-
       setFormData({
         title: '',
         description: '',
         assigned_to: users[0]?.id || '',
         product_catalog_id: '',
-        deadline: defaultDate.toISOString().slice(0, 16),
+        deadline: '',
         weight: 1.0,
         status: 'PENDING',
         assigned_quantity: 1.0,
@@ -657,6 +653,7 @@ export const TaskModal: React.FC<Props> = ({
               </label>
               <input
                 type="number"
+                min="0.01"
                 step="0.5"
                 required
                 value={formData.assigned_quantity}

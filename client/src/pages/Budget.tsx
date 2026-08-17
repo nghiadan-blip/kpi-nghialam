@@ -82,7 +82,7 @@ export const Budget: React.FC = () => {
     setPayerOrUnit('');
     setPlannedAmount(0);
     setCollectedAmount(0);
-    setDueDate(new Date().toISOString().slice(0, 10));
+    setDueDate('');
     setResponsibleUserId(6);
     setNote('');
 
@@ -124,6 +124,51 @@ export const Budget: React.FC = () => {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (modalType === 'revenue') {
+      if (!sourceName.trim()) {
+        alert('Tên nguồn thu chi tiết không được bỏ trống.');
+        return;
+      }
+      if (plannedAmount < 0) {
+        alert('Số tiền dự toán kế hoạch không được là số âm.');
+        return;
+      }
+      if (collectedAmount < 0) {
+        alert('Số tiền thực tế đã thu không được là số âm.');
+        return;
+      }
+      if (collectedAmount > plannedAmount && !note.trim()) {
+        alert('Số thực thu không được lớn hơn số kế hoạch trừ khi có ghi chú/lý do điều chỉnh được phê duyệt.');
+        return;
+      }
+    } else {
+      if (!expenseName.trim()) {
+        alert('Nội dung đề xuất chi chi tiết không được bỏ trống.');
+        return;
+      }
+      if (estimatedAmount < 0) {
+        alert('Số tiền đề xuất không được là số âm.');
+        return;
+      }
+      if (approvedAmount < 0) {
+        alert('Số tiền phê duyệt không được là số âm.');
+        return;
+      }
+      if (paidAmount < 0) {
+        alert('Số thực tế đã chi không được là số âm.');
+        return;
+      }
+      if (approvedAmount > estimatedAmount && !note.trim()) {
+        alert('Số tiền duyệt chi không được lớn hơn số dự toán đề xuất trừ khi có ghi chú/lý do bổ sung dự toán.');
+        return;
+      }
+      if (paidAmount > approvedAmount) {
+        alert('Số thực tế đã chi không được lớn hơn số tiền được phê duyệt.');
+        return;
+      }
+    }
+
     try {
       if (modalType === 'revenue') {
         const payload = {
@@ -170,7 +215,7 @@ export const Budget: React.FC = () => {
   };
 
   const handleDelete = async (type: 'revenue' | 'expenditure', id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa mục tài chính này?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
     try {
       if (type === 'revenue') {
         await budgetApi.deleteRevenue(id);
@@ -183,8 +228,28 @@ export const Budget: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
-    budgetApi.exportExcel(year);
+  const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle');
+
+  const handleExport = async () => {
+    setExportStatus('loading');
+    try {
+      const res = await budgetApi.exportExcel(year);
+      const blob = new Blob([res.data], { type: res.headers['content-type'] as string });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Bao_cao_ngan_sach_${year}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setExportStatus('success');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    } catch (err) {
+      console.error(err);
+      setExportStatus('failed');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    }
   };
 
   const formatVND = (num: number) => {
@@ -217,10 +282,16 @@ export const Budget: React.FC = () => {
 
           <button
             onClick={handleExport}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition"
+            disabled={exportStatus === 'loading'}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Xuất Excel</span>
+            <span>
+              {exportStatus === 'idle' && 'Xuất Excel'}
+              {exportStatus === 'loading' && 'Đang xuất...'}
+              {exportStatus === 'success' && 'Thành công ✓'}
+              {exportStatus === 'failed' && 'Thất bại ✗'}
+            </span>
           </button>
         </div>
       </div>
@@ -510,7 +581,7 @@ export const Budget: React.FC = () => {
               <button onClick={() => setShowModal(false)} className="text-white hover:text-slate-200 text-xs font-bold">Đóng</button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form noValidate onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               {modalType === 'revenue' ? (
                 <>
                   {/* Revenue Fields */}
@@ -557,6 +628,8 @@ export const Budget: React.FC = () => {
                       <label className="block text-slate-500 font-bold mb-1">Số tiền dự toán kế hoạch (VND)</label>
                       <input
                         type="number"
+                        min="0"
+                        step="1000"
                         value={plannedAmount}
                         onChange={(e) => setPlannedAmount(Number(e.target.value))}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold"
@@ -566,6 +639,8 @@ export const Budget: React.FC = () => {
                       <label className="block text-slate-500 font-bold mb-1">Số tiền thực tế đã thu (VND)</label>
                       <input
                         type="number"
+                        min="0"
+                        step="1000"
                         value={collectedAmount}
                         onChange={(e) => setCollectedAmount(Number(e.target.value))}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-emerald-700"
@@ -655,6 +730,8 @@ export const Budget: React.FC = () => {
                       <label className="block text-slate-500 font-bold mb-1">Đề xuất (VND)</label>
                       <input
                         type="number"
+                        min="0"
+                        step="1000"
                         value={estimatedAmount}
                         onChange={(e) => setEstimatedAmount(Number(e.target.value))}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2"
@@ -664,6 +741,8 @@ export const Budget: React.FC = () => {
                       <label className="block text-slate-500 font-bold mb-1">Duyệt chi (VND)</label>
                       <input
                         type="number"
+                        min="0"
+                        step="1000"
                         disabled={!hasRole(['LEADERSHIP', 'ADMIN'])}
                         value={approvedAmount}
                         onChange={(e) => setApprovedAmount(Number(e.target.value))}
@@ -674,6 +753,8 @@ export const Budget: React.FC = () => {
                       <label className="block text-slate-500 font-bold mb-1">Thực chi (VND)</label>
                       <input
                         type="number"
+                        min="0"
+                        step="1000"
                         value={paidAmount}
                         onChange={(e) => setPaidAmount(Number(e.target.value))}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-blue-700"

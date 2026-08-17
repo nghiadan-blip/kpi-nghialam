@@ -19,6 +19,7 @@ export const LandCertificates: React.FC = () => {
   const [kh965List, setKH965List] = useState<KH965Progress[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<'idle' | 'loading' | 'success' | 'failed'>('idle');
 
   // Filters
   const [groupFilter, setGroupFilter] = useState<string>('');
@@ -94,7 +95,7 @@ export const LandCertificates: React.FC = () => {
     setLegalBasis('other');
     setCurrentStep('Kiểm tra hồ sơ gốc');
     setCaseStatus('received');
-    setDeadline(new Date().toISOString().slice(0, 10));
+    setDeadline('');
     setResponsibleUserId(6);
     setDelayReason('');
   };
@@ -135,6 +136,14 @@ export const LandCertificates: React.FC = () => {
 
   const handleSaveCase = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (caseStatus === 'delayed') {
+      if (!deadline || new Date(deadline) >= new Date()) {
+        alert('Không thể gán trạng thái Chậm giải quyết khi chưa quá hạn.');
+        return;
+      }
+    }
+
     try {
       const payload = {
         case_code: caseCode,
@@ -164,6 +173,12 @@ export const LandCertificates: React.FC = () => {
 
   const handleSaveKH965 = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (totalPlots < 0 || reviewedPlots < 0 || classifiedPlots < 0 || eligibleCases < 0 || needSupplement < 0 || complexCases < 0 || greenCount < 0 || yellowCount < 0 || redCount < 0) {
+      alert('Số lượng thửa đất hoặc hồ sơ không được là số âm.');
+      return;
+    }
+
     try {
       const payload = {
         village: khVillage,
@@ -188,8 +203,30 @@ export const LandCertificates: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    setExportStatus('loading');
+    try {
+      const res = await landCertificateApi.exportExcel();
+      const blob = new Blob([res.data], { type: res.headers['content-type'] as string });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Bao_cao_dia_chinh_dat_dai.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setExportStatus('success');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    } catch (err) {
+      console.error(err);
+      setExportStatus('failed');
+      setTimeout(() => setExportStatus('idle'), 3000);
+    }
+  };
+
   const handleDeleteCase = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn xóa hồ sơ đất đai này?')) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
     try {
       await landCertificateApi.deleteCase(id);
       loadData();
@@ -214,11 +251,17 @@ export const LandCertificates: React.FC = () => {
 
         <div className="flex items-center space-x-2 mt-4 md:mt-0">
           <button
-            onClick={() => landCertificateApi.exportExcel()}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition"
+            onClick={handleExport}
+            disabled={exportStatus === 'loading'}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center space-x-1.5 shadow-xs transition disabled:opacity-50"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Xuất Excel</span>
+            <span>
+              {exportStatus === 'idle' && 'Xuất Excel'}
+              {exportStatus === 'loading' && 'Đang xuất...'}
+              {exportStatus === 'success' && 'Thành công ✓'}
+              {exportStatus === 'failed' && 'Thất bại ✗'}
+            </span>
           </button>
 
           {activeTab === 'cases' && hasRole(['ADMIN', 'LEADERSHIP', 'DEPARTMENT_HEAD']) && (
@@ -498,7 +541,7 @@ export const LandCertificates: React.FC = () => {
               <button onClick={() => setShowCaseModal(false)} className="text-white hover:text-slate-200 text-xs font-bold">Đóng</button>
             </div>
 
-            <form onSubmit={handleSaveCase} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form noValidate onSubmit={handleSaveCase} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-500 font-bold mb-1">Mã hồ sơ hành chính</label>
@@ -674,12 +717,14 @@ export const LandCertificates: React.FC = () => {
               <button onClick={() => setShowKH965Modal(false)} className="text-white hover:text-slate-200 text-xs font-bold">Đóng</button>
             </div>
 
-            <form onSubmit={handleSaveKH965} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+            <form noValidate onSubmit={handleSaveKH965} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
               <div className="grid grid-cols-3 gap-2">
                 <div>
                   <label className="block text-slate-500 font-bold mb-1">Tổng số thửa đất (xóm)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={totalPlots}
                     onChange={(e) => setTotalPlots(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-700"
@@ -689,6 +734,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Đã rà soát thực tế</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={reviewedPlots}
                     onChange={(e) => setReviewedPlots(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-700"
@@ -698,6 +745,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Đã phân loại pháp lý</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={classifiedPlots}
                     onChange={(e) => setClassifiedPlots(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-slate-700"
@@ -710,6 +759,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Đủ đk cấp sổ (Đất dễ)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={eligibleCases}
                     onChange={(e) => setEligibleCases(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-emerald-700"
@@ -719,6 +770,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Cần bổ sung hồ sơ</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={needSupplement}
                     onChange={(e) => setNeedSupplement(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-amber-700"
@@ -728,6 +781,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Đất khó (Tranh chấp)</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={complexCases}
                     onChange={(e) => setComplexCases(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-rose-700"
@@ -740,6 +795,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Hồ sơ luồng Xanh</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={greenCount}
                     onChange={(e) => setGreenCount(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-emerald-700 bg-emerald-50"
@@ -749,6 +806,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Hồ sơ luồng Vàng</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={yellowCount}
                     onChange={(e) => setYellowCount(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-amber-700 bg-amber-50"
@@ -758,6 +817,8 @@ export const LandCertificates: React.FC = () => {
                   <label className="block text-slate-500 font-bold mb-1">Hồ sơ luồng Đỏ</label>
                   <input
                     type="number"
+                    min="0"
+                    step="1"
                     value={redCount}
                     onChange={(e) => setRedCount(Number(e.target.value))}
                     className="w-full border border-slate-300 rounded-lg px-3 py-2 font-bold text-rose-700 bg-rose-50"

@@ -559,6 +559,11 @@ export async function deleteTask(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    if (task.status === 'COMPLETED') {
+      res.status(400).json({ message: 'Không thể xóa nhiệm vụ đã hoàn thành.' });
+      return;
+    }
+
     const canDelete =
       user.role === 'ADMIN' ||
       user.role === 'LEADERSHIP' ||

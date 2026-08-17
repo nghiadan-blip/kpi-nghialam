@@ -82,6 +82,15 @@ export async function createCase(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    let finalStatus = status || 'received';
+    if (finalStatus === 'delayed') {
+      const now = new Date();
+      if (!deadline || new Date(deadline) >= now) {
+        res.status(400).json({ message: 'Hồ sơ mới hoặc chưa đến hạn không thể gán trạng thái Chậm giải quyết.' });
+        return;
+      }
+    }
+
     const [newId] = await db('land_certificate_cases').insert({
       case_code: case_code.trim().toUpperCase(),
       citizen_name: citizen_name.trim(),
@@ -90,7 +99,7 @@ export async function createCase(req: AuthRequest, res: Response): Promise<void>
       case_group: case_group || 'Xanh',
       legal_basis_group: legal_basis_group || 'other',
       current_step: current_step ? current_step.trim() : 'Tiếp nhận hồ sơ',
-      status: status || 'received',
+      status: finalStatus,
       deadline: deadline || null,
       responsible_user_id: responsible_user_id ? Number(responsible_user_id) : null,
       responsible_department_id: 3, // Phòng địa chính mặc định
@@ -150,6 +159,17 @@ export async function updateCase(req: AuthRequest, res: Response): Promise<void>
       evidence_ref
     } = req.body;
 
+    const finalStatus = status !== undefined ? status : landCase.status;
+    const finalDeadline = deadline !== undefined ? (deadline || null) : landCase.deadline;
+
+    if (finalStatus === 'delayed') {
+      const now = new Date();
+      if (!finalDeadline || new Date(finalDeadline) >= now) {
+        res.status(400).json({ message: 'Không thể gán trạng thái Chậm giải quyết khi chưa quá hạn.' });
+        return;
+      }
+    }
+
     await db('land_certificate_cases')
       .where('id', Number(id))
       .update({
@@ -160,8 +180,8 @@ export async function updateCase(req: AuthRequest, res: Response): Promise<void>
         case_group: case_group !== undefined ? case_group : landCase.case_group,
         legal_basis_group: legal_basis_group !== undefined ? legal_basis_group : landCase.legal_basis_group,
         current_step: current_step !== undefined ? current_step.trim() : landCase.current_step,
-        status: status !== undefined ? status : landCase.status,
-        deadline: deadline !== undefined ? (deadline || null) : landCase.deadline,
+        status: finalStatus,
+        deadline: finalDeadline,
         responsible_user_id: responsible_user_id !== undefined ? (responsible_user_id ? Number(responsible_user_id) : null) : landCase.responsible_user_id,
         delay_reason: delay_reason !== undefined ? (delay_reason ? delay_reason.trim() : null) : landCase.delay_reason,
         evidence_ref: evidence_ref !== undefined ? (evidence_ref ? evidence_ref.trim() : null) : landCase.evidence_ref,
@@ -200,6 +220,11 @@ export async function deleteCase(req: AuthRequest, res: Response): Promise<void>
     const landCase = await db('land_certificate_cases').where('id', Number(id)).first();
     if (!landCase) {
       res.status(404).json({ message: 'Không tìm thấy hồ sơ.' });
+      return;
+    }
+
+    if (landCase.status === 'issued') {
+      res.status(400).json({ message: 'Không thể xóa hồ sơ đất đai đã được phê duyệt cấp giấy (Đã ra sổ).' });
       return;
     }
 

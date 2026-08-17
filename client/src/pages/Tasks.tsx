@@ -113,7 +113,7 @@ export const Tasks: React.FC = () => {
   };
 
   const handleDeleteTask = async (task: Task) => {
-    if (!window.confirm(`Bạn có chắc chắn muốn xóa nhiệm vụ "${task.title}"?`)) return;
+    if (!window.confirm('Bạn có chắc chắn muốn xóa? Hành động này không thể hoàn tác.')) return;
 
     try {
       await tasksApi.deleteTask(task.id);
