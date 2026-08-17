@@ -8,7 +8,11 @@ export const INVESTMENT_GROUPS = ['A', 'B', 'C', 'Chưa phân loại'] as const;
 export type InvestmentGroup = typeof INVESTMENT_GROUPS[number];
 
 /**
- * Ngưỡng cảnh báo chênh lệch Tiến độ & Giải ngân (Configurable via ENV or Query)
+ * Ngưỡng cảnh báo chênh lệch giữa tỷ lệ giải ngân và tiến độ thi công (Progress Gap)
+ * LƯU Ý BẮT BUỘC VỀ MẶT PHÁP LÝ & QUẢN TRỊ:
+ * Đây là CHỈ SỐ CẢNH BẢO QUẢN TRỊ RỦI RO NỘI BỘ nhằm hỗ trợ Lãnh đạo UBND xã chỉ đạo điều hành kịp thời,
+ * TUYỆT ĐỐI KHÔNG PHẢI KẾT LUẬN VI PHẠM PHÁP LUẬT HAY CHẾ TÀI XỬ PHẠT BẮT BUỘC.
+ * Các ngưỡng này có thể cấu hình linh hoạt theo từng dự án hoặc giai đoạn thi công.
  */
 export const PROGRESS_GAP_WARNING_THRESHOLD = Number(process.env.PROGRESS_GAP_WARNING_THRESHOLD || 15);
 export const PROGRESS_GAP_DANGER_THRESHOLD = Number(process.env.PROGRESS_GAP_DANGER_THRESHOLD || 30);
@@ -87,20 +91,24 @@ export const DOCUMENT_TYPES = [
 export const SETTLEMENT_CUTOFF_DATE_2026 = '2026-07-01';
 
 /**
- * Hàm xác định căn cứ pháp lý & biểu mẫu quyết toán áp dụng theo ngày nộp hồ sơ
+ * Hàm xác định căn cứ pháp lý & biểu mẫu quyết toán áp dụng theo ngày nộp hồ sơ.
+ * - Hồ sơ nộp từ ngày 01/7/2026: Áp dụng Nghị định số 193/2026/NĐ-CP và Thông tư số 73/2026/TT-BTC.
+ * - Hồ sơ nộp trước ngày 01/7/2026: Áp dụng quy định chuyển tiếp có hiệu lực tại thời điểm nộp (đánh dấu LEGAL_REVIEW_REQUIRED để đối chiếu điều khoản chuyển tiếp cụ thể).
  */
 export function getApplicableSettlementLegalBasis(submissionDate?: string | Date | null): {
   decree: string;
   circular: string;
-  template_type: 'CIRCULAR_73_2026' | 'DECREE_254_2025' | 'LEGACY';
+  template_type: 'CIRCULAR_73_2026' | 'TRANSITIONAL_PRE_JULY_2026' | 'DECREE_254_2025';
+  legal_review_required: boolean;
   description: string;
 } {
   if (!submissionDate) {
     return {
-      decree: 'Nghị định số 193/2026/NĐ-CP (từ 01/7/2026)',
+      decree: 'Nghị định số 193/2026/NĐ-CP (quyết toán vốn đầu tư từ 01/7/2026)',
       circular: 'Thông tư số 73/2026/TT-BTC',
       template_type: 'CIRCULAR_73_2026',
-      description: 'Áp dụng biểu mẫu chuẩn Thông tư 73/2026/TT-BTC (Mẫu 01/QTDA, 02/QTDA) theo NĐ 193/2026/NĐ-CP'
+      legal_review_required: true,
+      description: 'Hồ sơ quyết toán nộp từ ngày 01/7/2026 áp dụng biểu mẫu Thông tư 73/2026/TT-BTC theo Nghị định 193/2026/NĐ-CP (Phụ lục mẫu biểu được rà soát động, không hard-code).'
     };
   }
 
@@ -110,15 +118,17 @@ export function getApplicableSettlementLegalBasis(submissionDate?: string | Date
       decree: 'Nghị định số 193/2026/NĐ-CP (hiệu lực từ 01/7/2026)',
       circular: 'Thông tư số 73/2026/TT-BTC',
       template_type: 'CIRCULAR_73_2026',
-      description: 'Bắt buộc áp dụng Nghị định 193/2026/NĐ-CP và hệ thống mẫu biểu Thông tư 73/2026/TT-BTC cho hồ sơ nộp từ 01/7/2026.'
+      legal_review_required: false,
+      description: 'Hồ sơ quyết toán nộp từ ngày 01/7/2026 bắt buộc áp dụng Nghị định số 193/2026/NĐ-CP và hệ thống mẫu biểu Thông tư số 73/2026/TT-BTC.'
     };
   }
 
   return {
-    decree: 'Nghị định số 254/2025/NĐ-CP',
-    circular: 'Văn bản chuyển tiếp trước 01/7/2026',
-    template_type: 'DECREE_254_2025',
-    description: 'Hồ sơ lập/nộp trước 01/7/2026 thực hiện chuyển tiếp theo Nghị định 254/2025/NĐ-CP.'
+    decree: 'Quy định quản lý quyết toán chuyển tiếp trước ngày 01/7/2026',
+    circular: 'Văn bản chuyển tiếp trước ngày 01/7/2026',
+    template_type: 'TRANSITIONAL_PRE_JULY_2026',
+    legal_review_required: true,
+    description: 'Hồ sơ nộp quyết toán trước ngày 01/7/2026 thực hiện chuyển tiếp theo quy định có hiệu lực tại thời điểm nộp (cần rà soát điều khoản chuyển tiếp cụ thể của NĐ 193/2026 và NĐ 254/2025, không mặc nhiên kết luận).'
   };
 }
 
@@ -259,7 +269,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['procurement_plan_decision'],
     description: 'Phê duyệt KHLCNT với đầy đủ các gói thầu, giá gói, nguồn vốn, hình thức và loại hợp đồng.',
     gate_conditions: 'Không tổ chức lựa chọn nhà thầu khi KHLCNT chưa được phê duyệt.',
-    legal_basis: 'Điều 38, 39, 40 Luật Đấu thầu số 22/2023/QH15; Điều 14, 15 Nghị định 24/2024/NĐ-CP & NĐ 214/2025/NĐ-CP'
+    legal_basis: 'Điều 38, 39, 40 Luật Đấu thầu số 22/2023/QH15; Điều 14, 15 Nghị định 24/2024/NĐ-CP (Nghị định 214/2025/NĐ-CP quy định chi tiết về lựa chọn nhà thầu qua mạng và chỉ định thầu rút gọn cấp xã)'
   },
   {
     step_number: 11,
@@ -271,7 +281,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['bidding_result_decision', 'contract'],
     description: 'Phê duyệt kết quả lựa chọn nhà thầu và tiến hành ký kết hợp đồng thi công xây lắp, tư vấn giám sát.',
     gate_conditions: 'Tuyệt đối không cho phép thi công khi chưa có hợp đồng xây lắp hợp lệ.',
-    legal_basis: 'Điều 43, 64-70 Luật Đấu thầu số 22/2023/QH15; NĐ 214/2025/NĐ-CP; Điều 138-146 Luật Xây dựng 2014'
+    legal_basis: 'Điều 43, 64-70 Luật Đấu thầu số 22/2023/QH15; Nghị định 24/2024/NĐ-CP & Nghị định 214/2025/NĐ-CP; Điều 138-146 Luật Xây dựng 2014'
   },
   {
     step_number: 12,
@@ -283,7 +293,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['resolution'],
     description: 'Dự án phải có quyết định đầu tư (Bước 9) trước thời điểm giao vốn và đăng ký kiểm soát chi KBNN.',
     gate_conditions: 'Không cho giải ngân khi chưa có Quyết định đầu tư hoặc giải ngân vượt kế hoạch vốn đã bố trí.',
-    legal_basis: 'Điều 55 Luật Đầu tư công số 58/2024/QH15; Nghị định 254/2025/NĐ-CP; Công văn 10836/BTC-PTHT'
+    legal_basis: 'Điều 55 Luật Đầu tư công số 58/2024/QH15; Nghị định số 254/2025/NĐ-CP (quản lý, thanh toán vốn ĐTC); Công văn 10836/BTC-PTHT'
   },
   {
     step_number: 13,
@@ -319,7 +329,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['settlement_report', 'settlement_decision'],
     description: 'Chủ đầu tư lập báo cáo quyết toán, cơ quan chức năng thẩm tra và Chủ tịch UBND xã ban hành quyết định phê duyệt.',
     gate_conditions: 'Phải có hồ sơ quyết toán A-B, biên bản thẩm tra và quyết định phê duyệt quyết toán hợp pháp.',
-    legal_basis: 'Nghị định 254/2025/NĐ-CP & Nghị định 193/2026/NĐ-CP; Thông tư 73/2026/TT-BTC'
+    legal_basis: 'Nghị định số 193/2026/NĐ-CP (quyết toán vốn đầu tư dự án hoàn thành từ 01/7/2026) & Thông tư 73/2026/TT-BTC; hồ sơ trước 01/7/2026 áp dụng quy định chuyển tiếp'
   },
   {
     step_number: 16,

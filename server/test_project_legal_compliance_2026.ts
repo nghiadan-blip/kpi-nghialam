@@ -62,15 +62,15 @@ async function runLegalCompliance2026Tests() {
       console.log('1. KIỂM THỬ QUY TẮC CHUYỂN TIẾP PHÁP LÝ TỪ NGÀY 01/7/2026');
       console.log('======================================================');
 
-      // 1.1 Kiểm tra Transition Rule trước 01/7/2026
+      // 1.1 Kiểm tra Transition Rule trước 01/7/2026 (Không mặc nhiên áp đặt NĐ 254/2025)
       const beforeCutoff = getApplicableSettlementLegalBasis('2026-05-15');
-      if (beforeCutoff.template_type === 'DECREE_254_2025' && beforeCutoff.decree.includes('254/2025')) {
-        console.log('  ✅ PASS: 1.1 Hồ sơ quyết toán trước 01/7/2026 áp dụng chuyển tiếp theo Nghị định 254/2025/NĐ-CP');
+      if (beforeCutoff.template_type === 'TRANSITIONAL_PRE_JULY_2026' && beforeCutoff.legal_review_required === true) {
+        console.log('  ✅ PASS: 1.1 Hồ sơ quyết toán trước 01/7/2026 áp dụng quy tắc chuyển tiếp và đánh dấu LEGAL_REVIEW_REQUIRED');
       } else {
         throw new Error('FAIL 1.1: ' + JSON.stringify(beforeCutoff));
       }
 
-      // 1.2 Kiểm tra Transition Rule từ 01/7/2026 trở đi
+      // 1.2 Kiểm tra Transition Rule từ 01/7/2026 trở đi (NĐ 193/2026 & TT 73/2026)
       const afterCutoff = getApplicableSettlementLegalBasis('2026-07-15');
       if (afterCutoff.template_type === 'CIRCULAR_73_2026' && afterCutoff.decree.includes('193/2026') && afterCutoff.circular.includes('73/2026')) {
         console.log('  ✅ PASS: 1.2 Hồ sơ quyết toán từ 01/7/2026 bắt buộc áp dụng Nghị định 193/2026/NĐ-CP & Thông tư 73/2026/TT-BTC');
@@ -95,6 +95,8 @@ async function runLegalCompliance2026Tests() {
       const steps = p1Res.body.workflow_steps;
       const step5 = steps.find((s: any) => s.step_number === 5);
       const step9 = steps.find((s: any) => s.step_number === 9);
+      const step10 = steps.find((s: any) => s.step_number === 10);
+      const step12 = steps.find((s: any) => s.step_number === 12);
       const step15 = steps.find((s: any) => s.step_number === 15);
 
       if (step5 && step5.legal_basis.includes('175/2024')) {
@@ -109,10 +111,22 @@ async function runLegalCompliance2026Tests() {
         throw new Error('FAIL 2.2: Step 9 legal basis mismatch');
       }
 
-      if (step15 && step15.legal_basis.includes('99/2021') || step15.legal_basis.includes('Nghị định')) {
-        console.log('  ✅ PASS: 2.3 Bước 15 (Quyết toán) tham chiếu chuẩn quy định quyết toán dự án hoàn thành');
+      if (step10 && step10.legal_basis.includes('22/2023/QH15') && step10.legal_basis.includes('24/2024')) {
+        console.log('  ✅ PASS: 2.3 Bước 10 (KHLCNT) làm rõ quan hệ Luật Đấu thầu 2023, NĐ 24/2024 và NĐ 214/2025');
       } else {
-        throw new Error('FAIL 2.3: Step 15 legal basis mismatch');
+        throw new Error('FAIL 2.3: Step 10 legal basis mismatch');
+      }
+
+      if (step12 && step12.legal_basis.includes('254/2025') && !step12.legal_basis.includes('193/2026')) {
+        console.log('  ✅ PASS: 2.4 Bước 12 (Thanh toán, giải ngân) phân định đúng phạm vi NĐ 254/2025 (không gán nhầm NĐ 193/2026)');
+      } else {
+        throw new Error('FAIL 2.4: Step 12 legal basis mismatch');
+      }
+
+      if (step15 && step15.legal_basis.includes('193/2026')) {
+        console.log('  ✅ PASS: 2.5 Bước 15 (Quyết toán) tham chiếu chuẩn Nghị định 193/2026/NĐ-CP & Thông tư 73/2026/TT-BTC');
+      } else {
+        throw new Error('FAIL 2.5: Step 15 legal basis mismatch');
       }
 
       console.log('\n======================================================');

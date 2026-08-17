@@ -31,16 +31,19 @@
 ### 1.3. Áp Dụng Chuyển Tiếp Nghị Định 40/2020/NĐ-CP
 - Theo Điều 105, 106 Luật 58/2024/QH15, các nội dung quy định kỹ thuật và biểu mẫu của Nghị định số 40/2020/NĐ-CP tiếp tục được áp dụng đối với những điểm không trái Luật 58/2024/QH15 trong thời gian chuyển tiếp chờ Nghị định mới.
 
-### 1.4. Lựa Chọn Nhà Thầu (Luật Đấu Thầu 2023 & Nghị Định 214/2025/NĐ-CP)
+### 1.4. Lựa Chọn Nhà Thầu (Luật Đấu Thầu 2023, Nghị Định 24/2024/NĐ-CP & Nghị Định 214/2025/NĐ-CP)
+- Căn cứ gốc: Luật Đấu thầu số 22/2023/QH15 và Nghị định số 24/2024/NĐ-CP của Chính phủ.
+- Nghị định số 214/2025/NĐ-CP áp dụng cho quy trình đấu thầu qua mạng và chỉ định thầu quy mô nhỏ cấp xã.
 - Lập và phê duyệt KHLCNT (Điều 38, 39, 40 Luật 22/2023/QH15; Điều 14, 15 NĐ 24/2024/NĐ-CP).
-- Lựa chọn nhà thầu qua mạng và chỉ định thầu quy mô nhỏ cấp xã (Nghị định số 214/2025/NĐ-CP).
 - Nguyên tắc bắt buộc: **Tuyệt đối không cho phép thi công khi chưa ký kết hợp đồng xây lắp hợp lệ (Gate 11)**.
 
-### 1.5. Thanh Toán & Quyết Toán (Nghị Định 254/2025/NĐ-CP, Nghị Định 193/2026/NĐ-CP & Thông Tư 73/2026/TT-BTC)
-- **Nghị định số 254/2025/NĐ-CP:** Quản lý, thanh toán vốn ĐTC (thay thế NĐ 99/2021 và bãi bỏ Điều 6 Nghị định 125/2025/NĐ-CP).
-- **Quy tắc chuyển tiếp từ 01/7/2026:**
-  - Hồ sơ quyết toán nộp trước ngày 01/7/2026 $\rightarrow$ Áp dụng chuyển tiếp theo Nghị định 254/2025/NĐ-CP.
-  - Hồ sơ quyết toán nộp từ ngày 01/7/2026 $\rightarrow$ Bắt buộc áp dụng **Nghị định số 193/2026/NĐ-CP** và hệ thống biểu mẫu quyết toán chuẩn **Thông tư số 73/2026/TT-BTC** (Mẫu 01/QTDA, 02/QTDA, 03/QTDA).
+### 1.5. Phân Định Phạm Vi Quản Lý Thanh Toán (NĐ 254/2025) & Quyết Toán Hoàn Thành (NĐ 193/2026, TT 73/2026)
+- **Nghị định số 254/2025/NĐ-CP:** Quản lý, tạm ứng và thanh toán vốn đầu tư công (thay thế NĐ 99/2021 và bãi bỏ Điều 6 Nghị định 125/2025/NĐ-CP). Không dùng Nghị định 193/2026 làm căn cứ cho khâu thanh toán/tạm ứng vốn.
+- **Nghị định số 193/2026/NĐ-CP:** Quy định riêng biệt về **Quyết toán vốn đầu tư dự án hoàn thành** có hiệu lực từ ngày **01/7/2026**.
+- **Thông tư số 73/2026/TT-BTC:** Quy định hệ thống mẫu biểu quyết toán từ ngày 01/7/2026 (Mẫu 01/QTDA, 02/QTDA, 03/QTDA).
+- **Quy tắc chuyển tiếp quyết toán:**
+  - Hồ sơ quyết toán nộp từ ngày 01/7/2026 $\rightarrow$ Bắt buộc áp dụng Nghị định số 193/2026/NĐ-CP và Thông tư số 73/2026/TT-BTC.
+  - Hồ sơ quyết toán nộp trước ngày 01/7/2026 $\rightarrow$ Áp dụng quy định chuyển tiếp có hiệu lực tại thời điểm nộp (Đánh dấu `LEGAL_REVIEW_REQUIRED`, không mặc nhiên áp đặt Nghị định 254/2025 khi chưa xác minh điều khoản chuyển tiếp trực tiếp).
 - **Công văn số 10836/BTC-PTHT** ngày 23/7/2026 của Bộ Tài chính về báo cáo nhanh phân bổ và giải ngân vốn đầu tư công.
 
 ### 1.6. Thời Hạn Bảo Hành Công Trình Xây Dựng (Điều 28 Nghị Định 06/2021/NĐ-CP)
@@ -50,7 +53,7 @@
   - Thời hạn bảo hành thiết bị và thỏa thuận cụ thể trong hợp đồng xây lắp (`project.warranty_end_date`).
 
 ### 1.7. Bản Chất Chỉ Số Progress Gap (15% / 30%)
-- Xác nhận: Ngưỡng 15% (cảnh báo vàng) và 30% (cảnh báo đỏ) là **công cụ quản trị rủi ro điều hành nội bộ**, không phải chế tài xử phạt theo quy định pháp luật. Hệ thống cho phép cấu hình linh hoạt qua biến môi trường hoặc tham số truy vấn `?warning_gap=...&danger_gap=...`.
+- Xác nhận dứt khoát: Ngưỡng 15% (cảnh báo vàng) và 30% (cảnh báo đỏ) là **chỉ số cảnh báo quản trị rủi ro điều hành nội bộ**, không phải quy định pháp luật bắt buộc hay kết luận vi phạm pháp luật. Hệ thống cho phép cấu hình linh hoạt qua biến môi trường hoặc tham số truy vấn `?warning_gap=...&danger_gap=...`.
 
 ---
 
@@ -71,9 +74,11 @@
 1. `LEGAL_REV_01`: **Hạn mức phân nhóm dự án A/B/C**: Theo dõi cập nhật văn bản phân cấp quản lý đầu tư công mới nhất của HĐND/UBND tỉnh Nghệ An và UBND huyện Nghĩa Đàn.
 2. `LEGAL_REV_02`: **Áp dụng Nghị định 40/2020/NĐ-CP chuyển tiếp**: Theo dõi việc ban hành Nghị định mới thay thế Nghị định 40/2020/NĐ-CP hướng dẫn Luật 58/2024/QH15.
 3. `LEGAL_REV_03`: **Quy chế BQLDA & Ban Giám sát đầu tư cộng đồng**: Rà soát kiện toàn nhân sự hằng năm của xã Nghĩa Lâm.
+4. `LEGAL_REV_04`: **Điều khoản chuyển tiếp hồ sơ quyết toán trước 01/7/2026**: Đối chiếu văn bản hướng dẫn quyết toán của UBND tỉnh Nghệ An cho các dự án kết thúc trước 01/7/2026.
+5. `LEGAL_REV_05`: **Phụ lục mẫu biểu Thông tư 73/2026/TT-BTC (Mẫu 01, 02, 03/QTDA)**: Đối chiếu với hướng dẫn triển khai của Sở Tài chính tỉnh Nghệ An để cập nhật cấu hình biểu mẫu điện tử khi có văn bản mới.
 
 ---
 
 ## 4. Kết Luận Bàn Giao
 
-Hệ thống đã hoàn tất 100% việc đối chiếu, chuẩn hóa căn cứ pháp lý và kiểm thử kỹ thuật. Tài liệu này đóng vai trò căn cứ nghiệm thu pháp lý cho Pull Request trên nhánh `feat/project-legal-compliance-2026`.
+Hệ thống đã hoàn tất 100% việc đối chiếu, phân định rõ ràng phạm vi thẩm quyền và hiệu lực văn bản, chuẩn hóa căn cứ pháp lý và kiểm thử kỹ thuật đạt 100%. Tài liệu này đóng vai trò căn cứ nghiệm thu pháp lý cho Pull Request trên nhánh `feat/project-legal-compliance-2026`.

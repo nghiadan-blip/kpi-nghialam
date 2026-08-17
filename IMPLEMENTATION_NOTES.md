@@ -411,4 +411,33 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 3. **Quy chế hoạt động của Ban Quản lý dự án xã & Ban Giám sát đầu tư của cộng đồng**: Cần rà soát định kỳ theo quyết định kiện toàn nhân sự hằng năm của UBND xã Nghĩa Lâm.
 4. **Kết luận Nghiệm thu**: Đạt **Nghiệm thu Kỹ thuật & Rà soát Pháp lý Toàn diện (Conditionally Accepted for PR Merge)**. Tuyệt đối không tự ý deploy lên cơ sở dữ liệu production khi chưa có phê duyệt thủ công của Lãnh đạo UBND xã.
 
+---
 
+## 12. Rà Soát Pháp Lý Cuối Cùng & Chuẩn Hóa Chuyển Tiếp Quyết Toán 2026 (Final Legal Compliance Check)
+
+- **Nhánh làm việc (Branch)**: `feat/project-legal-compliance-2026`
+- **Căn cứ xác lập**:
+  - Luật Đầu tư công số 58/2024/QH15 (hiệu lực từ 01/01/2025);
+  - Nghị định số 175/2024/NĐ-CP ngày 30/12/2024 (thay thế Nghị định 15/2021/NĐ-CP);
+  - Luật Đấu thầu số 22/2023/QH15, Nghị định 24/2024/NĐ-CP và Nghị định 214/2025/NĐ-CP;
+  - Nghị định số 254/2025/NĐ-CP về quản lý, thanh toán vốn đầu tư công (bãi bỏ Điều 6 NĐ 125/2025);
+  - Nghị định số 193/2026/NĐ-CP (quyết toán vốn đầu tư dự án hoàn thành có hiệu lực từ 01/7/2026);
+  - Thông tư số 73/2026/TT-BTC (biểu mẫu quyết toán từ 01/7/2026);
+  - Công văn số 10836/BTC-PTHT (báo cáo nhanh phân bổ và giải ngân vốn ĐTC ngày 23/7/2026).
+- **Kết quả xử lý 5 nội dung bắt buộc**:
+  1. *Chuyển tiếp quyết toán*: Hồ sơ nộp từ 01/7/2026 bắt buộc dùng mẫu Thông tư 73/2026/TT-BTC theo Nghị định 193/2026/NĐ-CP; hồ sơ trước 01/7/2026 áp dụng quy định chuyển tiếp (đánh dấu `LEGAL_REVIEW_REQUIRED`, không mặc nhiên áp đặt NĐ 254/2025).
+  2. *Tách bạch phạm vi*: Nghị định 254/2025 điều chỉnh quản lý/thanh toán (Bước 12); Nghị định 193/2026 chỉ điều chỉnh quyết toán (Bước 15, 16).
+  3. *Sửa mâu thuẫn Bước 10*: Làm rõ Luật Đấu thầu 2023 và Nghị định 24/2024/NĐ-CP là căn cứ chung; Nghị định 214/2025/NĐ-CP quy định chi tiết về đấu thầu qua mạng và chỉ định thầu quy mô nhỏ cấp xã.
+  4. *Mẫu biểu Thông tư 73/2026/TT-BTC*: Thiết kế động cho các tệp đính kèm (`settlement_form_01_tt73`, `settlement_form_02_tt73`), không hard-code trường tĩnh; đánh dấu `LEGAL_REV_05`.
+  5. *Bản chất Progress Gap*: Khẳng định là quy tắc quản trị rủi ro điều hành nội bộ, không phải kết luận vi phạm pháp luật.
+- **Các file báo cáo bàn giao**:
+  - [`PROJECT_LEGAL_TRACEABILITY_MATRIX.md`](./PROJECT_LEGAL_TRACEABILITY_MATRIX.md)
+  - [`PROJECT_MANAGEMENT_MODULE_FINAL_SPEC.md`](./PROJECT_MANAGEMENT_MODULE_FINAL_SPEC.md)
+  - [`LEGAL_REVIEW_REPORT.md`](./LEGAL_REVIEW_REPORT.md)
+  - [`LEGAL_REVIEW_FINAL_CHECK.md`](./LEGAL_REVIEW_FINAL_CHECK.md)
+- **Kiểm thử & Đóng gói**:
+  - `test_project_legal_compliance_2026.ts` $\rightarrow$ **100% PASS**.
+  - `test_project_uat_acceptance.ts` $\rightarrow$ **100% PASS**.
+  - `test_project_master_spec.ts` $\rightarrow$ **100% PASS**.
+  - `npm run build` $\rightarrow$ **100% SUCCESS**.
+  - Tuyệt đối tuân thủ kỷ luật: Không tự merge vào main, không deploy production.
