@@ -198,7 +198,8 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 ## 9. Nhật ký Giải quyết Lỗi P0 Tổng hợp Điểm Phần II & Điểm KPI Thang 70 (Reopen P0)
 
 - **Nhánh làm việc (Branch)**: `fix/reopen-p0-kpi-task-score`
-- **Commit message mẫu**: `Reopen P0 KPI task score aggregation fix`
+- **Commit SHA**: `7bf26cf87d02ecbf680e50c74a08d23b60f4625b`
+- **Commit message**: `Reopen P0 KPI task score aggregation fix`
 - **Tình trạng**: Đã giải quyết triệt để lỗi tổng hợp điểm Phần II hiển thị/lưu 70/70 cứng.
 
 ### 📂 Các Nội dung & Logic Sửa đổi Chi tiết:
