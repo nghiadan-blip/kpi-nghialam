@@ -4,7 +4,7 @@
 
 *Ngày lập: 17/08/2026*
 *Nhánh Git kiểm thử: `feat/project-legal-compliance-2026`*
-*Trạng thái: **ĐỦ ĐIỀU KIỆN MERGE DRAFT PR (KHÔNG DEPLOY PRODUCTION)***
+*Commit ID: `a967679` và các commit rà soát bổ sung*
 
 ---
 
@@ -17,29 +17,37 @@
 
 ---
 
-## II. KẾT QUẢ ĐỐI CHIẾU TIÊU CHÍ NGHIỆM THU
+## II. KẾT QUẢ ĐỐI CHIẾU 4 NỘI DUNG XÁC MINH BẮT BUỘC
 
-| STT | Tiêu Chí Nghiệm Thu Bắt Buộc | Kết Quả Rà Soát Kỹ Thuật & Pháp Lý | Đánh Giá |
+| STT | Nội Dung Bắt Buộc Xác Minh | Kết Quả Đối Chiếu Văn Bản Gốc | Đánh Giá Pháp Lý |
 | :---: | :--- | :--- | :---: |
-| **1** | **Căn cứ Pháp lý cập nhật 2026** | - Áp dụng Luật ĐTC 58/2024/QH15, Luật 90/2025, Luật Đấu thầu 22/2023, Luật XD 135/2025.<br>- Tách bạch: NĐ 254/2025 cho Quản lý/Thanh toán; NĐ 193/2026 & TT 73/2026 cho Quyết toán từ 01/7/2026.<br>- Bước 10 làm rõ NĐ 214/2025 điều chỉnh lựa chọn nhà thầu qua mạng và chỉ định thầu xã; NĐ 24/2024 áp dụng chuyển tiếp.<br>- Phân cấp thẩm quyền chuẩn hóa theo QĐ 13/2026/QĐ-UBND tỉnh Nghệ An và QĐ 88/QĐ-UBND xã Nghĩa Lâm. | **ĐẠT (PASS)** |
-| **2** | **Quy tắc Chuyển tiếp & Không Suy diễn** | - Hồ sơ quyết toán trước 01/7/2026 được gắn cờ `LEGAL_REVIEW_REQUIRED`, không tự ý áp đặt NĐ 254/2025.<br>- Hệ thống mẫu biểu TT 73/2026/TT-BTC thiết kế động, không hard-code trường tĩnh. | **ĐẠT (PASS)** |
-| **3** | **Bản chất Chỉ số Progress Gap** | - Khẳng định cảnh báo 15%/30% là chỉ số quản trị rủi ro điều hành nội bộ của UBND xã, cấu hình động qua URL params (`?warning_gap=15&danger_gap=30`), không phải kết luận pháp lý. | **ĐẠT (PASS)** |
-| **4** | **Phân quyền RBAC 4 vai trò** | - `EMPLOYEE`: Không thể tạo dự án (403), không xem toàn bộ dự án ngoài phân công (403), không sửa trường nhạy cảm (403).<br>- `DEPARTMENT_HEAD`: Quản lý dự án trong bộ phận, tạo dự án, duyệt kỹ thuật.<br>- `LEADERSHIP`: Phê duyệt 16 bước, phê duyệt chủ trương, ký quyết định, lưu trữ dự án.<br>- `ADMIN`: Quản trị hệ thống, phân quyền, cấu hình danh mục. | **ĐẠT (PASS)** |
-| **5** | **Gate Rules Vòng đời Dự án** | - Thiếu BB nghiệm thu $\rightarrow$ Chặn `COMPLETION_ACCEPTANCE` (HTTP 400).<br>- Thiếu BB bàn giao $\rightarrow$ Chặn `HANDED_OVER` (HTTP 400).<br>- Thiếu QĐ quyết toán $\rightarrow$ Chặn `SETTLEMENT_APPROVED` (HTTP 400).<br>- Chưa có thời hạn bảo hành $\rightarrow$ Chặn kết thúc `COMPLETED` (HTTP 400).<br>- Dự án đã có giải ngân/hồ sơ $\rightarrow$ Chặn Hard Delete, trả về **HTTP 409 Conflict**. | **ĐẠT (PASS)** |
-| **6** | **Kiểm Soát Tính Toàn Vẹn Tài Chính** | - Chặn số âm trên toàn bộ các trường tài chính.<br>- Chặn giải ngân vượt vốn phân bổ.<br>- Chặn giá trị hợp đồng vượt TMĐT khi chưa có quyết định điều chỉnh.<br>- SQL JOIN chuẩn 1:1, đọc trực tiếp từ kế toán ĐTC, bảo toàn 100% số liệu vốn (2,600,000,000đ) và giải ngân (1,830,000,000đ), không nhân bản. | **ĐẠT (PASS)** |
-| **7** | **Giao diện & Bộ lọc Nâng cao** | - Hệ thống 7 bộ lọc dropdown + toggle chậm tiến độ + input tìm kiếm không dấu.<br>- Nút Xóa bộ lọc (Clear Filters), bộ đếm kết quả động, empty state trực quan.<br>- Modal chi tiết 5 Tab: Thông tin chung, 16 bước workflow, Quản lý vướng mắc (`project_obstacles`), Quản lý đợt thanh toán (`project_payment_disbursements`), Nhật ký Audit Trail.<br>- Xuất Excel thực tế khớp chính xác theo bộ lọc hiện tại. | **ĐẠT (PASS)** |
-| **8** | **Kiểm thử Tự động Toàn diện** | - `test_project_comprehensive_v2.ts` $\rightarrow$ **20/20 PASS (100%)**.<br>- `test_project_legal_compliance_2026.ts` $\rightarrow$ **100% PASS**.<br>- `test_project_master_spec.ts` $\rightarrow$ **100% PASS**.<br>- `test_project_uat_acceptance.ts` $\rightarrow$ **100% PASS**.<br>- `test_e2e_full.ts` $\rightarrow$ **100% PASS**. | **ĐẠT (PASS)** |
-| **9** | **Đóng Gói & Build Ứng Dụng** | - Server TypeScript: `npm run build` $\rightarrow$ **Exit code 0**.<br>- Client Vite: `npm run build` $\rightarrow$ **Exit code 0** (1647 modules transformed). | **ĐẠT (PASS)** |
+| **1** | **Nghị định 214/2025/NĐ-CP** | - Đã đọc trực tiếp file gốc `214_2025_ND-CP_668157.docx`.<br>- Tên chính thức: *Nghị định quy định chi tiết một số điều và biện pháp thi hành Luật Đấu thầu về lựa chọn nhà thầu*.<br>- Hạn mức chỉ định thầu quy định tại Điểm m Khoản 1 Điều 23 Luật Đấu thầu 22/2023/QH15; quy trình chỉ định thầu thông thường và rút gọn quy định tại Điều 78, 79, 80 Nghị định 214/2025/NĐ-CP.<br>- Không hardcode ngưỡng; không mô tả phiến diện. | **XÁC MINH ĐẠT (ACTIVE)** |
+| **2** | **Quan hệ NĐ 24/2024 và NĐ 214/2025** | - Khoản 2 Điều 145 NĐ 214/2025/NĐ-CP quy định: **Nghị định 214/2025/NĐ-CP bãi bỏ toàn bộ Nghị định 24/2024/NĐ-CP kể từ ngày 04/8/2025**.<br>- Điều 144 NĐ 214/2025/NĐ-CP quy định chuyển tiếp cho các gói thầu phát hành HSMT trước ngày 04/8/2025.<br>- Không ghi chung chung "áp dụng hài hòa"; xác định rõ NĐ 24/2024 chuyển sang trạng thái `REPLACED / TRANSITION_ONLY`. | **XÁC MINH ĐẠT** |
+| **3** | **Văn bản Nghệ An & Nghĩa Lâm** | - Đã xác minh bản PDF ký số: QĐ 13/2026/QĐ-UBND tỉnh (1.33 MB), NQ 05/2026/NQ-HĐND (7.53 MB), NQ 69/NQ-HĐND (8.68 MB), CV 3651/UBND-KT (1.26 MB), QĐ 115/QĐ-UBND thành lập BQLDA xã, QĐ 88/QĐ-UBND phân công nhiệm vụ.<br>- Đối với các văn bản chưa có file đính kèm thực tế (`QĐ 1261/QĐ-UBND`, `CV 3092/UBND-KT`), hệ thống gắn nhãn `LEGAL_REVIEW_REQUIRED`. | **ĐẠT CÓ ĐIỀU KIỆN** |
+| **4** | **Phân loại & Phạm vi tài liệu** | - Luật Xây dựng số 135/2025/QH15 (hiệu lực 01/7/2026) được đưa vào căn cứ chính thức.<br>- Nghị định 335/2025/NĐ-CP được chuyển về kho pháp lý của module KPI (`/evaluations`), không làm căn cứ chính của module ĐTC.<br>- Sổ tay quản lý ĐTC 2026 được phân loại là tài liệu tham khảo chuyên môn.<br>- NĐ 104/2026, NĐ 210/2026, TT 36/2026, TT 40/2026 được xác định phạm vi tác động cụ thể. | **XÁC MINH ĐẠT** |
 
 ---
 
-## III. KẾT LUẬN & ĐỀ XUẤT
+## III. KẾT QUẢ KIỂM THỬ KỸ THUẬT & HỆ THỐNG
 
-1. **Kết Luận**:
-   Phân hệ Quản lý Dự án Đầu tư công (`/projects`) đã hoàn thành toàn diện về mặt pháp lý, kiến trúc dữ liệu, kiểm soát rủi ro, phân quyền người dùng và chất lượng giao diện, đáp ứng tuyệt đối các tiêu chuẩn quản trị công hiện đại của UBND xã Nghĩa Lâm.
+- **Kiểm thử tự động 20 kịch bản** (`server/test_project_comprehensive_v2.ts`): **20/20 PASSED (100%)**.
+- **Kiểm thử đóng gói mã nguồn**:
+  - `server/`: `npm run build` (`tsc`) $\rightarrow$ **Exit code 0**.
+  - `client/`: `npm run build` (`vite build`) $\rightarrow$ **Exit code 0** (1647 modules transformed).
+- **Phân quyền RBAC 4 vai trò**: EMPLOYEE, DEPARTMENT_HEAD, LEADERSHIP, ADMIN vận hành đúng ma trận kiểm soát truy cập.
+- **Bảo toàn dữ liệu tài chính**: SQL JOIN chuẩn 1:1, không nhân bản số liệu vốn và giải ngân.
+- **Gate Rules & Cảnh báo**: Các quy tắc chặn chuyển trạng thái khi thiếu minh chứng nghiệm thu, bàn giao, quyết toán hoạt động chuẩn xác; Progress Gap 15%/30% được xác định đúng là chỉ số cảnh báo rủi ro nội bộ.
 
-2. **Đề Xuất**:
-   - **Đủ điều kiện hoàn tất nghiệm thu kỹ thuật và pháp lý trên branch `feat/project-legal-compliance-2026`**.
-   - **Tuân thủ nghiêm ngặt kỷ luật**:
-     - *Không tự ý merge vào nhánh `main`* khi chưa có lệnh nghiệm thu cuối cùng của Lãnh đạo UBND xã.
-     - *Không deploy lên môi trường Production*.
+---
+
+## IV. KẾT LUẬN & ĐỀ XUẤT
+
+Căn cứ Mục 7 của Lệnh chỉ thị `ANTIGRAVITY_FINAL_LEGAL_VERIFICATION_AND_MERGE_GATE.md`:
+
+> **KẾT LUẬN CHÍNH THỨC**:
+> **Đạt kỹ thuật; đạt pháp lý có điều kiện; chưa đủ điều kiện merge đối với phần còn `LEGAL_REVIEW_REQUIRED` (gồm `QĐ 1261/QĐ-UBND` và `CV 3092/UBND-KT`).**
+
+### Kỷ Luật Repository:
+- Giữ nguyên toàn bộ lịch sử commit trên branch **`feat/project-legal-compliance-2026`**.
+- **Tuyệt đối không merge vào nhánh `main`**.
+- **Tuyệt đối không deploy lên môi trường Production**.
