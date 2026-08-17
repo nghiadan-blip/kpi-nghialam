@@ -398,15 +398,17 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 | Hạng mục nghiệm thu | Kết quả rà soát | Tình trạng |
 | :--- | :--- | :---: |
 | **1. RBAC Công chức (EMPLOYEE)** | - Công chức gọi `POST /api/projects` $\rightarrow$ **403 Forbidden**.<br>- Công chức gọi `GET /api/projects` $\rightarrow$ Chỉ trả về dự án mình phụ trách/lập (không xem toàn bộ).<br>- Công chức gọi `GET /api/projects/:id` (dự án người khác) $\rightarrow$ **403 Forbidden**.<br>- Công chức sửa trường nhạy cảm (Giá trị HĐ, QĐ duyệt) $\rightarrow$ **403 Forbidden**. | **ĐẠT (PASS)** |
-| **2. Căn cứ Pháp lý & Thẩm quyền** | - 16 bước quy trình gắn đầy đủ căn cứ pháp lý: Luật ĐTC 2019, Luật Xây dựng, NĐ 40/2020, NĐ 15/2021, NĐ 99/2021, TT 23/2023.<br>- Thẩm quyền tập thể (HĐND, UBND) và cá nhân (Chủ tịch UBND xã, Chủ tịch HĐ thẩm định) được chuẩn hóa. | **ĐẠT (PASS)** |
-| **3. Thời hạn bảo hành công trình** | - Không hard-code 12 tháng. Lấy động theo `project.warranty_end_date` hoặc điều khoản hợp đồng/loại công trình. | **ĐẠT (PASS)** |
-| **4. Cấu hình Progress Gap** | - Ngưỡng cảnh báo chênh lệch được cấu hình qua `PROGRESS_GAP_WARNING_THRESHOLD`, `PROGRESS_GAP_DANGER_THRESHOLD` và tham số URL `?warning_gap=...&danger_gap=...`. | **ĐẠT (PASS)** |
+| **2. Căn cứ Pháp lý & Thẩm quyền** | - 16 bước quy trình gắn đầy đủ căn cứ pháp lý cập nhật: **Luật Đầu tư công số 58/2024/QH15** (hiệu lực 01/01/2025), Luật Xây dựng 2014 & SĐ 2020, Luật Đấu thầu 2023, NĐ 40/2020 (áp dụng chuyển tiếp), NĐ 15/2021, NĐ 06/2021, NĐ 99/2021, TT 23/2023.<br>- Thẩm quyền tập thể (HĐND, UBND) và cá nhân (Chủ tịch UBND xã, Chủ tịch HĐ thẩm định) được chuẩn hóa.<br>- Toàn bộ ma trận truy xuất đã hoàn thiện tại [`PROJECT_LEGAL_TRACEABILITY_MATRIX.md`](./PROJECT_LEGAL_TRACEABILITY_MATRIX.md). | **ĐẠT (PASS)** |
+| **3. Thời hạn bảo hành công trình** | - Không hard-code 12 tháng. Lấy động theo `project.warranty_end_date` hoặc điều khoản hợp đồng/loại công trình theo Điều 28 Nghị định 06/2021/NĐ-CP. | **ĐẠT (PASS)** |
+| **4. Cấu hình Progress Gap** | - Ngưỡng cảnh báo chênh lệch được cấu hình qua `PROGRESS_GAP_WARNING_THRESHOLD`, `PROGRESS_GAP_DANGER_THRESHOLD` và tham số URL `?warning_gap=...&danger_gap=...` (Chỉ số quản trị rủi ro nội bộ, không phải kết luận pháp lý). | **ĐẠT (PASS)** |
 | **5. Migration Staging & Dữ liệu cũ** | - Migration `20260817120000_expand_project_lifecycle_management.ts` chạy an toàn, bảo toàn toàn bộ dữ liệu hiện hữu. | **ĐẠT (PASS)** |
 | **6. SQL JOIN Không Nhân Bản** | - Câu truy vấn JOIN chuẩn 1:1, kiểm tra khớp 100% tổng vốn và tổng giải ngân thực tế (1.830.000.000đ). | **ĐẠT (PASS)** |
 | **7. UAT Trực Tiếp Bằng API/URL** | - Suite `test_project_uat_acceptance.ts` mô phỏng 5 vai trò kiểm thử thành công 100%. | **ĐẠT (PASS)** |
 
 ### 11.5. Các Điểm Đang Chờ Phê Duyệt / Rà Soát Định Kỳ (`LEGAL_REVIEW_REQUIRED`)
-1. **Hạn mức phân nhóm dự án A/B/C**: Cần theo dõi các văn bản phân cấp quản lý đầu tư công mới nhất của HĐND/UBND tỉnh Nghệ An và UBND huyện Nghĩa Đàn để cập nhật trần tổng mức đầu tư phù hợp.
-2. **Quy chế hoạt động của Ban Quản lý dự án xã & Ban Giám sát đầu tư của cộng đồng**: Cần rà soát định kỳ theo quyết định kiện toàn nhân sự hằng năm của UBND xã Nghĩa Lâm.
+1. **Hạn mức phân nhóm dự án A/B/C**: Cần theo dõi các văn bản phân cấp quản lý đầu tư công mới nhất của HĐND/UBND tỉnh Nghệ An và UBND huyện Nghĩa Đàn để cập nhật trần tổng mức đầu tư phù hợp theo Luật Đầu tư công số 58/2024/QH15.
+2. **Áp dụng Nghị định 40/2020/NĐ-CP trong thời gian chuyển tiếp**: Tiếp tục áp dụng các biểu mẫu và kỹ thuật theo NĐ 40/2020/NĐ-CP cho đến khi Chính phủ ban hành Nghị định mới thay thế.
+3. **Quy chế hoạt động của Ban Quản lý dự án xã & Ban Giám sát đầu tư của cộng đồng**: Cần rà soát định kỳ theo quyết định kiện toàn nhân sự hằng năm của UBND xã Nghĩa Lâm.
+4. **Kết luận Nghiệm thu**: Đạt **Nghiệm thu Kỹ thuật & Rà soát Pháp lý Toàn diện (Conditionally Accepted for PR Merge)**. Tuyệt đối không tự ý deploy lên cơ sở dữ liệu production khi chưa có phê duyệt thủ công của Lãnh đạo UBND xã.
 
 

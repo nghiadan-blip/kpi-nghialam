@@ -108,7 +108,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['resolution'],
     description: 'HĐND xã ban hành Nghị quyết kế hoạch đầu tư công trung hạn hoặc điều chỉnh danh mục hằng năm.',
     gate_conditions: 'Chưa có Nghị quyết của HĐND xã thông qua danh mục thì không được triển khai bước tiếp theo.',
-    legal_basis: 'Điều 55, 64 Luật Đầu tư công 2019; Luật Tổ chức chính quyền địa phương'
+    legal_basis: 'Điều 55, 64 Luật Đầu tư công số 58/2024/QH15; Điều 26 Luật Tổ chức chính quyền địa phương'
   },
   {
     step_number: 2,
@@ -120,7 +120,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['appraisal_decision', 'appraisal_report'],
     description: 'Bộ phận Địa chính - Xây dựng lập; Hội đồng thẩm định thẩm định nội dung theo quyết định thành lập.',
     gate_conditions: 'Quyết định thành lập Hội đồng thẩm định phải có trước hoặc cùng ngày Báo cáo thẩm định.',
-    legal_basis: 'Điều 27, 40 Luật Đầu tư công 2019; Nghị định 40/2020/NĐ-CP'
+    legal_basis: 'Điều 27, 40 Luật Đầu tư công số 58/2024/QH15; Điều 8, 9 Nghị định 40/2020/NĐ-CP (áp dụng chuyển tiếp)'
   },
   {
     step_number: 3,
@@ -132,7 +132,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['investment_policy_decision'],
     description: 'UBND xã quyết định theo tập thể; hồ sơ bắt buộc có biên bản họp hoặc phiếu lấy ý kiến thành viên UBND xã.',
     gate_conditions: 'Chốt sự cần thiết, quy mô sơ bộ, tổng mức dự kiến, từng nguồn vốn; chưa phải căn cứ giải ngân.',
-    legal_basis: 'Điều 18, 27 Luật Đầu tư công 2019; Quyết định phân cấp của UBND tỉnh Nghệ An'
+    legal_basis: 'Điều 18, 27 Luật Đầu tư công số 58/2024/QH15; Quyết định phân cấp của UBND tỉnh Nghệ An'
   },
   {
     step_number: 4,
@@ -144,7 +144,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['contract'],
     description: 'Chủ đầu tư ký hợp đồng tư vấn khảo sát và lập Báo cáo kinh tế - kỹ thuật theo hình thức hợp lệ.',
     gate_conditions: 'Có hồ sơ lựa chọn và hợp đồng tư vấn trước khi triển khai khảo sát.',
-    legal_basis: 'Luật Đấu thầu 2023; Nghị định 24/2024/NĐ-CP'
+    legal_basis: 'Điều 20, 23 Luật Đấu thầu số 22/2023/QH15; Điều 78 Nghị định 24/2024/NĐ-CP'
   },
   {
     step_number: 5,
@@ -168,7 +168,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['survey_method_decision'],
     description: 'Chủ đầu tư phê duyệt phương án kỹ thuật khảo sát (có thể gộp với Bước 5 trong một văn bản).',
     gate_conditions: 'Phải duyệt trước khi thực hiện khảo sát thực địa tại hiện trường.',
-    legal_basis: 'Điều 26 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 74 Luật Xây dựng 2014; Điều 26 Nghị định 15/2021/NĐ-CP'
   },
   {
     step_number: 7,
@@ -192,7 +192,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['appraisal_report'],
     description: 'Thẩm định khối lượng, đơn giá, định mức, cơ cấu chi phí; kiểm tra dự toán không vượt tổng mức đã chốt.',
     gate_conditions: 'Dự toán không được vượt tổng mức đầu tư đã phê duyệt ở Bước 3 nếu chưa điều chỉnh chủ trương.',
-    legal_basis: 'Điều 56, 57 Luật Xây dựng (Sửa đổi 2020); Điều 12 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 56, 57 Luật Xây dựng (Sửa đổi 2020); Điều 12, 13 Nghị định 15/2021/NĐ-CP'
   },
   {
     step_number: 9,
@@ -204,7 +204,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['project_approval_decision'],
     description: 'Quyết định phê duyệt BCKTKT là Quyết định đầu tư đối với công trình lập BCKTKT.',
     gate_conditions: 'Là điều kiện tiên quyết bắt buộc để mở mã dự án, phân bổ vốn và kiểm soát chi.',
-    legal_basis: 'Điều 40 Luật Đầu tư công 2019; Điều 60 Luật Xây dựng 2014'
+    legal_basis: 'Điều 35, 41 Luật Đầu tư công số 58/2024/QH15; Điều 60 Luật Xây dựng 2014; Điều 18 Nghị định 15/2021/NĐ-CP'
   },
   {
     step_number: 10,
@@ -216,7 +216,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['procurement_plan_decision'],
     description: 'Phê duyệt KHLCNT với đầy đủ các gói thầu, giá gói, nguồn vốn, hình thức và loại hợp đồng.',
     gate_conditions: 'Không tổ chức lựa chọn nhà thầu khi KHLCNT chưa được phê duyệt.',
-    legal_basis: 'Điều 38, 39 Luật Đấu thầu 2023'
+    legal_basis: 'Điều 38, 39, 40 Luật Đấu thầu số 22/2023/QH15; Điều 14, 15 Nghị định 24/2024/NĐ-CP'
   },
   {
     step_number: 11,
@@ -228,7 +228,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['bidding_result_decision', 'contract'],
     description: 'Phê duyệt kết quả lựa chọn nhà thầu và tiến hành ký kết hợp đồng thi công xây lắp, tư vấn giám sát.',
     gate_conditions: 'Tuyệt đối không cho phép thi công khi chưa có hợp đồng xây lắp hợp lệ.',
-    legal_basis: 'Luật Đấu thầu 2023; Điều 138-146 Luật Xây dựng 2014'
+    legal_basis: 'Điều 43, 64-70 Luật Đấu thầu số 22/2023/QH15; Điều 138-146 Luật Xây dựng 2014'
   },
   {
     step_number: 12,
@@ -240,7 +240,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['resolution'],
     description: 'Dự án phải có quyết định đầu tư (Bước 9) trước thời điểm giao vốn và đăng ký kiểm soát chi KBNN.',
     gate_conditions: 'Không cho giải ngân khi chưa có Quyết định đầu tư hoặc giải ngân vượt kế hoạch vốn đã bố trí.',
-    legal_basis: 'Điều 55 Luật Đầu tư công 2019; Thông tư kiểm soát chi KBNN'
+    legal_basis: 'Điều 55 Luật Đầu tư công số 58/2024/QH15; Điều 9, 10 Nghị định 99/2021/NĐ-CP'
   },
   {
     step_number: 13,
@@ -252,7 +252,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['supervision_diary'],
     description: 'Tổ chức thi công, ghi nhật ký, nghiệm thu từng giai đoạn; phát sinh phải có văn bản chấp thuận trước.',
     gate_conditions: 'Mọi khối lượng phát sinh phải được chấp thuận trước khi thi công; không hợp thức hóa sau.',
-    legal_basis: 'Điều 111-122 Luật Xây dựng 2014; Nghị định 06/2021/NĐ-CP'
+    legal_basis: 'Điều 111-122 Luật Xây dựng 2014; Điều 10-18 Nghị định 06/2021/NĐ-CP'
   },
   {
     step_number: 14,
@@ -264,7 +264,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['acceptance_minutes', 'as_built_drawing', 'handover_minutes'],
     description: 'Lập biên bản nghiệm thu hoàn thành, hoàn thiện bản vẽ hoàn công và bàn giao cho đơn vị quản lý.',
     gate_conditions: 'Không chuyển hoàn thành khi thiếu biên bản nghiệm thu và bản vẽ hoàn công; ngày NT là mốc tính hạn quyết toán.',
-    legal_basis: 'Điều 123, 124 Luật Xây dựng 2014; Nghị định 06/2021/NĐ-CP'
+    legal_basis: 'Điều 123, 124 Luật Xây dựng 2014; Điều 21, 22, 23 Nghị định 06/2021/NĐ-CP'
   },
   {
     step_number: 15,
@@ -276,7 +276,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['settlement_report', 'settlement_decision'],
     description: 'Chủ đầu tư lập báo cáo quyết toán, cơ quan chức năng thẩm tra và Chủ tịch UBND xã ban hành quyết định phê duyệt.',
     gate_conditions: 'Phải có hồ sơ quyết toán A-B, biên bản thẩm tra và quyết định phê duyệt quyết toán hợp pháp.',
-    legal_basis: 'Nghị định 99/2021/NĐ-CP quy định quản lý, thanh toán, quyết toán dự án sử dụng vốn ĐTC'
+    legal_basis: 'Điều 31-47 Nghị định 99/2021/NĐ-CP quy định quản lý, thanh toán, quyết toán dự án sử dụng vốn ĐTC'
   },
   {
     step_number: 16,
@@ -288,7 +288,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['warranty_letter'],
     description: 'Bàn giao tài sản cố định vào sổ theo dõi, theo dõi hết hạn bảo hành công trình, tất toán tài khoản dự án.',
     gate_conditions: 'Chỉ hoàn trả tiền bảo hành khi hết hạn bảo hành và nhà thầu hoàn thành đầy đủ nghĩa vụ sửa chữa khuyết tật.',
-    legal_basis: 'Điều 125, 126 Luật Xây dựng 2014; Điều 28 Nghị định 06/2021/NĐ-CP; Thông tư 23/2023/TT-BTC'
+    legal_basis: 'Điều 125, 126 Luật Xây dựng 2014; Điều 28 Nghị định 06/2021/NĐ-CP; Điều 47 Nghị định 99/2021/NĐ-CP; Thông tư 23/2023/TT-BTC'
   }
 ];
 
