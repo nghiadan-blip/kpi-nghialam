@@ -198,10 +198,9 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     const generalScoreSelf = Number((pol + exp + inn).toFixed(2));
 
     // 2. Calculate 3-dimensional Task Score (Part II: 100đ scale -> 70%)
-    let totalAssignedConverted = 0;
-    let totalCompletedConverted = 0;
     let totalDelays = 0;
     let totalReworks = 0;
+    let sumSelfPoints = 0;
     const processedItems: any[] = [];
 
     for (const it of items) {
@@ -215,20 +214,27 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       const qty = Math.max(0.1, Number(it.quantity) || 1);
       const coeff = Number(catalog.coefficient) || 1.0;
       const unitBaseline = Number(catalog.baseline_score) || 5.0;
-      const convertedQty = Number((qty * coeff).toFixed(2));
+      const maxPoints = Number((qty * unitBaseline * coeff).toFixed(2));
 
-      totalAssignedConverted += convertedQty;
-      totalCompletedConverted += convertedQty; // self assumes completed
+      const selfPts = it.self_points !== undefined && !isNaN(Number(it.self_points))
+        ? Number(it.self_points)
+        : maxPoints;
 
-      const rawPoints = Number((qty * unitBaseline * coeff).toFixed(2));
+      if (selfPts < 0 || selfPts > maxPoints || !isFinite(selfPts)) {
+        await trx.rollback();
+        res.status(400).json({ message: `Điểm tự chấm của dòng sản phẩm [${catalog.name}] không hợp lệ (Phải từ 0đ đến tối đa ${maxPoints}đ).` });
+        return;
+      }
+
+      sumSelfPoints += selfPts;
 
       processedItems.push({
         task_id: it.task_id ? Number(it.task_id) : null,
         product_catalog_id: Number(it.product_catalog_id),
         quantity: qty,
-        self_points: rawPoints,
-        manager_points: rawPoints,
-        final_points: rawPoints,
+        self_points: selfPts,
+        manager_points: selfPts,
+        final_points: selfPts,
         remarks: it.remarks ? it.remarks.trim() : null,
       });
 
@@ -241,12 +247,13 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       }
     }
 
-    // 3D calculation according to Home Affairs Handbook
-    const qtyRate = totalAssignedConverted > 0 ? Math.min(100, (totalCompletedConverted / totalAssignedConverted) * 100) : 100;
+    const qtyRate = Math.min(100.0, sumSelfPoints / 0.70);
     const progRate = Math.max(0, 100 - (totalDelays * 25));
     const qualRate = Math.max(0, 100 - (totalReworks * 25));
 
-    let taskScore100 = (qtyRate + progRate + qualRate) / 3;
+    const taskComp = qtyRate * (progRate / 100) * (qualRate / 100);
+
+    let taskScore100 = taskComp;
 
     // If Leadership position, combine 6 dimensions (a+b+c+d+e+f)/6
     const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(user.role);
@@ -254,7 +261,7 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       const d = Math.min(100, Math.max(0, Number(leadership_unit_result) || 100));
       const e = Math.min(100, Math.max(0, Number(leadership_execution) || 100));
       const f = Math.min(100, Math.max(0, Number(leadership_solidarity) || 100));
-      taskScore100 = (qtyRate + progRate + qualRate + d + e + f) / 6;
+      taskScore100 = (taskComp * 3 + d + e + f) / 6;
     }
 
     taskScore100 = Math.min(100, Math.max(0, Number(taskScore100.toFixed(2))));
@@ -450,7 +457,6 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
       res.status(400).json({ message: 'Phiếu đánh giá đã được Lãnh đạo phê duyệt, không thể sửa đổi.' });
       return;
     }
-
     const employee = await trx('users').where('id', evaluation.employee_id).first();
     const employeeRole = employee ? employee.role : 'EMPLOYEE';
 
@@ -466,36 +472,64 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
         const existingDetail = await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
           .first();
+        if (!existingDetail) {
+          await trx.rollback();
+          res.status(404).json({ message: `Không tìm thấy dòng chi tiết phiếu đánh giá ID ${it.id}.` });
+          return;
+        }
+
         const mgrPts = it.manager_points !== undefined && !isNaN(Number(it.manager_points))
           ? Number(it.manager_points)
-          : (existingDetail?.manager_points ?? existingDetail?.self_points ?? 0.0);
+          : (existingDetail.manager_points ?? existingDetail.self_points ?? 0.0);
+
+        const cat = await trx('product_catalog').where('id', existingDetail.product_catalog_id).first();
+        const maxPoints = cat ? Number((existingDetail.quantity * (cat.baseline_score || 5.0) * (cat.coefficient || 1.0)).toFixed(2)) : 100.0;
+
+        if (mgrPts < 0 || mgrPts > maxPoints || !isFinite(mgrPts)) {
+          await trx.rollback();
+          res.status(400).json({ message: `Điểm thẩm định không hợp lệ cho dòng ${existingDetail.id} (Phải từ 0đ đến tối đa ${maxPoints}đ).` });
+          return;
+        }
 
         await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
           .update({
             manager_points: mgrPts,
             final_points: mgrPts,
-            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail?.remarks ?? null),
+            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail.remarks ?? null),
           });
       }
     }
 
-    let taskScoreMgr = evaluation.task_score_self ?? 0.0;
-    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
-    let sumSelfPoints = 0;
+    let totalDelays = 0;
+    let totalReworks = 0;
     let sumMgrPoints = 0;
+    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
+
     for (const d of allDetails) {
-      sumSelfPoints += Number(d.self_points) || 0;
-      
       const bodyItem = items && Array.isArray(items) ? items.find(it => Number(it.id) === Number(d.id)) : null;
       const mgrPts = bodyItem !== null && bodyItem !== undefined && bodyItem.manager_points !== undefined 
         ? Number(bodyItem.manager_points) 
         : Number(d.manager_points);
       
       sumMgrPoints += mgrPts;
+
+      if (d.task_id) {
+        const task = await trx('tasks').where('id', Number(d.task_id)).first();
+        if (task) {
+          totalDelays += Number(task.delay_count) || 0;
+          totalReworks += Number(task.rework_count) || 0;
+        }
+      }
     }
-    
-    const managerRatio = sumSelfPoints > 0 ? (sumMgrPoints / sumSelfPoints) : 1.0;
+
+    const qtyRateMgr = Math.min(100.0, sumMgrPoints / 0.70);
+    const progRate = Math.max(0, 100 - (totalDelays * 25));
+    const qualRate = Math.max(0, 100 - (totalReworks * 25));
+
+    const taskCompMgr = qtyRateMgr * (progRate / 100) * (qualRate / 100);
+
+    let taskScoreMgr = taskCompMgr;
     const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
 
     const l_unit = leadership_unit_result_mgr !== undefined ? Number(leadership_unit_result_mgr) : (evaluation.leadership_unit_result ?? 100);
@@ -503,15 +537,7 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     const l_sol = leadership_solidarity_mgr !== undefined ? Number(leadership_solidarity_mgr) : (evaluation.leadership_solidarity ?? 100);
 
     if (isLeadershipRole) {
-      const selfUnit = Number(evaluation.leadership_unit_result) || 100;
-      const selfExec = Number(evaluation.leadership_execution) || 100;
-      const selfSol = Number(evaluation.leadership_solidarity) || 100;
-      const baseSelf = Math.max(0, ((evaluation.task_score_self ?? 0.0) * 6 - selfUnit - selfExec - selfSol) / 3);
-      
-      const baseFinal = baseSelf * managerRatio;
-      taskScoreMgr = Math.min(100.0, Math.max(0, (baseFinal * 3 + l_unit + l_exec + l_sol) / 6));
-    } else {
-      taskScoreMgr = Math.min(100.0, Math.max(0, (evaluation.task_score_self ?? 0.0) * managerRatio));
+      taskScoreMgr = (taskCompMgr * 3 + l_unit + l_exec + l_sol) / 6;
     }
     taskScoreMgr = Number(taskScoreMgr.toFixed(2));
 
@@ -613,60 +639,80 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
     const inn = criteria_innovation_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_final))) : (evaluation.criteria_innovation_mgr ?? 0.0);
     const generalScoreFinal = Number((pol + exp + inn).toFixed(2));
 
+    // Final Task Details
     if (items && Array.isArray(items)) {
       for (const it of items) {
         const existingDetail = await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
           .first();
+        if (!existingDetail) {
+          await trx.rollback();
+          res.status(404).json({ message: `Không tìm thấy dòng chi tiết phiếu đánh giá ID ${it.id}.` });
+          return;
+        }
+
         const finalPts = it.final_points !== undefined && !isNaN(Number(it.final_points))
           ? Number(it.final_points)
-          : (existingDetail?.final_points ?? existingDetail?.manager_points ?? existingDetail?.self_points ?? 0.0);
+          : (existingDetail.final_points ?? existingDetail.manager_points ?? existingDetail.self_points ?? 0.0);
+
+        const cat = await trx('product_catalog').where('id', existingDetail.product_catalog_id).first();
+        const maxPoints = cat ? Number((existingDetail.quantity * (cat.baseline_score || 5.0) * (cat.coefficient || 1.0)).toFixed(2)) : 100.0;
+
+        if (finalPts < 0 || finalPts > maxPoints || !isFinite(finalPts)) {
+          await trx.rollback();
+          res.status(400).json({ message: `Điểm phê duyệt không hợp lệ cho dòng ${existingDetail.id} (Phải từ 0đ đến tối đa ${maxPoints}đ).` });
+          return;
+        }
 
         await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
           .update({
             final_points: finalPts,
-            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail?.remarks ?? null),
+            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail.remarks ?? null),
           });
       }
     }
 
-    let taskScoreFinal = evaluation.task_score_mgr ?? 0.0;
-    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
-    let sumSelfPoints = 0;
+    let totalDelays = 0;
+    let totalReworks = 0;
     let sumFinalPoints = 0;
+    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
+
     for (const d of allDetails) {
-      sumSelfPoints += Number(d.self_points) || 0;
-      
       const bodyItem = items && Array.isArray(items) ? items.find(it => Number(it.id) === Number(d.id)) : null;
       const finalPts = bodyItem !== null && bodyItem !== undefined && bodyItem.final_points !== undefined 
         ? Number(bodyItem.final_points) 
         : Number(d.final_points);
-        
+      
       sumFinalPoints += finalPts;
+
+      if (d.task_id) {
+        const task = await trx('tasks').where('id', Number(d.task_id)).first();
+        if (task) {
+          totalDelays += Number(task.delay_count) || 0;
+          totalReworks += Number(task.rework_count) || 0;
+        }
+      }
     }
-    
-    const finalRatio = sumSelfPoints > 0 ? (sumFinalPoints / sumSelfPoints) : 1.0;
+
+    const qtyRateFinal = Math.min(100.0, sumFinalPoints / 0.70);
+    const progRate = Math.max(0, 100 - (totalDelays * 25));
+    const qualRate = Math.max(0, 100 - (totalReworks * 25));
+
+    const taskCompFinal = qtyRateFinal * (progRate / 100) * (qualRate / 100);
+
+    let taskScoreFinal = taskCompFinal;
     const employeeRole = evaluation.employee_role || 'EMPLOYEE';
     const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
-    
+
+    const l_unit = Number(evaluation.leadership_unit_result) || 100;
+    const l_exec = Number(evaluation.leadership_execution) || 100;
+    const l_sol = Number(evaluation.leadership_solidarity) || 100;
+
     if (isLeadershipRole) {
-      const selfUnit = Number(evaluation.leadership_unit_result) || 100;
-      const selfExec = Number(evaluation.leadership_execution) || 100;
-      const selfSol = Number(evaluation.leadership_solidarity) || 100;
-      const baseSelf = Math.max(0, ((evaluation.task_score_self ?? 0.0) * 6 - selfUnit - selfExec - selfSol) / 3);
-      
-      const baseFinal = baseSelf * finalRatio;
-      
-      const l_unit = Number(evaluation.leadership_unit_result) || 100;
-      const l_exec = Number(evaluation.leadership_execution) || 100;
-      const l_sol = Number(evaluation.leadership_solidarity) || 100;
-      
-      taskScoreFinal = Math.min(100.0, Math.max(0, (baseFinal * 3 + l_unit + l_exec + l_sol) / 6));
-    } else {
-      taskScoreFinal = Math.min(100.0, Math.max(0, (evaluation.task_score_self ?? 0.0) * finalRatio));
+      taskScoreFinal = (taskCompFinal * 3 + l_unit + l_exec + l_sol) / 6;
     }
-    taskScoreFinal = Number(taskScoreFinal.toFixed(2));
+    taskScoreFinal = Math.min(100.0, Math.max(0, Number(taskScoreFinal.toFixed(2))));
 
     let calculatedFinalScore = final_score !== undefined ? Number(final_score) : Number((generalScoreFinal + (taskScoreFinal * 0.70)).toFixed(2));
     calculatedFinalScore = Math.min(100.0, Math.max(0, calculatedFinalScore));

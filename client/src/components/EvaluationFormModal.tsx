@@ -281,48 +281,31 @@ export const EvaluationFormModal: React.FC<Props> = ({
     }
   }
 
-  const qtyRate = 100.0;
-  const progRate = Math.max(0, 100.0 - (totalDelays * 25));
-  const qualRate = Math.max(0, 100.0 - (totalReworks * 25));
-
-  let selfTaskScore100 = (qtyRate + progRate + qualRate) / 3;
-  const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(evaluation?.employee_role || user?.role || '');
-  
-  if (isLeadershipRole) {
-    selfTaskScore100 = (qtyRate + progRate + qualRate + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
-  }
-  selfTaskScore100 = Number(selfTaskScore100.toFixed(2));
-
-  // Tính tỷ lệ điểm của Trưởng phòng hoặc Lãnh đạo điều chỉnh
-  let sumSelfPoints = 0;
+  // Sum current points based on current role view
   let sumCurrentPoints = 0;
   for (const it of items) {
-    sumSelfPoints += Number(it.self_points) || 0;
     if (isLeadership) {
-      sumCurrentPoints += Number(it.final_points) || 0;
+      sumCurrentPoints += Number(it.final_points !== undefined ? it.final_points : (it.manager_points !== undefined ? it.manager_points : it.self_points)) || 0;
     } else if (isManager) {
-      sumCurrentPoints += Number(it.manager_points) || 0;
+      sumCurrentPoints += Number(it.manager_points !== undefined ? it.manager_points : it.self_points) || 0;
     } else {
       sumCurrentPoints += Number(it.self_points) || 0;
     }
   }
 
-  const pointsRatio = sumSelfPoints > 0 ? (sumCurrentPoints / sumSelfPoints) : 1.0;
-  let currentTaskScore100 = selfTaskScore100;
+  const qtyRate = Math.min(100.0, sumCurrentPoints / 0.70);
+  const progRate = Math.max(0, 100.0 - (totalDelays * 25));
+  const qualRate = Math.max(0, 100.0 - (totalReworks * 25));
 
-  if (isManager || isLeadership) {
-    if (isLeadershipRole) {
-      const selfUnit = Number(evaluation?.leadership_unit_result) || 100;
-      const selfExec = Number(evaluation?.leadership_execution) || 100;
-      const selfSol = Number(evaluation?.leadership_solidarity) || 100;
-      const baseSelf = Math.max(0, (selfTaskScore100 * 6 - selfUnit - selfExec - selfSol) / 3);
-      const baseFinal = baseSelf * pointsRatio;
-      
-      currentTaskScore100 = (baseFinal * 3 + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
-    } else {
-      currentTaskScore100 = selfTaskScore100 * pointsRatio;
-    }
+  const taskComp = qtyRate * (progRate / 100.0) * (qualRate / 100.0);
+
+  let currentTaskScore100 = taskComp;
+  const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(evaluation?.employee_role || user?.role || '');
+  
+  if (isLeadershipRole) {
+    currentTaskScore100 = (taskComp * 3 + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
   }
+  
   currentTaskScore100 = Math.min(100.0, Math.max(0, Number(currentTaskScore100.toFixed(2))));
   const subtotalTaskScore70 = Number((currentTaskScore100 * 0.70).toFixed(2));
 

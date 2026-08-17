@@ -205,21 +205,30 @@ export const Dashboard: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* AI Assistant Summary Box */}
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-2xs relative">
-              <div className="flex items-center space-x-2 mb-3">
-                <Sparkles className="w-5 h-5 text-amber-600 animate-pulse" />
-                <h3 className="text-xs font-black uppercase tracking-wider text-amber-800">
-                  🤖 THƯ KÝ AI CHỦ TỊCH — DỰ THẢO THÔNG BÁO KẾT LUẬN CHỈ ĐẠO GIAO BAN
-                </h3>
-              </div>
-              <div className="text-xs text-amber-900 leading-relaxed font-bold whitespace-pre-line">
-                {chairmanData.summary}
-              </div>
-              <p className="text-[10px] text-amber-500 mt-3 font-medium italic">
-                * Dự thảo chỉ đạo tự động dựa trên số liệu thực thu ngân sách, tiến độ giải ngân đầu tư công, hồ sơ đất đai trễ hạn trong ngày.
-              </p>
-            </div>
+             {/* AI Assistant Summary Box */}
+             <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-2xs relative">
+               <div className="flex items-center space-x-2 mb-3">
+                 <Sparkles className="w-5 h-5 text-amber-600 animate-pulse" />
+                 <h3 className="text-xs font-black uppercase tracking-wider text-amber-800">
+                   🤖 THƯ KÝ AI CHỦ TỊCH — DỰ THẢO THÔNG BÁO KẾT LUẬN CHỈ ĐẠO GIAO BAN
+                 </h3>
+               </div>
+               
+               <div className="mb-4 p-3 bg-amber-100/60 border border-amber-300/80 rounded-xl text-[10px] text-amber-900 font-bold uppercase tracking-wider">
+                 ⚠️ NỘI DUNG DO AI DỰ THẢO — CHỈ SỬ DỤNG THAM KHẢO; LÃNH ĐẠO PHẢI RÀ SOÁT, CHỈNH SỬA VÀ PHÊ DUYỆT TRƯỚC KHI BAN HÀNH.
+                 <br />
+                 <span className="normal-case font-medium text-[9px] text-amber-700/90 mt-0.5 block italic">
+                   * AI không được tự phê duyệt, tự ban hành, tự thay đổi dữ liệu chính thức hoặc đưa ra quyết định hành chính.
+                 </span>
+               </div>
+
+               <div className="text-xs text-amber-900 leading-relaxed font-bold whitespace-pre-line">
+                 {chairmanData.summary}
+               </div>
+               <p className="text-[10px] text-amber-500 mt-3 font-medium italic">
+                 * Dự thảo chỉ đạo tự động dựa trên số liệu thực thu ngân sách, tiến độ giải ngân đầu tư công, hồ sơ đất đai trễ hạn trong ngày.
+               </p>
+             </div>
 
             {/* Warn Panels (Red/Yellow/Green) */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -689,7 +698,7 @@ export const Dashboard: React.FC = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <span className="text-sm font-black text-emerald-700">{emp.final_score} đ</span>
+                        <span className="text-sm font-black text-emerald-700">{emp.final_score} điểm</span>
                       </div>
                     </div>
                   ))

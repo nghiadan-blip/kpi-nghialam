@@ -194,3 +194,36 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 7. **Đóng gói dự án (Vite & TSC build)**:
    - Build thành công toàn bộ ứng dụng (Exit code 0).
    - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
+
+## 9. Nhật ký Giải quyết Lỗi P0 Tổng hợp Điểm Phần II & Điểm KPI Thang 70 (Reopen P0)
+
+- **Nhánh làm việc (Branch)**: `fix/reopen-p0-kpi-task-score`
+- **Commit message mẫu**: `Reopen P0 KPI task score aggregation fix`
+- **Tình trạng**: Đã giải quyết triệt để lỗi tổng hợp điểm Phần II hiển thị/lưu 70/70 cứng.
+
+### 📂 Các Nội dung & Logic Sửa đổi Chi tiết:
+1. **Công thức tính điểm Phần II (Điểm nhiệm vụ quy đổi) tại Backend**:
+   - [`server/src/controllers/evaluationController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/evaluationController.ts):
+     - Tại `saveDraft`, `reviewByManager`, và `approveByLeadership`: loại bỏ hoàn toàn cơ chế lấy completion rate ($100\%$) làm mặc định.
+     - Điểm thô phần II được tính trực tiếp bằng tổng điểm của các dòng sản phẩm chi tiết trong phiếu (`self_points` cho cá nhân, `manager_points` cho thẩm định, `final_points` cho phê duyệt), giới hạn tối đa trần Phần II là 70 điểm.
+     - Quy đổi điểm thô sang thang 100 bằng công thức:
+       $$qtyRate = \frac{\min(70.0, \sum Points)}{0.70} \times penaltyMultiplier$$
+       trong đó $penaltyMultiplier = \max(0, 1 - totalDelays \times 0.25 - totalReworks \times 0.25)$ trừ điểm tiến độ (-25% mỗi lỗi trễ hạn) và chất lượng (-25% mỗi lỗi làm lại).
+     - Đối với chức danh Lãnh đạo quản lý (hệ 6D), tích hợp tỷ trọng Phần II quy đổi tương ứng hệ số 3/6:
+       $$taskScore100 = \frac{qtyRate \times 3 + l\_unit + l\_exec + l\_sol}{6}$$
+       Giúp đảm bảo công việc thực tế quyết định trực tiếp điểm số cuối cùng, tự chấm bao nhiêu điểm thì tổng hợp Phần II ra bấy nhiêu điểm tương ứng (giới hạn trần 70đ).
+2. **Ràng buộc kiểm tra & Validate đầu vào điểm dòng**:
+   - Validate phía Backend chặn toàn bộ các giá trị âm, NaN, Infinity hoặc vượt trần điểm tối đa của dòng công việc ($quantity \times baseline\_score \times coefficient$). Trả lỗi bằng tiếng Việt chuẩn xác và abort giao dịch nếu vi phạm.
+3. **Đồng bộ tính toán hiển thị trực quan ở Frontend**:
+   - [`client/src/components/EvaluationFormModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/EvaluationFormModal.tsx): Cập nhật công thức tính preview điểm trực tiếp trên form tương thích 100% với logic backend. Khi thay đổi số lượng, điểm dòng tự chấm và tổng Phần II được cập nhật trực quan tức thời (ví dụ: `5.00/70.0đ` thay vì `70/70`).
+4. **Chuẩn hóa Hậu tố đơn vị điểm và Cảnh báo AI**:
+   - [`client/src/pages/Dashboard.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/Dashboard.tsx):
+     - Đổi hiển thị điểm của CBCC xuất sắc trên Dashboard từ `đ` sang `điểm` (ví dụ: `95 điểm`).
+     - Tích hợp banner cảnh báo bản quyền và pháp lý nổi bật màu cam ngay dưới tiêu đề Thư ký AI:
+       > **⚠️ NỘI DUNG DO AI DỰ THẢO — CHỈ SỬ DỤNG THAM KHẢO; LÃNH ĐẠO PHẢI RÀ SOÁT, CHỈNH SỬA VÀ PHÊ DUYỆT TRƯỚC KHI BAN HÀNH.**
+       > *AI không được tự phê duyệt, tự ban hành, tự thay đổi dữ liệu chính thức hoặc đưa ra quyết định hành chính.*
+5. **Migration Reset Dữ liệu Demo Tháng 08/2026**:
+   - [`server/database/migrations/20260817103000_reset_admin_202608_evaluation.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/database/migrations/20260817103000_reset_admin_202608_evaluation.ts): Migration tự động kiểm tra và chuyển trạng thái phiếu tháng 08/2026 của tài khoản Quản trị hệ thống từ `APPROVED` (95 điểm cũ) về trạng thái nháp `DRAFT` và tính lại chuẩn xác theo tổng điểm thực tế của chi tiết sản phẩm. Có ghi nhật ký hệ thống rõ ràng trong bảng `audit_logs`.
+6. **Kiểm thử tự động & Đóng gói**:
+   - Viết [`server/test_reopen_p0_quantity_change.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/test_reopen_p0_quantity_change.ts) & [`server/test_critical_kpi_score.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/test_critical_kpi_score.ts) chứng minh sự thay đổi số lượng sản phẩm làm thay đổi điểm số Phần II tương ứng.
+   - Build client, build server và chạy E2E tests đạt 100% thành công.
