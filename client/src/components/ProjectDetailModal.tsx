@@ -28,8 +28,8 @@ const DOCUMENT_TYPES = [
   { value: 'appraisal_decision', label: 'QĐ thành lập Hội đồng thẩm định' },
   { value: 'appraisal_report', label: 'Báo cáo thẩm định chủ trương/BCKTKT' },
   { value: 'investment_policy_decision', label: 'Quyết định chủ trương đầu tư' },
-  { value: 'survey_task_decision', label: 'Phê duyệt nhiệm vụ khảo sát' },
-  { value: 'survey_method_decision', label: 'Phê duyệt phương án kỹ thuật khảo sát' },
+  { value: 'survey_task_decision', label: 'Phê duyệt nhiệm vụ khảo sát (NĐ 175/2024)' },
+  { value: 'survey_method_decision', label: 'Phê duyệt phương án kỹ thuật khảo sát (NĐ 175/2024)' },
   { value: 'economic_tech_report', label: 'Báo cáo kinh tế - kỹ thuật (Thuyết minh, TK-DT)' },
   { value: 'project_approval_decision', label: 'Quyết định phê duyệt dự án / BCKTKT' },
   { value: 'procurement_plan_decision', label: 'Quyết định phê duyệt KHLCNT' },
@@ -40,8 +40,10 @@ const DOCUMENT_TYPES = [
   { value: 'as_built_drawing', label: 'Bản vẽ hoàn công' },
   { value: 'handover_minutes', label: 'Biên bản bàn giao đưa vào sử dụng' },
   { value: 'settlement_report', label: 'Báo cáo quyết toán A-B' },
-  { value: 'settlement_decision', label: 'Quyết định phê duyệt quyết toán' },
-  { value: 'warranty_letter', label: 'Cam kết/chứng thư bảo hành' },
+  { value: 'settlement_form_01_tt73', label: 'Báo cáo quyết toán vốn ĐTC (Mẫu 01/QTDA - TT 73/2026/TT-BTC)' },
+  { value: 'settlement_form_02_tt73', label: 'Bảng tổng hợp chi phí quyết toán (Mẫu 02/QTDA - TT 73/2026/TT-BTC)' },
+  { value: 'settlement_decision', label: 'Quyết định phê duyệt quyết toán (NĐ 193/2026/NĐ-CP)' },
+  { value: 'warranty_letter', label: 'Cam kết/chứng thư bảo hành (Điều 28 NĐ 06/2021)' },
   { value: 'other', label: 'Tài liệu minh chứng khác' }
 ];
 
@@ -76,6 +78,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const [workflowSteps, setWorkflowSteps] = useState<ProjectWorkflowStep[]>([]);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [settlementFramework, setSettlementFramework] = useState<any>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -118,6 +121,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
       setProject(data.project);
       setWorkflowSteps(data.workflow_steps || []);
       setDocuments(data.documents || []);
+      setSettlementFramework(data.applicable_settlement_framework || null);
       setEditFormData({
         ...data.project,
         expected_version: data.project.version
@@ -936,9 +940,20 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       <p className="font-semibold text-slate-800 mt-1">
                         {project.warranty_end_date
                           ? `Đến ngày: ${new Date(project.warranty_end_date).toLocaleDateString('vi-VN')}`
-                          : 'Theo điều khoản hợp đồng xây lắp & loại công trình'}
+                          : 'Theo điều khoản hợp đồng xây lắp & loại công trình (Điều 28 NĐ 06/2021/NĐ-CP)'}
                       </p>
                     </div>
+
+                    {settlementFramework && (
+                      <div className="mt-3 p-3 bg-blue-50/80 rounded-xl border border-blue-200">
+                        <div className="flex items-center space-x-1.5 text-blue-900 font-bold text-xs">
+                          <FileCheck className="w-4 h-4 text-[#1864AB]" />
+                          <span>Căn cứ pháp lý quyết toán (Hiệu lực 2026):</span>
+                        </div>
+                        <p className="text-[11px] text-blue-800 mt-1 font-medium">{settlementFramework.decree} & {settlementFramework.circular}</p>
+                        <p className="text-[10px] text-slate-600 mt-0.5">{settlementFramework.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

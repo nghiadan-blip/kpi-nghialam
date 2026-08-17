@@ -6,6 +6,7 @@ import {
   SIGNING_CHECKLIST_TEMPLATE,
   PROGRESS_GAP_WARNING_THRESHOLD,
   PROGRESS_GAP_DANGER_THRESHOLD,
+  getApplicableSettlementLegalBasis,
   canReadProjectsList,
   canReadProjectDetail,
   canCreateProject,
@@ -239,6 +240,17 @@ export async function getProjectById(req: AuthRequest, res: Response): Promise<v
         .orderBy('step_number', 'asc');
     }
 
+    const enrichedWorkflowSteps = workflowSteps.map((s) => {
+      const def = WORKFLOW_16_STEPS.find((item) => item.step_number === s.step_number);
+      return {
+        ...s,
+        legal_basis: def?.legal_basis || 'Luật Đầu tư công số 58/2024/QH15 & Luật Xây dựng hiện hành',
+        mandatory_doc_types: def?.mandatory_doc_types || [],
+        gate_conditions: def?.gate_conditions || '',
+        description: def?.description || s.step_name
+      };
+    });
+
     // Lấy các bảng liên quan
     const [milestones, documents, fundingPlans, packages, contracts, acceptanceRecords, settlementRecords, workItems] = await Promise.all([
       db('project_milestones').where('project_id', project.id).orderBy('planned_date', 'asc'),
@@ -251,9 +263,11 @@ export async function getProjectById(req: AuthRequest, res: Response): Promise<v
       db('project_work_items').where('project_id', project.id).orderBy('item_code', 'asc')
     ]);
 
+    const applicableSettlement = getApplicableSettlementLegalBasis(project.settlement_submission_date || project.acceptance_date);
+
     res.status(200).json({
       project,
-      workflow_steps: workflowSteps,
+      workflow_steps: enrichedWorkflowSteps,
       milestones,
       documents,
       funding_plans: fundingPlans,
@@ -261,7 +275,8 @@ export async function getProjectById(req: AuthRequest, res: Response): Promise<v
       contracts,
       acceptance_records: acceptanceRecords,
       settlement_records: settlementRecords,
-      work_items: workItems
+      work_items: workItems,
+      applicable_settlement_framework: applicableSettlement
     });
   } catch (err: any) {
     console.error('Lỗi lấy chi tiết dự án:', err);

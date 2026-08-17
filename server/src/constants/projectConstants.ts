@@ -62,8 +62,8 @@ export const DOCUMENT_TYPES = [
   { value: 'appraisal_decision', label: 'QĐ thành lập Hội đồng thẩm định' },
   { value: 'appraisal_report', label: 'Báo cáo thẩm định chủ trương/BCKTKT' },
   { value: 'investment_policy_decision', label: 'Quyết định chủ trương đầu tư' },
-  { value: 'survey_task_decision', label: 'Phê duyệt nhiệm vụ khảo sát' },
-  { value: 'survey_method_decision', label: 'Phê duyệt phương án kỹ thuật khảo sát' },
+  { value: 'survey_task_decision', label: 'Phê duyệt nhiệm vụ khảo sát (NĐ 175/2024)' },
+  { value: 'survey_method_decision', label: 'Phê duyệt phương án kỹ thuật khảo sát (NĐ 175/2024)' },
   { value: 'economic_tech_report', label: 'Báo cáo kinh tế - kỹ thuật (Thuyết minh, TK-DT)' },
   { value: 'project_approval_decision', label: 'Quyết định phê duyệt dự án / BCKTKT' },
   { value: 'procurement_plan_decision', label: 'Quyết định phê duyệt KHLCNT' },
@@ -74,10 +74,53 @@ export const DOCUMENT_TYPES = [
   { value: 'as_built_drawing', label: 'Bản vẽ hoàn công' },
   { value: 'handover_minutes', label: 'Biên bản bàn giao đưa vào sử dụng' },
   { value: 'settlement_report', label: 'Báo cáo quyết toán A-B' },
-  { value: 'settlement_decision', label: 'Quyết định phê duyệt quyết toán' },
-  { value: 'warranty_letter', label: 'Cam kết/chứng thư bảo hành' },
+  { value: 'settlement_form_01_tt73', label: 'Báo cáo quyết toán vốn ĐTC hoàn thành (Mẫu 01/QTDA - TT 73/2026/TT-BTC)' },
+  { value: 'settlement_form_02_tt73', label: 'Bảng tổng hợp chi phí đầu tư quyết toán (Mẫu 02/QTDA - TT 73/2026/TT-BTC)' },
+  { value: 'settlement_decision', label: 'Quyết định phê duyệt quyết toán (NĐ 193/2026/NĐ-CP)' },
+  { value: 'warranty_letter', label: 'Cam kết/chứng thư bảo hành (Điều 28 NĐ 06/2021)' },
   { value: 'other', label: 'Tài liệu minh chứng khác' }
 ] as const;
+
+/**
+ * Mốc thời gian chuyển tiếp quyết toán dự án hoàn thành theo Nghị định 193/2026/NĐ-CP
+ */
+export const SETTLEMENT_CUTOFF_DATE_2026 = '2026-07-01';
+
+/**
+ * Hàm xác định căn cứ pháp lý & biểu mẫu quyết toán áp dụng theo ngày nộp hồ sơ
+ */
+export function getApplicableSettlementLegalBasis(submissionDate?: string | Date | null): {
+  decree: string;
+  circular: string;
+  template_type: 'CIRCULAR_73_2026' | 'DECREE_254_2025' | 'LEGACY';
+  description: string;
+} {
+  if (!submissionDate) {
+    return {
+      decree: 'Nghị định số 193/2026/NĐ-CP (từ 01/7/2026)',
+      circular: 'Thông tư số 73/2026/TT-BTC',
+      template_type: 'CIRCULAR_73_2026',
+      description: 'Áp dụng biểu mẫu chuẩn Thông tư 73/2026/TT-BTC (Mẫu 01/QTDA, 02/QTDA) theo NĐ 193/2026/NĐ-CP'
+    };
+  }
+
+  const dateStr = typeof submissionDate === 'string' ? submissionDate.slice(0, 10) : submissionDate.toISOString().slice(0, 10);
+  if (dateStr >= SETTLEMENT_CUTOFF_DATE_2026) {
+    return {
+      decree: 'Nghị định số 193/2026/NĐ-CP (hiệu lực từ 01/7/2026)',
+      circular: 'Thông tư số 73/2026/TT-BTC',
+      template_type: 'CIRCULAR_73_2026',
+      description: 'Bắt buộc áp dụng Nghị định 193/2026/NĐ-CP và hệ thống mẫu biểu Thông tư 73/2026/TT-BTC cho hồ sơ nộp từ 01/7/2026.'
+    };
+  }
+
+  return {
+    decree: 'Nghị định số 254/2025/NĐ-CP',
+    circular: 'Văn bản chuyển tiếp trước 01/7/2026',
+    template_type: 'DECREE_254_2025',
+    description: 'Hồ sơ lập/nộp trước 01/7/2026 thực hiện chuyển tiếp theo Nghị định 254/2025/NĐ-CP.'
+  };
+}
 
 /**
  * 16 Chuẩn Bước Quy Trình Đầu Tư Công Cấp Xã (Nghĩa Lâm)
@@ -144,7 +187,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['contract'],
     description: 'Chủ đầu tư ký hợp đồng tư vấn khảo sát và lập Báo cáo kinh tế - kỹ thuật theo hình thức hợp lệ.',
     gate_conditions: 'Có hồ sơ lựa chọn và hợp đồng tư vấn trước khi triển khai khảo sát.',
-    legal_basis: 'Điều 20, 23 Luật Đấu thầu số 22/2023/QH15; Điều 78 Nghị định 24/2024/NĐ-CP'
+    legal_basis: 'Điều 20, 23 Luật Đấu thầu số 22/2023/QH15; Điều 78 Nghị định 24/2024/NĐ-CP & NĐ 214/2025/NĐ-CP'
   },
   {
     step_number: 5,
@@ -156,7 +199,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['survey_task_decision'],
     description: 'Chủ đầu tư phê duyệt nhiệm vụ khảo sát xây dựng xác định mục đích, phạm vi, tiêu chuẩn và khối lượng.',
     gate_conditions: 'Phải phê duyệt nhiệm vụ khảo sát trước khi phê duyệt phương án kỹ thuật khảo sát.',
-    legal_basis: 'Điều 73, 74 Luật Xây dựng 2014; Điều 25 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 73, 74 Luật Xây dựng 2014; Điều 25 Nghị định 175/2024/NĐ-CP (thay thế NĐ 15/2021)'
   },
   {
     step_number: 6,
@@ -168,7 +211,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['survey_method_decision'],
     description: 'Chủ đầu tư phê duyệt phương án kỹ thuật khảo sát (có thể gộp với Bước 5 trong một văn bản).',
     gate_conditions: 'Phải duyệt trước khi thực hiện khảo sát thực địa tại hiện trường.',
-    legal_basis: 'Điều 74 Luật Xây dựng 2014; Điều 26 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 74 Luật Xây dựng 2014; Điều 26 Nghị định 175/2024/NĐ-CP'
   },
   {
     step_number: 7,
@@ -180,7 +223,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['economic_tech_report'],
     description: 'Tư vấn lập thuyết minh, thiết kế bản vẽ thi công, dự toán; Chủ đầu tư nghiệm thu kết quả khảo sát.',
     gate_conditions: 'Không dùng hồ sơ chưa nghiệm thu kết quả khảo sát làm căn cứ thẩm định.',
-    legal_basis: 'Điều 52, 53, 56 Luật Xây dựng 2014; Điều 10 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 52, 53, 56 Luật Xây dựng 2014; Điều 10, 11 Nghị định 175/2024/NĐ-CP'
   },
   {
     step_number: 8,
@@ -192,7 +235,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['appraisal_report'],
     description: 'Thẩm định khối lượng, đơn giá, định mức, cơ cấu chi phí; kiểm tra dự toán không vượt tổng mức đã chốt.',
     gate_conditions: 'Dự toán không được vượt tổng mức đầu tư đã phê duyệt ở Bước 3 nếu chưa điều chỉnh chủ trương.',
-    legal_basis: 'Điều 56, 57 Luật Xây dựng (Sửa đổi 2020); Điều 12, 13 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 56, 57 Luật Xây dựng (Sửa đổi 2020); Điều 12, 13 Nghị định 175/2024/NĐ-CP'
   },
   {
     step_number: 9,
@@ -204,7 +247,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['project_approval_decision'],
     description: 'Quyết định phê duyệt BCKTKT là Quyết định đầu tư đối với công trình lập BCKTKT.',
     gate_conditions: 'Là điều kiện tiên quyết bắt buộc để mở mã dự án, phân bổ vốn và kiểm soát chi.',
-    legal_basis: 'Điều 35, 41 Luật Đầu tư công số 58/2024/QH15; Điều 60 Luật Xây dựng 2014; Điều 18 Nghị định 15/2021/NĐ-CP'
+    legal_basis: 'Điều 35, 41 Luật Đầu tư công số 58/2024/QH15; Điều 60 Luật Xây dựng 2014; Điều 18 Nghị định 175/2024/NĐ-CP'
   },
   {
     step_number: 10,
@@ -216,7 +259,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['procurement_plan_decision'],
     description: 'Phê duyệt KHLCNT với đầy đủ các gói thầu, giá gói, nguồn vốn, hình thức và loại hợp đồng.',
     gate_conditions: 'Không tổ chức lựa chọn nhà thầu khi KHLCNT chưa được phê duyệt.',
-    legal_basis: 'Điều 38, 39, 40 Luật Đấu thầu số 22/2023/QH15; Điều 14, 15 Nghị định 24/2024/NĐ-CP'
+    legal_basis: 'Điều 38, 39, 40 Luật Đấu thầu số 22/2023/QH15; Điều 14, 15 Nghị định 24/2024/NĐ-CP & NĐ 214/2025/NĐ-CP'
   },
   {
     step_number: 11,
@@ -228,7 +271,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['bidding_result_decision', 'contract'],
     description: 'Phê duyệt kết quả lựa chọn nhà thầu và tiến hành ký kết hợp đồng thi công xây lắp, tư vấn giám sát.',
     gate_conditions: 'Tuyệt đối không cho phép thi công khi chưa có hợp đồng xây lắp hợp lệ.',
-    legal_basis: 'Điều 43, 64-70 Luật Đấu thầu số 22/2023/QH15; Điều 138-146 Luật Xây dựng 2014'
+    legal_basis: 'Điều 43, 64-70 Luật Đấu thầu số 22/2023/QH15; NĐ 214/2025/NĐ-CP; Điều 138-146 Luật Xây dựng 2014'
   },
   {
     step_number: 12,
@@ -240,7 +283,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['resolution'],
     description: 'Dự án phải có quyết định đầu tư (Bước 9) trước thời điểm giao vốn và đăng ký kiểm soát chi KBNN.',
     gate_conditions: 'Không cho giải ngân khi chưa có Quyết định đầu tư hoặc giải ngân vượt kế hoạch vốn đã bố trí.',
-    legal_basis: 'Điều 55 Luật Đầu tư công số 58/2024/QH15; Điều 9, 10 Nghị định 99/2021/NĐ-CP'
+    legal_basis: 'Điều 55 Luật Đầu tư công số 58/2024/QH15; Nghị định 254/2025/NĐ-CP; Công văn 10836/BTC-PTHT'
   },
   {
     step_number: 13,
@@ -276,7 +319,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['settlement_report', 'settlement_decision'],
     description: 'Chủ đầu tư lập báo cáo quyết toán, cơ quan chức năng thẩm tra và Chủ tịch UBND xã ban hành quyết định phê duyệt.',
     gate_conditions: 'Phải có hồ sơ quyết toán A-B, biên bản thẩm tra và quyết định phê duyệt quyết toán hợp pháp.',
-    legal_basis: 'Điều 31-47 Nghị định 99/2021/NĐ-CP quy định quản lý, thanh toán, quyết toán dự án sử dụng vốn ĐTC'
+    legal_basis: 'Nghị định 254/2025/NĐ-CP & Nghị định 193/2026/NĐ-CP; Thông tư 73/2026/TT-BTC'
   },
   {
     step_number: 16,
@@ -288,7 +331,7 @@ export const WORKFLOW_16_STEPS: WorkflowStepDefinition[] = [
     mandatory_doc_types: ['warranty_letter'],
     description: 'Bàn giao tài sản cố định vào sổ theo dõi, theo dõi hết hạn bảo hành công trình, tất toán tài khoản dự án.',
     gate_conditions: 'Chỉ hoàn trả tiền bảo hành khi hết hạn bảo hành và nhà thầu hoàn thành đầy đủ nghĩa vụ sửa chữa khuyết tật.',
-    legal_basis: 'Điều 125, 126 Luật Xây dựng 2014; Điều 28 Nghị định 06/2021/NĐ-CP; Điều 47 Nghị định 99/2021/NĐ-CP; Thông tư 23/2023/TT-BTC'
+    legal_basis: 'Điều 125, 126 Luật Xây dựng 2014; Điều 28 Nghị định 06/2021/NĐ-CP; Nghị định 193/2026/NĐ-CP; Thông tư 23/2023/TT-BTC'
   }
 ];
 

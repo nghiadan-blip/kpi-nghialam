@@ -2,41 +2,30 @@ import { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
   // 1. Cập nhật và mở rộng bảng projects với các trường chuẩn hóa
-  await knex.schema.alterTable('projects', (table) => {
-    table.string('project_type').nullable().defaultTo('Xây dựng dân dụng / Giao thông');
-    table.string('location').nullable().defaultTo('Xã Nghĩa Lâm, huyện Nghĩa Đàn');
-    table.text('scale').nullable();
-    table.text('objective').nullable();
-    table.string('investor_name').nullable().defaultTo('UBND xã Nghĩa Lâm');
-    table.string('management_unit').nullable().defaultTo('Ban Quản lý dự án xã Nghĩa Lâm');
-    table.string('beneficiary_unit').nullable().defaultTo('UBND xã Nghĩa Lâm và Nhân dân địa phương');
-    table.date('warranty_end_date').nullable();
-    table
-      .string('lifecycle_status')
-      .notNullable()
-      .defaultTo('PREPARATION')
-      .checkIn([
-        'PREPARATION',
-        'INVESTMENT_APPROVED',
-        'PROCUREMENT',
-        'CONTRACT_SIGNED',
-        'CONSTRUCTION',
-        'PARTIAL_ACCEPTANCE',
-        'COMPLETION_ACCEPTANCE',
-        'HANDOVER',
-        'SETTLEMENT',
-        'WARRANTY',
-        'CLOSED',
-        'ARCHIVED',
-        'CANCELLED_DRAFT'
-      ]);
-    table.string('contractor_name').nullable();
-    table.date('contract_signed_date').nullable();
-    table.string('data_review_flag').nullable();
-  });
+  const hasCol = await knex.schema.hasColumn('projects', 'project_type');
+  if (!hasCol) {
+    await knex.schema.alterTable('projects', (table) => {
+      table.string('project_type').nullable().defaultTo('Xây dựng dân dụng / Giao thông');
+      table.string('location').nullable().defaultTo('Xã Nghĩa Lâm, huyện Nghĩa Đàn');
+      table.text('scale').nullable();
+      table.text('objective').nullable();
+      table.string('investor_name').nullable().defaultTo('UBND xã Nghĩa Lâm');
+      table.string('management_unit').nullable().defaultTo('Ban Quản lý dự án xã Nghĩa Lâm');
+      table.string('beneficiary_unit').nullable().defaultTo('UBND xã Nghĩa Lâm và Nhân dân địa phương');
+      table.date('warranty_end_date').nullable();
+      table
+        .string('lifecycle_status')
+        .notNullable()
+        .defaultTo('PREPARATION');
+      table.string('contractor_name').nullable();
+      table.date('contract_signed_date').nullable();
+      table.string('data_review_flag').nullable();
+    });
+  }
 
   // 2. Bảng 16 Bước Quy Trình Vòng Đời Dự Án Đầu Tư Công Cấp Xã
-  await knex.schema.createTable('project_workflow_steps', (table) => {
+  if (!(await knex.schema.hasTable('project_workflow_steps'))) {
+    await knex.schema.createTable('project_workflow_steps', (table) => {
     table.increments('id').primary();
     table
       .integer('project_id')
@@ -88,7 +77,8 @@ export async function up(knex: Knex): Promise<void> {
     table.timestamp('updated_at').defaultTo(knex.fn.now());
 
     table.unique(['project_id', 'step_number']);
-  });
+    });
+  }
 
   // 3. Bảng Hồ Sơ Điện Tử & Tài Liệu Pháp Lý
   await knex.schema.createTable('project_documents', (table) => {
@@ -130,6 +120,9 @@ export async function up(knex: Knex): Promise<void> {
         'as_built_drawing', // Hồ sơ hoàn công
         'handover_minutes', // Biên bản bàn giao đưa vào sử dụng
         'settlement_report', // Báo cáo quyết toán
+        'settlement_form_01_tt73', // Mẫu 01/QTDA Thông tư 73/2026
+        'settlement_form_02_tt73', // Mẫu 02/QTDA Thông tư 73/2026
+        'settlement_form_03_tt73', // Mẫu 03/QTDA Thông tư 73/2026
         'settlement_decision', // Quyết định phê duyệt quyết toán
         'warranty_letter', // Cam kết/bảo lãnh bảo hành
         'other'

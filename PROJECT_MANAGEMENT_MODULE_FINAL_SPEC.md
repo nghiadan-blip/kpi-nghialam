@@ -1,12 +1,14 @@
 # TÀI LIỆU ĐẶC TẢ CHỨC NĂNG
 
 ## MODULE QUẢN LÝ DỰ ÁN ĐẦU TƯ CÔNG
+### (PHIÊN BẢN CẬP NHẬT PHÁP LÝ NĂM 2026 - CHUYỂN TIẾP NGHỊ ĐỊNH 193/2026 & THÔNG TƯ 73/2026/TT-BTC)
 
-**Hệ thống:** Hệ thống Quản lý nhiệm vụ và đánh giá CBCC  
+**Hệ thống:** Hệ thống Quản lý nhiệm vụ và đánh giá CBCC xã Nghĩa Lâm  
 **Route:** `/projects`  
 **Module liên kết:** Giải ngân vốn đầu tư công tại `/public-investment`  
-**Phiên bản:** 1.0  
-**Trạng thái:** Đặc tả triển khai theo giai đoạn
+**Phiên bản:** 2.0 (Legal Compliance 2026 Edition)  
+**Ngày cập nhật:** 17/08/2026  
+**Trạng thái:** Đặc tả quy trình vòng đời 16 bước, đối chiếu ma trận pháp lý và quy tắc chuyển tiếp từ ngày 01/7/2026
 
 ---
 
@@ -14,33 +16,47 @@
 
 ### 1.1. Mục tiêu
 
-Nâng cấp module Quản lý Dự án từ bảng theo dõi tổng hợp thành hồ sơ điện tử quản lý toàn bộ vòng đời dự án đầu tư công:
+Nâng cấp module Quản lý Dự án từ bảng theo dõi tổng hợp thành hồ sơ điện tử quản lý toàn bộ vòng đời dự án đầu tư công 16 bước theo đúng quy định pháp luật hiện hành:
 
 ```text
-Chủ trương đầu tư
-→ Phê duyệt
-→ Lựa chọn nhà thầu
-→ Ký hợp đồng
-→ Thi công
-→ Nghiệm thu
-→ Bàn giao
-→ Quyết toán
-→ Bảo hành
-→ Kết thúc/tất toán
+Chủ trương đầu tư (HĐND & UBND)
+→ Khảo sát & Lập BCKTKT (NĐ 175/2024/NĐ-CP)
+→ Thẩm định & Phê duyệt Quyết định đầu tư (Luật ĐTC 58/2024/QH15)
+→ Lựa chọn nhà thầu (NĐ 214/2025/NĐ-CP & Luật Đấu thầu 2023)
+→ Hợp đồng & Thi công (NĐ 06/2021/NĐ-CP)
+→ Bố trí vốn & Giải ngân (NĐ 254/2025/NĐ-CP & CV 10836/BTC-PTHT)
+→ Nghiệm thu hoàn thành & Bàn giao tài sản
+→ Thẩm tra & Phê duyệt quyết toán (NĐ 193/2026/NĐ-CP & TT 73/2026/TT-BTC từ 01/7/2026)
+→ Bảo hành theo hợp đồng & Tất toán tài khoản KBNN
 ```
 
 Module phải cung cấp dữ liệu phục vụ:
 
-- điều hành hằng ngày của lãnh đạo;
-- theo dõi kế hoạch và tiến độ;
-- kiểm soát vốn, giải ngân;
-- quản lý đấu thầu và hợp đồng;
-- quản lý nghiệm thu, bàn giao, quyết toán;
-- báo cáo định kỳ và truy xuất hồ sơ.
+- điều hành hằng ngày của lãnh đạo Thường trực Đảng ủy, HĐND và UBND xã;
+- theo dõi kế hoạch vốn và tiến độ thi công thực tế;
+- kiểm soát chi, giải ngân theo mẫu báo cáo Công văn 10836/BTC-PTHT;
+- quản lý đấu thầu, lựa chọn nhà thầu và hợp đồng kinh tế;
+- quản lý nghiệm thu, bàn giao tài sản và quyết toán theo Thông tư 73/2026/TT-BTC;
+- báo cáo định kỳ, kiểm toán và truy xuất hồ sơ điện tử.
 
 ### 1.2. Phạm vi không thay thế
 
-Module `/projects` không thay thế module `/public-investment`. Module `/public-investment` tiếp tục là nơi quản lý dữ liệu tài chính giải ngân hiện có. Module `/projects` quản lý hồ sơ vòng đời và tham chiếu số liệu tài chính từ nguồn chính.
+Module `/projects` không thay thế module `/public-investment`. Module `/public-investment` tiếp tục là nơi quản lý dữ liệu tài chính giải ngân hiện có. Module `/projects` quản lý hồ sơ vòng đời và tham chiếu số liệu tài chính trực tiếp từ nguồn chính (không tạo bản sao gây lệch số liệu).
+
+---
+
+## 1.3. Căn Cứ Pháp Lý Bắt Buộc Áp Dụng (Cập Nhật 2026)
+
+1. **Luật Đầu tư công số 58/2024/QH15** (Ban hành 29/11/2024, hiệu lực từ 01/01/2025).
+2. **Luật Xây dựng 2014 & Luật Sửa đổi 2020**; **Nghị định số 175/2024/NĐ-CP** ngày 30/12/2024 về quản lý hoạt động đầu tư xây dựng (**thay thế Nghị định 15/2021/NĐ-CP**).
+3. **Luật Đấu thầu số 22/2023/QH15** & **Nghị định số 214/2025/NĐ-CP** về lựa chọn nhà thầu.
+4. **Nghị định số 254/2025/NĐ-CP** về quản lý, thanh toán vốn đầu tư công (**thay thế Nghị định 99/2021/NĐ-CP và bãi bỏ Điều 6 Nghị định 125/2025/NĐ-CP**).
+5. **Nghị định số 193/2026/NĐ-CP** có hiệu lực từ ngày **01/7/2026** về quyết toán vốn đầu tư dự án hoàn thành.
+6. **Thông tư số 73/2026/TT-BTC** của Bộ Tài chính có hiệu lực từ ngày **01/7/2026** về hệ thống biểu mẫu quyết toán vốn đầu tư dự án hoàn thành (Mẫu 01/QTDA, 02/QTDA, 03/QTDA).
+7. **Công văn số 10836/BTC-PTHT** ngày 23/7/2026 của Bộ Tài chính về báo cáo nhanh phân bổ và giải ngân vốn ĐTC.
+8. **Quyết định số 1261/QĐ-UBND** và **Công văn số 3092/UBND-KT** của UBND tỉnh Nghệ An về phân cấp quản lý đầu tư công.
+9. **Nghị định số 06/2021/NĐ-CP** (sửa đổi bởi Nghị định 35/2023/NĐ-CP) về quản lý chất lượng và thời hạn bảo hành công trình xây dựng (Điều 28).
+10. **Thông tư số 23/2023/TT-BTC** về quản lý tài sản cố định cấp xã.
 
 ---
 

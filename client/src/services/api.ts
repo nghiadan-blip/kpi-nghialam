@@ -699,6 +699,12 @@ export const projectApi = {
       acceptance_records: ProjectAcceptanceRecord[];
       settlement_records: ProjectSettlementRecord[];
       work_items: ProjectWorkItem[];
+      applicable_settlement_framework?: {
+        decree: string;
+        circular: string;
+        template_type: string;
+        description: string;
+      };
     }>(`/projects/${id}`);
     return res.data;
   },
