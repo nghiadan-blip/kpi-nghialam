@@ -320,3 +320,76 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 
 ### 10.5. Các Nội Dung Đánh Dấu `LEGAL_REVIEW_REQUIRED`
 - Tiêu chí phân loại dự án nhóm A/B/C theo hạn mức tổng mức đầu tư quy định tại Điều 8, 9, 10 Luật Đầu tư công cần được Hội đồng nhân dân / UBND tỉnh Nghệ An và huyện Nghĩa Đàn rà soát định kỳ theo các văn bản phân cấp quản lý đầu tư công mới nhất.
+
+---
+
+## 11. Triển Khai Toàn Diện Mô-đun Quản Lý Dự Án Đầu Tư Công Cấp Xã Theo Đặc Tả 16 Bước (`PROJECT_MANAGEMENT_MODULE_FINAL_SPEC.md`)
+
+- **Nhánh làm việc**: `feat/complete-project-lifecycle-management`
+- **Mục tiêu**: Thực thi 100% đặc tả quản lý vòng đời dự án đầu tư công cấp xã tại `/projects`, liên kết không trùng lặp với `/public-investment` theo đúng quy định Luật Đầu tư công, Luật Xây dựng, Nghị định 335 và quy trình hành chính thực tế tại xã Nghĩa Lâm.
+
+### 11.1. Chi Tiết Triển Khai 5 Giai Đoạn
+
+#### Giai đoạn 1: Dữ liệu và trạng thái P0
+- **Mở rộng schema bảng `projects`**: Bổ sung phân loại nhóm A/B/C, quy mô, địa điểm, mục tiêu, chủ đầu tư, đơn vị quản lý, đơn vị thụ hưởng, thời hạn bảo hành, 11 trạng thái vòng đời chuẩn hóa (`PREPARATION` $\rightarrow$ `CLOSED`, `ARCHIVED`, `CANCELLED_DRAFT`), cờ rà soát dữ liệu `data_review_flag`.
+- **Tự sinh mã dự án chuẩn hóa**: Hàm `generateProjectCode(year)` tự động sinh mã theo quy tắc `DA-YYYY-NN` (ví dụ `DA-2026-01`, `DA-2026-02`).
+- **Chính sách bảo vệ dữ liệu P0**:
+  - Không cho phép xóa dự án đã phát sinh giải ngân thực tế hoặc đã có hồ sơ tài liệu đính kèm $\rightarrow$ Trả về mã lỗi `HTTP 409 Conflict` kèm thông báo tiếng Việt rõ ràng.
+  - Hỗ trợ chuyển sang trạng thái "Lưu trữ" (`ARCHIVED`) hoặc "Hủy bản nháp" (`CANCELLED_DRAFT`).
+
+#### Giai đoạn 2: Hồ sơ điện tử, workflow 16 bước, RBAC và Audit
+- **Quy trình 16 bước chuẩn cấp xã**:
+  1. *Bước 1*: Đưa vào Kế hoạch ĐTC (Nghị quyết HĐND xã - TM. HĐND - CHỦ TỊCH).
+  2. *Bước 2*: Lập & thẩm định Báo cáo đề xuất chủ trương đầu tư (QĐ thành lập Hội đồng thẩm định trước Báo cáo thẩm định).
+  3. *Bước 3*: Quyết định chủ trương đầu tư (Tập thể UBND xã - TM. UBND - CHỦ TỊCH).
+  4. *Bước 4*: Lựa chọn đơn vị tư vấn khảo sát, lập BCKTKT (Hợp đồng tư vấn hợp lệ).
+  5. *Bước 5*: Phê duyệt nhiệm vụ khảo sát xây dựng (Chủ đầu tư / Chủ tịch UBND xã).
+  6. *Bước 6*: Phê duyệt phương án kỹ thuật khảo sát (Chủ đầu tư).
+  7. *Bước 7*: Thực hiện khảo sát & lập BCKTKT (Nghiệm thu kết quả khảo sát).
+  8. *Bước 8*: Thẩm định BCKTKT, thiết kế & dự toán (Dự toán không vượt tổng mức Bước 3).
+  9. *Bước 9*: Phê duyệt dự án / BCKTKT (Quyết định đầu tư của Chủ tịch UBND xã - Điều kiện mở mã dự án & giải ngân).
+  10. *Bước 10*: Phê duyệt kế hoạch lựa chọn nhà thầu (QĐ phê duyệt KHLCNT).
+  11. *Bước 11*: Lựa chọn nhà thầu, phê duyệt kết quả & ký hợp đồng (Không cho thi công khi chưa ký hợp đồng).
+  12. *Bước 12*: Bố trí kế hoạch vốn hằng năm và giải ngân (Kiểm soát chi Kho bạc).
+  13. *Bước 13*: Thi công & quản lý chất lượng (Nhật ký hiện trường, Ban Giám sát đầu tư cộng đồng).
+  14. *Bước 14*: Nghiệm thu hoàn thành và bàn giao (Bắt buộc hồ sơ hoàn công & biên bản nghiệm thu).
+  15. *Bước 15*: Lập, thẩm tra và phê duyệt quyết toán (Chủ tịch UBND xã phê duyệt).
+  16. *Bước 16*: Bàn giao quản lý, khai thác, bảo hành, tất toán tài khoản & đóng dự án.
+- **Cổng điều kiện chuyển bước (Gate Rules)**:
+  - Khóa Bước 1 nếu thiếu Nghị quyết HĐND xã.
+  - Khóa Bước 9 nếu thiếu số Quyết định phê duyệt BCKTKT.
+  - Khóa Bước 11/13 nếu thiếu hợp đồng xây lắp hợp lệ.
+  - Khóa Bước 14 nếu thiếu biên bản nghiệm thu hoàn thành.
+  - Tự động kích hoạt bước tiếp theo (`IN_PROGRESS`) và đồng bộ `lifecycle_status` khi bước trước hoàn thành.
+- **Checklist điện tử trước khi Chủ tịch ký**: 8 tiêu chí kiểm tra pháp lý, thẩm quyền tập thể, số liệu tài chính không vượt trần, hồ sơ kèm theo.
+- **Kho hồ sơ điện tử (`project_documents`)**: Quản lý 18 loại văn bản đính kèm, phân loại theo bước hoặc dự án, quản lý phiên bản `version` và trạng thái xác thực.
+- **Nhật ký kiểm soát (`audit_logs`)**: Ghi nhận toàn bộ thao tác thêm mới, sửa đổi, phê duyệt bước, đính kèm/xóa tài liệu.
+
+#### Giai đoạn 3 & 4: Vốn, Giải ngân, Đấu thầu, Nghiệm thu & Quyết toán
+- **Liên kết tài chính không trùng lặp**: Đọc trực tiếp kế hoạch vốn, vốn phân bổ, đã giải ngân, % tỷ lệ giải ngân từ bảng nguồn `public_investment_projects` qua phép JOIN.
+- **Đấu thầu & Hợp đồng**: Quản lý hình thức lựa chọn nhà thầu, nhà thầu chính, số hợp đồng, giá trị hợp đồng, thời gian thi công, bảo lãnh hợp đồng.
+- **Nghiệm thu & Quyết toán**: Quản lý biên bản nghiệm thu từng phần / hoàn thành, hồ sơ quyết toán A-B, giá trị thẩm tra, giá trị phê duyệt, thời hạn bảo hành 12 tháng.
+
+#### Giai đoạn 5: Dashboard điều hành, Cảnh báo Chênh lệch & Báo cáo
+- **Cảnh báo Chênh lệch Tiến độ & Giải ngân (`progress_gaps`)**:
+  - Tự động phát hiện khi $Tỷ\ lệ\ giải\ ngân - Tiến\ độ\ thi\ công > 15\%$ (cảnh báo vàng) hoặc $> 30\%$ (cảnh báo đỏ nguy cơ giải ngân vượt khối lượng nghiệm thu).
+  - Cảnh báo khi công trình đạt 100% tiến độ thi công nhưng chưa lập biên bản nghiệm thu hoàn thành.
+- **Xuất báo cáo Excel hành chính**: Xuất dữ liệu dự án ra tệp `.xlsx` theo mẫu chuẩn UBND xã Nghĩa Lâm.
+
+### 11.2. Kết Quả Kiểm Thử Master Spec
+
+| Suite kiểm thử | File test | Số test cases | Kết quả |
+| :--- | :--- | :---: | :---: |
+| **Master Spec 5 Phases** | `test_project_master_spec.ts` | 5/5 | **PASS 100%** |
+| **Project Linking & Data Integrity** | `test_project_linking.ts` | 5/5 | **PASS 100%** |
+| **Project RBAC Matrix** | `test_project_rbac.ts` | 7/7 | **PASS 100%** |
+| **Project Lifecycle & Validation** | `test_project_lifecycle.ts` | 5/5 | **PASS 100%** |
+| **Full RBAC Security Matrix** | `test_rbac_full_matrix.ts` | 11/11 | **PASS 100%** |
+| **P0 KPI Calculation Engine** | `test_p0_kpi_formula.ts` | 10/10 | **PASS 100%** |
+| **End-to-End System Suite** | `test_e2e_full.ts` | 23/23 | **PASS 100%** |
+
+### 11.3. Kết Quả Đóng Gói (Build Verification)
+- `npm run build:server` $\rightarrow$ **SUCCESS** (Exit code 0, 0 error).
+- `npm run build:client` $\rightarrow$ **SUCCESS** (Exit code 0, 0 error, Vite bundle generated).
+- `npm run build` $\rightarrow$ **SUCCESS** (Exit code 0).
+

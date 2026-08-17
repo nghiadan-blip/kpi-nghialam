@@ -12,7 +12,9 @@ import {
   Eye,
   Trash2,
   RefreshCw,
-  TrendingUp
+  TrendingUp,
+  Archive,
+  AlertOctagon
 } from 'lucide-react';
 import { Project, ProjectDashboardStats } from '../types';
 import { projectApi } from '../services/api';
@@ -27,6 +29,7 @@ export const Projects: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
   const [groupFilter, setGroupFilter] = useState<string>('');
+  const [lifecycleFilter, setLifecycleFilter] = useState<string>('');
   const [acceptanceFilter, setAcceptanceFilter] = useState<string>('');
   const [settlementFilter, setSettlementFilter] = useState<string>('');
 
@@ -50,6 +53,7 @@ export const Projects: React.FC = () => {
         projectApi.getProjects({
           search,
           investment_group: groupFilter || undefined,
+          lifecycle_status: lifecycleFilter || undefined,
           acceptance_status: acceptanceFilter || undefined,
           settlement_status: settlementFilter || undefined
         }),
@@ -67,42 +71,56 @@ export const Projects: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [search, groupFilter, acceptanceFilter, settlementFilter]);
+  }, [search, groupFilter, lifecycleFilter, acceptanceFilter, settlementFilter]);
 
   const handleDelete = async (p: Project) => {
     if (!canDelete) return;
     if (!window.confirm(`Bạn có chắc chắn muốn xóa dự án "${p.project_name}" [${p.project_code}]?`)) return;
 
     try {
-      await projectApi.deleteProject(p.id);
+      await projectApi.deleteProject(p.id, { action: 'delete' });
       fetchData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Lỗi khi xóa dự án.');
     }
   };
 
-  const getAcceptanceBadge = (status: string) => {
-    switch (status) {
-      case 'nghiem_thu_hoan_thanh':
-        return <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full text-[11px] font-bold">Nghiệm thu HT</span>;
-      case 'nghiem_thu_tung_phan':
-        return <span className="bg-sky-100 text-sky-800 border border-sky-300 px-2 py-0.5 rounded-full text-[11px] font-bold">NT từng phần</span>;
-      case 'khong_dat':
-        return <span className="bg-red-100 text-red-800 border border-red-300 px-2 py-0.5 rounded-full text-[11px] font-bold">Không đạt</span>;
-      default:
-        return <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full text-[11px]">Chưa NT</span>;
+  const handleArchive = async (p: Project) => {
+    if (!window.confirm(`Chuyển dự án "${p.project_name}" [${p.project_code}] sang trạng thái Lưu trữ?`)) return;
+    try {
+      await projectApi.deleteProject(p.id, { action: 'archive' });
+      fetchData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Lỗi khi lưu trữ dự án.');
     }
   };
 
-  const getSettlementBadge = (status: string) => {
+  const getLifecycleBadge = (status: string) => {
     switch (status) {
-      case 'quyet_toan_xong':
-      case 'da_quyet_toan':
-        return <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2 py-0.5 rounded-full text-[11px] font-bold">Đã quyết toán</span>;
-      case 'dang_quyet_toan':
-        return <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-full text-[11px] font-bold">Đang QT</span>;
+      case 'PREPARATION':
+        return <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">1. Chuẩn bị đầu tư</span>;
+      case 'INVESTMENT_APPROVED':
+        return <span className="bg-sky-100 text-[#1864AB] px-2 py-0.5 rounded text-[11px] font-bold">2. Đã duyệt BCKTKT</span>;
+      case 'PROCUREMENT':
+        return <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[11px] font-bold">3. Lựa chọn nhà thầu</span>;
+      case 'CONTRACT_SIGNED':
+        return <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-bold">4. Đã ký HĐ</span>;
+      case 'CONSTRUCTION':
+        return <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-[11px] font-bold">5. Đang thi công</span>;
+      case 'COMPLETION_ACCEPTANCE':
+        return <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-bold">7. Nghiệm thu HT</span>;
+      case 'HANDOVER':
+        return <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-[11px] font-bold">8. Đã bàn giao</span>;
+      case 'SETTLEMENT':
+        return <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[11px] font-bold">9. Đang/Đã QT</span>;
+      case 'WARRANTY':
+        return <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-[11px] font-bold">10. Đang bảo hành</span>;
+      case 'CLOSED':
+        return <span className="bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded text-[11px] font-extrabold">11. Tất toán / Đóng</span>;
+      case 'ARCHIVED':
+        return <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-[11px]">Lưu trữ</span>;
       default:
-        return <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded-full text-[11px]">Chưa QT</span>;
+        return <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px]">{status}</span>;
     }
   };
 
@@ -118,11 +136,11 @@ export const Projects: React.FC = () => {
             <div className="flex items-center space-x-2">
               <h1 className="text-xl font-bold text-slate-800">Quản lý Dự án Đầu tư công</h1>
               <span className="bg-[#CFEBFC] text-[#1864AB] text-xs font-bold px-2.5 py-0.5 rounded-full border border-[#9FD7F9]">
-                Toàn bộ vòng đời
+                Quy trình 16 bước chuẩn
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Theo dõi từ Chủ trương, Đấu thầu, Hợp đồng, Thi công đến Nghiệm thu & Quyết toán bàn giao
+              Hồ sơ điện tử toàn bộ vòng đời: Chủ trương, BCKTKT, Đấu thầu, Thi công, Nghiệm thu, Quyết toán & Bảo hành
             </p>
           </div>
         </div>
@@ -133,7 +151,7 @@ export const Projects: React.FC = () => {
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center space-x-1.5 transition border border-slate-300"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-            <span>Xuất Excel</span>
+            <span>Xuất Excel Báo Cáo</span>
           </button>
           <button
             onClick={fetchData}
@@ -158,6 +176,32 @@ export const Projects: React.FC = () => {
         <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center space-x-2">
           <AlertTriangle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
+        </div>
+      )}
+
+      {/* Progress Gap Alerts Banner */}
+      {stats?.progress_gaps && stats.progress_gaps.length > 0 && (
+        <div className="p-4 bg-amber-50 border border-amber-300 rounded-2xl space-y-2 text-xs">
+          <div className="flex items-center space-x-2 text-amber-900 font-bold text-sm">
+            <AlertOctagon className="w-4.5 h-4.5 text-amber-700 shrink-0" />
+            <span>Cảnh báo Chênh lệch Giải ngân & Tiến độ ({stats.progress_gaps.length} dự án cần lưu ý):</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {stats.progress_gaps.map((gap) => (
+              <div key={gap.id} className="p-2.5 bg-white rounded-xl border border-amber-200 flex items-start justify-between">
+                <div>
+                  <span className="font-bold text-slate-800">[{gap.project_code}] {gap.project_name}</span>
+                  <p className="text-amber-800 text-[11px] mt-0.5">{gap.reason}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedProjectId(gap.id)}
+                  className="px-2 py-1 bg-amber-100 text-amber-900 rounded text-[11px] font-bold shrink-0 ml-2"
+                >
+                  Xem ngay
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -214,12 +258,12 @@ export const Projects: React.FC = () => {
 
           <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-semibold text-slate-500">Giai đoạn Vòng đời</p>
+              <p className="text-xs font-semibold text-slate-500">Vòng đời Dự án</p>
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-slate-700 mt-1 font-medium">
                 <span>Thi công: <strong className="text-[#1864AB]">{stats.by_lifecycle.executing}</strong></span>
                 <span>Chờ NT: <strong className="text-amber-700">{stats.by_lifecycle.acceptance_pending}</strong></span>
                 <span>Quyết toán: <strong className="text-purple-700">{stats.by_lifecycle.settling}</strong></span>
-                <span>Hoàn thành: <strong className="text-emerald-700">{stats.by_lifecycle.completed}</strong></span>
+                <span>Tất toán: <strong className="text-emerald-700">{stats.by_lifecycle.completed}</strong></span>
               </div>
             </div>
             <div className="w-11 h-11 bg-amber-50 text-amber-700 rounded-xl flex items-center justify-center">
@@ -237,21 +281,40 @@ export const Projects: React.FC = () => {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo mã dự án, tên công trình, số hợp đồng..."
+            placeholder="Tìm theo mã dự án, tên công trình, nhà thầu, số hợp đồng..."
             className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white transition"
           />
         </div>
 
-        <div className="flex items-center space-x-2 w-full md:w-auto">
+        <div className="flex items-center space-x-2 w-full md:w-auto overflow-x-auto">
           <select
             value={groupFilter}
             onChange={(e) => setGroupFilter(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
           >
-            <option value="">-- Tất cả nhóm DA --</option>
+            <option value="">-- Nhóm DA --</option>
             <option value="A">Nhóm A</option>
             <option value="B">Nhóm B</option>
             <option value="C">Nhóm C</option>
+          </select>
+
+          <select
+            value={lifecycleFilter}
+            onChange={(e) => setLifecycleFilter(e.target.value)}
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+          >
+            <option value="">-- Giai đoạn vòng đời --</option>
+            <option value="PREPARATION">1. Chuẩn bị đầu tư</option>
+            <option value="INVESTMENT_APPROVED">2. Đã duyệt BCKTKT</option>
+            <option value="PROCUREMENT">3. Lựa chọn nhà thầu</option>
+            <option value="CONTRACT_SIGNED">4. Đã ký hợp đồng</option>
+            <option value="CONSTRUCTION">5. Đang thi công</option>
+            <option value="COMPLETION_ACCEPTANCE">7. Nghiệm thu hoàn thành</option>
+            <option value="HANDOVER">8. Đã bàn giao</option>
+            <option value="SETTLEMENT">9. Quyết toán</option>
+            <option value="WARRANTY">10. Đang bảo hành</option>
+            <option value="CLOSED">11. Tất toán đóng</option>
+            <option value="ARCHIVED">Lưu trữ</option>
           </select>
 
           <select
@@ -301,12 +364,11 @@ export const Projects: React.FC = () => {
                   <th className="py-3 px-4">Mã DA</th>
                   <th className="py-3 px-4">Tên Công trình / Dự án</th>
                   <th className="py-3 px-3 text-center">Nhóm</th>
-                  <th className="py-3 px-4">Nhà thầu / Số HĐ</th>
+                  <th className="py-3 px-4">Giai đoạn Vòng đời</th>
                   <th className="py-3 px-4 text-right">Vốn phân bổ</th>
                   <th className="py-3 px-3 text-center">% Giải ngân</th>
                   <th className="py-3 px-3 text-center">% Tiến độ</th>
-                  <th className="py-3 px-3 text-center">Nghiệm thu</th>
-                  <th className="py-3 px-3 text-center">Quyết toán</th>
+                  <th className="py-3 px-3 text-center">Trạng thái</th>
                   <th className="py-3 px-4 text-center">Hành động</th>
                 </tr>
               </thead>
@@ -319,7 +381,7 @@ export const Projects: React.FC = () => {
                     <td className="py-3.5 px-4 max-w-xs">
                       <p className="font-bold text-slate-800 line-clamp-1">{p.project_name}</p>
                       <p className="text-[11px] text-slate-500">
-                        {p.inv_investor_name || 'UBND xã Nghĩa Lâm'} • Phụ trách: {p.project_manager_name || 'Chưa gán'}
+                        {p.investor_name || 'UBND xã Nghĩa Lâm'} • Phụ trách: {p.project_manager_name || 'Chưa gán'}
                       </p>
                     </td>
                     <td className="py-3.5 px-3 text-center">
@@ -328,8 +390,7 @@ export const Projects: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 whitespace-nowrap">
-                      <p className="font-semibold text-slate-800">{p.inv_contractor || 'Chưa có nhà thầu'}</p>
-                      <p className="text-[11px] font-mono text-slate-500">{p.contract_no || 'Chưa ký HĐ'}</p>
+                      {getLifecycleBadge(p.lifecycle_status)}
                     </td>
                     <td className="py-3.5 px-4 text-right font-extrabold text-slate-800 whitespace-nowrap">
                       {(p.inv_allocated_capital || 0).toLocaleString()} đ
@@ -345,10 +406,9 @@ export const Projects: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                      {getAcceptanceBadge(p.acceptance_status)}
-                    </td>
-                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                      {getSettlementBadge(p.settlement_status)}
+                      <span className="text-[11px] text-slate-600">
+                        {p.acceptance_status === 'nghiem_thu_hoan_thanh' ? 'Đã nghiệm thu' : 'Chưa NT'}
+                      </span>
                     </td>
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center space-x-1.5">
@@ -357,16 +417,25 @@ export const Projects: React.FC = () => {
                           className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-[#1864AB] rounded-lg text-xs font-semibold flex items-center space-x-1 transition border border-sky-200"
                         >
                           <Eye className="w-3.5 h-3.5" />
-                          <span>Chi tiết</span>
+                          <span>Hồ sơ</span>
                         </button>
                         {canDelete && (
-                          <button
-                            onClick={() => handleDelete(p)}
-                            className="p-1 text-slate-400 hover:text-red-600 rounded transition"
-                            title="Xóa dự án"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleArchive(p)}
+                              className="p-1 text-slate-400 hover:text-amber-600 rounded transition"
+                              title="Lưu trữ hồ sơ"
+                            >
+                              <Archive className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(p)}
+                              className="p-1 text-slate-400 hover:text-red-600 rounded transition"
+                              title="Xóa dự án"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>

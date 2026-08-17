@@ -279,6 +279,18 @@ export interface Project {
   contractor_selection_date?: string | Date | null;
   contract_no?: string | null;
   contract_value: number;
+  contractor_name?: string | null;
+  contract_signed_date?: string | Date | null;
+  project_type?: string | null;
+  location?: string | null;
+  scale?: string | null;
+  objective?: string | null;
+  investor_name?: string | null;
+  management_unit?: string | null;
+  beneficiary_unit?: string | null;
+  warranty_end_date?: string | Date | null;
+  lifecycle_status: 'PREPARATION' | 'INVESTMENT_APPROVED' | 'PROCUREMENT' | 'CONTRACT_SIGNED' | 'CONSTRUCTION' | 'PARTIAL_ACCEPTANCE' | 'COMPLETION_ACCEPTANCE' | 'HANDOVER' | 'SETTLEMENT' | 'WARRANTY' | 'CLOSED' | 'ARCHIVED' | 'CANCELLED_DRAFT' | string;
+  data_review_flag?: string | null;
   start_date?: string | Date | null;
   planned_end_date?: string | Date | null;
   actual_end_date?: string | Date | null;
@@ -293,6 +305,161 @@ export interface Project {
   created_by?: number | null;
   updated_by?: number | null;
   version: number;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectWorkflowStep {
+  id: number;
+  project_id: number;
+  step_number: number;
+  step_code: string;
+  step_name: string;
+  authority_body: string;
+  signatory_type: 'COLLECTIVE' | 'INDIVIDUAL' | 'AUTHORIZED' | string;
+  signatory_title: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_REVIEW' | 'APPROVED' | 'REJECTED' | 'BLOCKED' | 'COMPLETED' | string;
+  checklist_data?: string | null;
+  decision_number?: string | null;
+  decision_date?: string | Date | null;
+  started_date?: string | Date | null;
+  completed_date?: string | Date | null;
+  evidence_url?: string | null;
+  notes?: string | null;
+  is_blocked: boolean;
+  block_reason?: string | null;
+  legal_review_required: boolean;
+  reviewed_by?: number | null;
+  approved_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectDocument {
+  id: number;
+  project_id: number;
+  workflow_step_id?: number | null;
+  document_code?: string | null;
+  document_name: string;
+  document_type: string;
+  issuing_authority?: string | null;
+  issuing_date?: string | Date | null;
+  file_url: string;
+  file_size?: number;
+  file_type?: string;
+  version: number;
+  is_mandatory: boolean;
+  verification_status: 'pending' | 'verified' | 'rejected' | 'LEGAL_REVIEW_REQUIRED' | string;
+  uploaded_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectFundingPlan {
+  id: number;
+  project_id: number;
+  budget_year: number;
+  funding_source: string;
+  planned_amount: number;
+  allocated_amount: number;
+  adjusted_amount: number;
+  cancelled_amount: number;
+  decision_ref?: string | null;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectProcurementPackage {
+  id: number;
+  project_id: number;
+  package_code: string;
+  package_name: string;
+  procurement_plan_ref?: string | null;
+  bidding_method: string;
+  package_estimate_value: number;
+  winning_bid_value: number;
+  contractor_name?: string | null;
+  selection_date?: string | Date | null;
+  status: 'planned' | 'bidding' | 'selected' | 'contracted' | 'cancelled' | string;
+  created_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectContract {
+  id: number;
+  project_id: number;
+  package_id?: number | null;
+  contract_no: string;
+  contract_name: string;
+  contractor_name: string;
+  signed_date?: string | Date | null;
+  contract_value: number;
+  start_date?: string | Date | null;
+  end_date?: string | Date | null;
+  performance_guarantee_value: number;
+  performance_guarantee_expiry?: string | Date | null;
+  advance_amount: number;
+  status: 'draft' | 'active' | 'completed' | 'liquidated' | 'terminated' | string;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectAcceptanceRecord {
+  id: number;
+  project_id: number;
+  acceptance_type: 'stage' | 'partial' | 'completion' | 'internal' | string;
+  acceptance_date: string | Date;
+  acceptance_value: number;
+  conclusion: 'pass' | 'conditional_pass' | 'fail' | string;
+  remediation_deadline?: string | Date | null;
+  remediation_result?: string | null;
+  signatories_list?: string | null;
+  minutes_number?: string | null;
+  evidence_url?: string | null;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectSettlementRecord {
+  id: number;
+  project_id: number;
+  submission_date?: string | Date | null;
+  appraising_body?: string | null;
+  proposed_value: number;
+  approved_value: number;
+  difference_value: number;
+  decision_number?: string | null;
+  decision_date?: string | Date | null;
+  asset_handover_status: string;
+  bank_account_settled: boolean;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectWorkItem {
+  id: number;
+  project_id: number;
+  parent_id?: number | null;
+  item_code: string;
+  item_name: string;
+  responsible_unit?: string | null;
+  planned_start_date?: string | Date | null;
+  planned_end_date?: string | Date | null;
+  actual_start_date?: string | Date | null;
+  actual_end_date?: string | Date | null;
+  progress_percent: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | string;
+  obstacle_note?: string | null;
+  created_by?: number | null;
   created_at?: string | Date;
   updated_at?: string | Date;
 }
@@ -329,5 +496,13 @@ declare module 'knex/types/tables' {
     office_requests: OfficeRequest;
     projects: Project;
     project_milestones: ProjectMilestone;
+    project_workflow_steps: ProjectWorkflowStep;
+    project_documents: ProjectDocument;
+    project_funding_plans: ProjectFundingPlan;
+    project_procurement_packages: ProjectProcurementPackage;
+    project_contracts: ProjectContract;
+    project_acceptance_records: ProjectAcceptanceRecord;
+    project_settlement_records: ProjectSettlementRecord;
+    project_work_items: ProjectWorkItem;
   }
 }

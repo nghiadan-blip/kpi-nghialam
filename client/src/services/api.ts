@@ -18,7 +18,15 @@ import {
   OfficeRequest,
   Project,
   ProjectMilestone,
-  ProjectDashboardStats
+  ProjectDashboardStats,
+  ProjectWorkflowStep,
+  ProjectDocument,
+  ProjectFundingPlan,
+  ProjectProcurementPackage,
+  ProjectContract,
+  ProjectAcceptanceRecord,
+  ProjectSettlementRecord,
+  ProjectWorkItem
 } from '../types';
 
 export type { HealthCheckResponse };
@@ -664,6 +672,7 @@ export const projectApi = {
   getProjects: async (params?: {
     search?: string;
     investment_group?: string;
+    lifecycle_status?: string;
     acceptance_status?: string;
     settlement_status?: string;
     project_manager_id?: number;
@@ -681,7 +690,15 @@ export const projectApi = {
   getProjectById: async (id: number) => {
     const res = await api.get<{
       project: Project;
+      workflow_steps: ProjectWorkflowStep[];
       milestones: ProjectMilestone[];
+      documents: ProjectDocument[];
+      funding_plans: ProjectFundingPlan[];
+      packages: ProjectProcurementPackage[];
+      contracts: ProjectContract[];
+      acceptance_records: ProjectAcceptanceRecord[];
+      settlement_records: ProjectSettlementRecord[];
+      work_items: ProjectWorkItem[];
     }>(`/projects/${id}`);
     return res.data;
   },
@@ -693,8 +710,8 @@ export const projectApi = {
     const res = await api.put<{ message: string; version: number }>(`/projects/${id}`, data);
     return res.data;
   },
-  deleteProject: async (id: number, reason?: string) => {
-    const res = await api.delete<{ message: string }>(`/projects/${id}`, { data: { reason } });
+  deleteProject: async (id: number, options?: { action?: 'delete' | 'archive' | 'cancel_draft'; reason?: string }) => {
+    const res = await api.delete<{ message: string }>(`/projects/${id}`, { data: options });
     return res.data;
   },
   linkInvestment: async (id: number, investment_project_id: number) => {
@@ -703,6 +720,33 @@ export const projectApi = {
   },
   unlinkInvestment: async (id: number) => {
     const res = await api.post<{ message: string }>(`/projects/${id}/unlink-investment`);
+    return res.data;
+  },
+  updateWorkflowStep: async (projectId: number, stepNumber: number, data: any) => {
+    const res = await api.put<{ message: string }>(`/projects/${projectId}/workflow/${stepNumber}`, data);
+    return res.data;
+  },
+  approveWorkflowStep: async (projectId: number, stepNumber: number, data?: any) => {
+    const res = await api.post<{ message: string; next_lifecycle_status: string }>(
+      `/projects/${projectId}/workflow/${stepNumber}/approve`,
+      data
+    );
+    return res.data;
+  },
+  getProjectDocuments: async (projectId: number) => {
+    const res = await api.get<{ documents: ProjectDocument[] }>(`/projects/${projectId}/documents`);
+    return res.data;
+  },
+  addProjectDocument: async (projectId: number, data: any) => {
+    const res = await api.post<{ message: string; id: number }>(`/projects/${projectId}/documents`, data);
+    return res.data;
+  },
+  deleteProjectDocument: async (projectId: number, docId: number) => {
+    const res = await api.delete<{ message: string }>(`/projects/${projectId}/documents/${docId}`);
+    return res.data;
+  },
+  getProjectAuditLog: async (projectId: number) => {
+    const res = await api.get<{ logs: any[] }>(`/projects/${projectId}/audit-log`);
     return res.data;
   },
   getDashboard: async () => {
@@ -725,4 +769,5 @@ export const projectApi = {
     window.open('/api/projects/export', '_blank');
   }
 };
+
 

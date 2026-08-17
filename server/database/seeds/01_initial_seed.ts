@@ -61,6 +61,14 @@ export async function seed(knex: Knex): Promise<void> {
   }
 
   // Clear existing records in reverse dependency order
+  await knex('project_work_items').del();
+  await knex('project_settlement_records').del();
+  await knex('project_acceptance_records').del();
+  await knex('project_contracts').del();
+  await knex('project_procurement_packages').del();
+  await knex('project_funding_plans').del();
+  await knex('project_documents').del();
+  await knex('project_workflow_steps').del();
   await knex('project_milestones').del();
   await knex('projects').del();
   await knex('office_requests').del();
@@ -95,7 +103,15 @@ export async function seed(knex: Knex): Promise<void> {
       'kh965_progress',
       'office_requests',
       'projects',
-      'project_milestones'
+      'project_milestones',
+      'project_workflow_steps',
+      'project_documents',
+      'project_funding_plans',
+      'project_procurement_packages',
+      'project_contracts',
+      'project_acceptance_records',
+      'project_settlement_records',
+      'project_work_items'
     ];
     for (const tbl of tablesToReset) {
       await knex.raw(`DELETE FROM sqlite_sequence WHERE name = '${tbl}'`);
@@ -853,4 +869,111 @@ export async function seed(knex: Knex): Promise<void> {
     }
   ];
   await knex('project_milestones').insert(projectMilestones);
+
+  // 12. Insert 16 Workflow Steps for Projects
+  const workflowSteps: any[] = [];
+  const stepTitles = [
+    { num: 1, code: 'STEP_01', name: 'Đưa dự án vào kế hoạch đầu tư công', auth: 'HĐND xã', type: 'COLLECTIVE', title: 'TM. HĐND - CHỦ TỊCH' },
+    { num: 2, code: 'STEP_02', name: 'Lập và thẩm định Báo cáo đề xuất chủ trương đầu tư', auth: 'Hội đồng thẩm định UBND xã', type: 'INDIVIDUAL', title: 'Chủ tịch Hội đồng thẩm định' },
+    { num: 3, code: 'STEP_03', name: 'Quyết định chủ trương đầu tư', auth: 'UBND xã', type: 'COLLECTIVE', title: 'TM. UBND - CHỦ TỊCH' },
+    { num: 4, code: 'STEP_04', name: 'Lựa chọn đơn vị tư vấn khảo sát, lập BCKTKT', auth: 'Chủ đầu tư', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 5, code: 'STEP_05', name: 'Phê duyệt nhiệm vụ khảo sát xây dựng', auth: 'Chủ đầu tư', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 6, code: 'STEP_06', name: 'Phê duyệt phương án kỹ thuật khảo sát', auth: 'Chủ đầu tư', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 7, code: 'STEP_07', name: 'Thực hiện khảo sát và lập Báo cáo kinh tế - kỹ thuật', auth: 'Đơn vị tư vấn', type: 'AUTHORIZED', title: 'Đại diện Tư vấn' },
+    { num: 8, code: 'STEP_08', name: 'Thẩm định Báo cáo kinh tế - kỹ thuật, thiết kế và dự toán', auth: 'Phòng Kinh tế - Hạ tầng', type: 'INDIVIDUAL', title: 'Cơ quan thẩm định' },
+    { num: 9, code: 'STEP_09', name: 'Phê duyệt dự án / Báo cáo kinh tế - kỹ thuật', auth: 'Chủ tịch UBND xã', type: 'INDIVIDUAL', title: 'CHỦ TỊCH' },
+    { num: 10, code: 'STEP_10', name: 'Phê duyệt kế hoạch lựa chọn nhà thầu', auth: 'Chủ tịch UBND xã', type: 'INDIVIDUAL', title: 'CHỦ TỊCH' },
+    { num: 11, code: 'STEP_11', name: 'Lựa chọn nhà thầu, phê duyệt kết quả và ký hợp đồng', auth: 'Chủ đầu tư & Nhà thầu', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 12, code: 'STEP_12', name: 'Bố trí kế hoạch vốn hằng năm và giải ngân', auth: 'Kế toán xã / KBNN', type: 'AUTHORIZED', title: 'Chủ tài khoản & Kế toán' },
+    { num: 13, code: 'STEP_13', name: 'Thi công và quản lý chất lượng', auth: 'Nhà thầu & Tư vấn GS', type: 'AUTHORIZED', title: 'Chỉ huy trưởng công trường' },
+    { num: 14, code: 'STEP_14', name: 'Nghiệm thu hoàn thành và bàn giao đưa vào sử dụng', auth: 'Chủ đầu tư & Các bên', type: 'AUTHORIZED', title: 'Hội đồng nghiệm thu cơ sở' },
+    { num: 15, code: 'STEP_15', name: 'Lập, thẩm tra và phê duyệt quyết toán', auth: 'Chủ tịch UBND xã', type: 'INDIVIDUAL', title: 'CHỦ TỊCH' },
+    { num: 16, code: 'STEP_16', name: 'Bàn giao quản lý, khai thác, bảo hành, bảo trì và kết thúc', auth: 'Đơn vị tiếp nhận', type: 'INDIVIDUAL', title: 'Đại diện Bên giao & Bên nhận' }
+  ];
+
+  for (let pId = 1; pId <= 3; pId++) {
+    for (const s of stepTitles) {
+      let status = 'NOT_STARTED';
+      if (pId === 1) {
+        if (s.num <= 12) status = 'COMPLETED';
+        else if (s.num === 13) status = 'IN_PROGRESS';
+      } else if (pId === 2) {
+        if (s.num <= 10) status = 'COMPLETED';
+        else if (s.num === 11) status = 'IN_PROGRESS';
+      } else {
+        if (s.num <= 4) status = 'COMPLETED';
+        else if (s.num === 5) status = 'IN_PROGRESS';
+      }
+
+      workflowSteps.push({
+        project_id: pId,
+        step_number: s.num,
+        step_code: s.code,
+        step_name: s.name,
+        authority_body: s.auth,
+        signatory_type: s.type,
+        signatory_title: s.title,
+        status,
+        checklist_data: JSON.stringify([
+          { id: 'CHK_01', question: 'Công trình đã có trong Nghị quyết phê duyệt kế hoạch ĐTC của HĐND xã chưa?', status: 'Đạt' },
+          { id: 'CHK_02', question: 'Văn bản thuộc thẩm quyền tập thể hay cá nhân; thể thức ký đúng quy định chưa?', status: 'Đạt' }
+        ]),
+        decision_number: status === 'COMPLETED' ? `${10 + s.num}/QĐ-UBND` : null,
+        decision_date: status === 'COMPLETED' ? '2026-02-15' : null,
+        is_blocked: false,
+        legal_review_required: false
+      });
+    }
+  }
+  await knex('project_workflow_steps').insert(workflowSteps);
+
+  // 13. Insert Documents for Project 1
+  const projectDocs = [
+    {
+      project_id: 1,
+      document_code: '15/NQ-HĐND',
+      document_name: 'Nghị quyết thông qua danh mục đầu tư công năm 2026 xã Nghĩa Lâm',
+      document_type: 'resolution',
+      issuing_authority: 'HĐND xã Nghĩa Lâm',
+      issuing_date: '2026-01-05',
+      file_url: '/uploads/docs/nq_15_hdnd.pdf',
+      file_size: 245000,
+      file_type: 'application/pdf',
+      version: 1,
+      is_mandatory: true,
+      verification_status: 'verified',
+      uploaded_by: 6
+    },
+    {
+      project_id: 1,
+      document_code: '88/QĐ-UBND',
+      document_name: 'Quyết định phê duyệt Báo cáo kinh tế - kỹ thuật xây dựng đường giao thông xóm 3-4',
+      document_type: 'project_approval_decision',
+      issuing_authority: 'UBND xã Nghĩa Lâm',
+      issuing_date: '2026-01-15',
+      file_url: '/uploads/docs/qd_88_phe_duyet.pdf',
+      file_size: 512000,
+      file_type: 'application/pdf',
+      version: 1,
+      is_mandatory: true,
+      verification_status: 'verified',
+      uploaded_by: 2
+    },
+    {
+      project_id: 1,
+      document_code: '01/2026/HĐ-XL',
+      document_name: 'Hợp đồng thi công xây dựng công trình giao thông nông thôn',
+      document_type: 'contract',
+      issuing_authority: 'UBND xã Nghĩa Lâm & Công ty 37',
+      issuing_date: '2026-02-05',
+      file_url: '/uploads/docs/hd_01_2026.pdf',
+      file_size: 890000,
+      file_type: 'application/pdf',
+      version: 1,
+      is_mandatory: true,
+      verification_status: 'verified',
+      uploaded_by: 6
+    }
+  ];
+  await knex('project_documents').insert(projectDocs);
 }
