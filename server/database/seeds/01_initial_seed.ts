@@ -61,6 +61,8 @@ export async function seed(knex: Knex): Promise<void> {
   }
 
   // Clear existing records in reverse dependency order
+  await knex('project_payment_disbursements').del();
+  await knex('project_obstacles').del();
   await knex('project_work_items').del();
   await knex('project_settlement_records').del();
   await knex('project_acceptance_records').del();
@@ -111,7 +113,9 @@ export async function seed(knex: Knex): Promise<void> {
       'project_contracts',
       'project_acceptance_records',
       'project_settlement_records',
-      'project_work_items'
+      'project_work_items',
+      'project_obstacles',
+      'project_payment_disbursements'
     ];
     for (const tbl of tablesToReset) {
       await knex.raw(`DELETE FROM sqlite_sequence WHERE name = '${tbl}'`);
@@ -511,7 +515,7 @@ export async function seed(knex: Knex): Promise<void> {
       allocated_capital: 500000000,
       disbursed_amount: 50000000,
       disbursement_rate: 10.0,
-      contractor: 'Chưa lựa chọn nhà thầu phụ trách phần cải tạo',
+      contractor: null,
       start_date: '2026-08-01',
       end_date: '2027-03-31',
       actual_progress_percent: 5.0,
@@ -976,4 +980,80 @@ export async function seed(knex: Knex): Promise<void> {
     }
   ];
   await knex('project_documents').insert(projectDocs);
+
+  // 14. Insert Project Obstacles
+  const obstacles = [
+    {
+      project_id: 2,
+      obstacle_type: 'WEATHER',
+      title: 'Mưa bão tháng 7 làm chậm tiến độ lợp mái và trát ngoài Nhà văn hóa',
+      content: 'Thời tiết mưa lũ kéo dài liên tục 12 ngày trong tháng 7 gây ngập úng sân và ẩm ướt kết cấu.',
+      root_cause: 'Thiên tai thời tiết bất thường khu vực miền núi Tây Nghệ An.',
+      resolution_measure: 'Tăng ca thi công ngày nắng, bố trí bạt che chắn và bổ sung thêm 1 tổ thợ hoàn thiện.',
+      responsible_user_id: 6,
+      deadline: '2026-08-30',
+      status: 'IN_PROGRESS',
+      evidence_url: '/uploads/docs/nhat_ky_thoi_tiet_t7.pdf',
+      created_by: 6
+    },
+    {
+      project_id: 3,
+      obstacle_type: 'LEGAL_PROCEDURE',
+      title: 'Hồ sơ thiết kế bản vẽ thi công đang thẩm định tại Sở Y tế',
+      content: 'Do có thay đổi quy chuẩn phòng cháy chữa cháy mới nên cần thẩm duyệt lại thiết kế.',
+      root_cause: 'Quy chuẩn PCCC mới có hiệu lực yêu cầu bổ sung hệ thống hút khói.',
+      resolution_measure: 'Đơn vị tư vấn đã chỉnh sửa nộp lại ngày 10/08, theo dõi sát tiến độ trả kết quả.',
+      responsible_user_id: 6,
+      deadline: '2026-08-25',
+      status: 'OPEN',
+      evidence_url: '/uploads/docs/giay_hen_so_y_te.pdf',
+      created_by: 6
+    }
+  ];
+  await knex('project_obstacles').insert(obstacles);
+
+  // 15. Insert Project Payment Disbursements
+  const disbursements = [
+    {
+      project_id: 1,
+      voucher_no: 'UNC-2026/02-01',
+      payment_date: '2026-02-20',
+      amount: 400000000,
+      funding_source: 'Vốn chương trình MTQG xây dựng NTM',
+      payment_type: 'ADVANCE',
+      completed_volume_amount: 0,
+      treasury_control_status: 'APPROVED',
+      voucher_url: '/uploads/vouchers/unc_tam_ung_01.pdf',
+      justification_note: 'Tạm ứng hợp đồng đợt 1 theo quy định (30% giá trị hợp đồng).',
+      created_by: 6
+    },
+    {
+      project_id: 1,
+      voucher_no: 'UNC-2026/05-02',
+      payment_date: '2026-05-15',
+      amount: 580000000,
+      funding_source: 'Vốn chương trình MTQG xây dựng NTM',
+      payment_type: 'VOLUME_PAYMENT',
+      completed_volume_amount: 650000000,
+      treasury_control_status: 'APPROVED',
+      voucher_url: '/uploads/vouchers/unc_thanh_toan_02.pdf',
+      justification_note: 'Thanh toán khối lượng hoàn thành đợt 1 (Đoạn Km0+00 đến Km1+200).',
+      created_by: 6
+    },
+    {
+      project_id: 2,
+      voucher_no: 'UNC-2026/04-01',
+      payment_date: '2026-04-28',
+      amount: 250000000,
+      funding_source: 'Vốn ngân sách xã đầu tư công trung hạn',
+      payment_type: 'ADVANCE',
+      completed_volume_amount: 0,
+      treasury_control_status: 'APPROVED',
+      voucher_url: '/uploads/vouchers/unc_tam_ung_nvh.pdf',
+      justification_note: 'Tạm ứng hợp đồng thi công nâng cấp Nhà văn hóa xã.',
+      created_by: 6
+    }
+  ];
+  await knex('project_payment_disbursements').insert(disbursements);
 }
+

@@ -6,6 +6,10 @@ import {
   SIGNING_CHECKLIST_TEMPLATE,
   PROGRESS_GAP_WARNING_THRESHOLD,
   PROGRESS_GAP_DANGER_THRESHOLD,
+  OBSTACLE_TYPES,
+  CONTRACTOR_SELECTION_STATUSES,
+  PAYMENT_TYPES,
+  normalizeProjectStatus,
   getApplicableSettlementLegalBasis,
   canReadProjectsList,
   canReadProjectDetail,
@@ -20,6 +24,23 @@ import {
   canManageMilestones
 } from '../constants/projectConstants';
 import * as xlsx from 'xlsx';
+
+export function canManageObstacles(user: any, project?: any): boolean {
+  if (!user) return false;
+  if (user.role === 'ADMIN' || user.role === 'LEADERSHIP') return true;
+  if (user.role === 'DEPARTMENT_HEAD' && user.department_id === 3) return true;
+  if (project && project.project_manager_id === user.id) return true;
+  return false;
+}
+
+export function canManageDisbursements(user: any, project?: any): boolean {
+  if (!user) return false;
+  if (user.role === 'ADMIN' || user.role === 'LEADERSHIP') return true;
+  if (user.role === 'DEPARTMENT_HEAD' && (user.department_id === 3 || user.department_id === 6)) return true;
+  if (user.department_id === 6) return true;
+  if (project && project.project_manager_id === user.id) return true;
+  return false;
+}
 
 /**
  * Helper: Tự sinh mã dự án chuẩn hóa theo mẫu DA-YYYY-NN
@@ -45,7 +66,7 @@ export async function generateProjectCode(year: number = new Date().getFullYear(
 }
 
 /**
- * Helper: Khởi tạo 16 bước quy trình chuẩn cho dự án mới
+ * Helper: Tự động khởi tạo 16 bước quy trình kiểm soát cho dự án mới
  */
 export async function initializeProjectWorkflowSteps(projectId: number, trx?: any): Promise<void> {
   const dbClient = trx || db;
@@ -89,6 +110,12 @@ export async function getProjects(req: AuthRequest, res: Response): Promise<void
       acceptance_status,
       settlement_status,
       project_manager_id,
+      obstacle_type,
+      funding_source,
+      investor,
+      year,
+      progress_gap_alert,
+      is_delayed,
       page = 1,
       limit = 50
     } = req.query;
@@ -129,13 +156,14 @@ export async function getProjects(req: AuthRequest, res: Response): Promise<void
     }
 
     if (search) {
+      const searchStr = String(search).trim();
       query = query.where((builder) => {
         builder
-          .where('pr.project_code', 'like', `%${search}%`)
-          .orWhere('pr.project_name', 'like', `%${search}%`)
-          .orWhere('pr.contract_no', 'like', `%${search}%`)
-          .orWhere('pr.contractor_name', 'like', `%${search}%`)
-          .orWhere('inv.contractor', 'like', `%${search}%`);
+          .where('pr.project_code', 'like', `%${searchStr}%`)
+          .orWhere('pr.project_name', 'like', `%${searchStr}%`)
+          .orWhere('pr.contract_no', 'like', `%${searchStr}%`)
+          .orWhere('pr.contractor_name', 'like', `%${searchStr}%`)
+          .orWhere('inv.contractor', 'like', `%${searchStr}%`);
       });
     }
 
@@ -144,7 +172,11 @@ export async function getProjects(req: AuthRequest, res: Response): Promise<void
     }
 
     if (lifecycle_status) {
-      query = query.where('pr.lifecycle_status', String(lifecycle_status));
+      const normalizedStatus = normalizeProjectStatus(String(lifecycle_status));
+      query = query.where((builder) => {
+        builder.where('pr.lifecycle_status', String(lifecycle_status))
+          .orWhere('pr.lifecycle_status', normalizedStatus);
+      });
     }
 
     if (acceptance_status) {
@@ -159,16 +191,88 @@ export async function getProjects(req: AuthRequest, res: Response): Promise<void
       query = query.where('pr.project_manager_id', Number(project_manager_id));
     }
 
-    const projects = await query
-      .orderBy('pr.created_at', 'desc')
-      .limit(Number(limit))
-      .offset((Number(page) - 1) * Number(limit));
+    if (obstacle_type) {
+      query = query.where((builder) => {
+        builder
+          .whereIn('pr.id', function () {
+            this.select('project_id').from('project_obstacles').where('obstacle_type', String(obstacle_type)).andWhereNot('status', 'RESOLVED');
+          })
+          .orWhere('inv.obstacle_type', String(obstacle_type));
+      });
+    }
 
-    const totalCountRes: any = await db('projects').count('id as total').first();
-    const total = totalCountRes ? Number(totalCountRes.total || totalCountRes['count(*)'] || projects.length) : projects.length;
+    if (funding_source) {
+      query = query.where('inv.funding_source', 'like', `%${funding_source}%`);
+    }
+
+    if (investor) {
+      query = query.where((builder) => {
+        builder.where('pr.investor_name', 'like', `%${investor}%`).orWhere('inv.investor_name', 'like', `%${investor}%`);
+      });
+    }
+
+    if (year) {
+      query = query.where((builder) => {
+        builder
+          .where('pr.start_date', 'like', `${year}%`)
+          .orWhere('pr.approval_date', 'like', `${year}%`)
+          .orWhere('pr.planned_end_date', 'like', `${year}%`)
+          .orWhere('pr.created_at', 'like', `${year}%`);
+      });
+    }
+
+    let projects = await query.orderBy('pr.created_at', 'desc');
+
+    // Enrich and calculate dynamic delay days, progress gap, and obstacles
+    const now = new Date();
+    const warningThreshold = Number(req.query.warning_gap || PROGRESS_GAP_WARNING_THRESHOLD);
+    const dangerThreshold = Number(req.query.danger_gap || PROGRESS_GAP_DANGER_THRESHOLD);
+
+    projects = projects.map((p: any) => {
+      let delayDays = Number(p.delay_days || 0);
+      if (
+        p.planned_end_date &&
+        new Date(p.planned_end_date) < now &&
+        Number(p.inv_actual_progress_percent || p.planned_progress_percent || 0) < 100 &&
+        p.lifecycle_status !== 'COMPLETED' &&
+        p.lifecycle_status !== 'ARCHIVED'
+      ) {
+        const overdueDays = Math.max(
+          0,
+          Math.floor((now.getTime() - new Date(p.planned_end_date).getTime()) / (1000 * 3600 * 24))
+        );
+        if (overdueDays > delayDays) delayDays = overdueDays;
+      }
+      p.delay_days = delayDays;
+      p.is_delayed = delayDays > 0 || p.lifecycle_status === 'DELAYED';
+
+      const disbRate = Number(p.inv_disbursement_rate || 0);
+      const progPercent = Number(p.inv_actual_progress_percent || p.actual_progress_percent || 0);
+      const gap = Math.round((disbRate - progPercent) * 100) / 100;
+      p.progress_gap = gap;
+      p.progress_gap_alert = gap > dangerThreshold ? 'danger' : gap > warningThreshold ? 'warning' : null;
+
+      return p;
+    });
+
+    if (is_delayed === 'true') {
+      projects = projects.filter((p: any) => p.is_delayed);
+    }
+
+    if (progress_gap_alert === 'warning') {
+      projects = projects.filter((p: any) => p.progress_gap_alert === 'warning' || p.progress_gap_alert === 'danger');
+    } else if (progress_gap_alert === 'danger') {
+      projects = projects.filter((p: any) => p.progress_gap_alert === 'danger');
+    }
+
+    const total = projects.length;
+    const paginatedProjects = projects.slice(
+      (Number(page) - 1) * Number(limit),
+      Number(page) * Number(limit)
+    );
 
     res.status(200).json({
-      projects,
+      projects: paginatedProjects,
       total,
       page: Number(page),
       limit: Number(limit)
@@ -339,11 +443,63 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
       project_code = await generateProjectCode();
     } else {
       project_code = project_code.trim().toUpperCase();
+      const CODE_REGEX = /^DA-\d{4}-\d{2}$/;
+      if (!CODE_REGEX.test(project_code)) {
+        res.status(400).json({ message: 'Mã dự án không đúng định dạng DA-YYYY-NN (Ví dụ: DA-2026-01).' });
+        return;
+      }
     }
 
-    if (contract_value < 0) {
-      res.status(400).json({ message: 'Giá trị hợp đồng không được âm.' });
+    if (contract_value < 0 || Number(investment_payload.planned_capital || 0) < 0 || Number(investment_payload.allocated_capital || 0) < 0 || Number(investment_payload.disbursed_amount || 0) < 0) {
+      res.status(400).json({ message: 'Số tiền vốn, giải ngân hoặc hợp đồng không được âm.' });
       return;
+    }
+
+    if (Number(investment_payload.disbursed_amount || 0) > Number(investment_payload.planned_capital || 0) && Number(investment_payload.planned_capital || 0) > 0) {
+      res.status(400).json({ message: 'Số tiền giải ngân không được vượt quá kế hoạch vốn được duyệt.' });
+      return;
+    }
+
+    if (contractor_name) {
+      const cleanName = contractor_name.trim().toLowerCase();
+      if (cleanName.includes('chưa lựa chọn') || cleanName.includes('chua lua chon') || cleanName === 'chưa có') {
+        contractor_name = null;
+      }
+    }
+
+    if (contract_no || Number(contract_value) > 0) {
+      if (!contractor_name || !contractor_name.trim()) {
+        res.status(400).json({ message: 'Không thể ký hợp đồng khi chưa có thông tin nhà thầu.' });
+        return;
+      }
+      if (!contract_no || !contract_no.trim()) {
+        res.status(400).json({ message: 'Số hợp đồng kinh tế là bắt buộc khi ký hợp đồng.' });
+        return;
+      }
+      if (Number(contract_value) <= 0) {
+        res.status(400).json({ message: 'Giá trị hợp đồng phải lớn hơn 0.' });
+        return;
+      }
+    }
+
+    const plannedCap = Number(investment_payload.planned_capital || 0);
+    if (plannedCap > 0 && Number(contract_value) > plannedCap && !approval_decision_no) {
+      res.status(400).json({ message: 'Giá trị hợp đồng không được vượt tổng mức đầu tư/kế hoạch vốn khi chưa có quyết định điều chỉnh.' });
+      return;
+    }
+
+    if (create_new_investment) {
+      const pCap = Number(investment_payload.planned_capital || 0);
+      const aCap = Number(investment_payload.allocated_capital || 0);
+      const dAmt = Number(investment_payload.disbursed_amount || 0);
+      if (pCap < 0 || aCap < 0 || dAmt < 0) {
+        res.status(400).json({ message: 'Kế hoạch vốn, vốn phân bổ và giải ngân không được mang giá trị âm.' });
+        return;
+      }
+      if (aCap > 0 && dAmt > aCap) {
+        res.status(400).json({ message: 'Số tiền giải ngân không được vượt quá vốn phân bổ.' });
+        return;
+      }
     }
 
     if (start_date && planned_end_date && new Date(start_date) > new Date(planned_end_date)) {
@@ -401,7 +557,7 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
       }
 
       // 3. Tạo bản ghi projects
-      const [newProjectId] = await trx('projects').insert({
+      const [newProjectId]: any = await trx('projects').insert({
         investment_project_id: linkedInvId,
         project_code,
         project_name: project_name.trim(),
@@ -419,6 +575,7 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
         design_approval_no,
         bidding_method,
         contractor_name,
+        contractor_selection_status: contractor_name ? 'SELECTED' : 'NOT_SELECTED',
         contractor_selection_date: contractor_selection_date || null,
         contract_no,
         contract_value: Number(contract_value || 0),
@@ -436,9 +593,10 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
       });
 
       // 4. Khởi tạo 16 bước quy trình kiểm soát cho dự án
-      await initializeProjectWorkflowSteps(newProjectId, trx);
+      const createdId = typeof newProjectId === 'object' && newProjectId !== null && 'id' in newProjectId ? Number((newProjectId as any).id) : Number(newProjectId);
+      await initializeProjectWorkflowSteps(createdId, trx);
 
-      return { newProjectId, linkedInvId };
+      return { newProjectId: createdId, linkedInvId };
     });
 
     await logAudit(
@@ -498,12 +656,20 @@ export async function updateProject(req: AuthRequest, res: Response): Promise<vo
       design_approval_no,
       bidding_method,
       contractor_name,
+      contractor_selection_status,
       contractor_selection_date,
       contract_no,
       contract_value,
+      contract_start_date,
+      contract_end_date,
       start_date,
       planned_end_date,
       actual_end_date,
+      planned_progress_percent,
+      actual_progress_percent,
+      delay_days,
+      delay_reason,
+      recovery_deadline,
       warranty_end_date,
       acceptance_status,
       acceptance_date,
@@ -561,6 +727,54 @@ export async function updateProject(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    // Gate rules on lifecycle status transition
+    if (lifecycle_status && lifecycle_status !== project.lifecycle_status) {
+      if (lifecycle_status === 'COMPLETION_ACCEPTANCE') {
+        const hasDoc = await db('project_documents')
+          .where('project_id', project.id)
+          .whereIn('document_type', ['acceptance_minutes', 'completion_acceptance', 'bien_ban_nghiem_thu'])
+          .first();
+        const hasRec = await db('project_acceptance_records').where('project_id', project.id).first();
+        if (!hasDoc && !hasRec && !project.acceptance_date && !acceptance_date) {
+          res.status(400).json({ message: 'Không thể chuyển sang trạng thái Nghiệm thu hoàn thành khi thiếu Biên bản nghiệm thu.' });
+          return;
+        }
+      }
+
+      if (lifecycle_status === 'HANDED_OVER') {
+        const hasDoc = await db('project_documents')
+          .where('project_id', project.id)
+          .whereIn('document_type', ['handover_minutes', 'bien_ban_ban_giao'])
+          .first();
+        if (!hasDoc && !handover_date && !project.handover_date) {
+          res.status(400).json({ message: 'Không thể chuyển sang trạng thái Bàn giao khi thiếu Biên bản bàn giao đưa vào sử dụng.' });
+          return;
+        }
+      }
+
+      if (lifecycle_status === 'SETTLEMENT_APPROVED') {
+        const hasDoc = await db('project_documents')
+          .where('project_id', project.id)
+          .whereIn('document_type', ['settlement_decision', 'quyet_dinh_quyet_toan'])
+          .first();
+        const hasRec = await db('project_settlement_records')
+          .where('project_id', project.id)
+          .where((b) => b.whereNotNull('decision_number').orWhere('approved_value', '>', 0))
+          .first();
+        if (!hasDoc && !hasRec && Number(settlement_value || project.settlement_value || 0) <= 0) {
+          res.status(400).json({ message: 'Không thể chuyển sang trạng thái Đã quyết toán khi thiếu Quyết định phê duyệt quyết toán.' });
+          return;
+        }
+      }
+
+      if (lifecycle_status === 'COMPLETED') {
+        if (!warranty_end_date && !project.warranty_end_date) {
+          res.status(400).json({ message: 'Không thể kết thúc dự án khi chưa xác định thời hạn bảo hành công trình.' });
+          return;
+        }
+      }
+    }
+
     const updatePayload: any = {
       updated_by: user.id,
       version: project.version + 1,
@@ -582,12 +796,19 @@ export async function updateProject(req: AuthRequest, res: Response): Promise<vo
     if (design_approval_no !== undefined) updatePayload.design_approval_no = design_approval_no;
     if (bidding_method !== undefined) updatePayload.bidding_method = bidding_method;
     if (contractor_name !== undefined) updatePayload.contractor_name = contractor_name;
+    if (contractor_selection_status !== undefined) updatePayload.contractor_selection_status = contractor_selection_status;
     if (contractor_selection_date !== undefined) updatePayload.contractor_selection_date = contractor_selection_date || null;
     if (contract_no !== undefined) updatePayload.contract_no = contract_no;
     if (contract_value !== undefined) updatePayload.contract_value = Number(contract_value);
+    if (contract_start_date !== undefined) updatePayload.contract_start_date = contract_start_date || null;
+    if (contract_end_date !== undefined) updatePayload.contract_end_date = contract_end_date || null;
     if (start_date !== undefined) updatePayload.start_date = start_date || null;
     if (planned_end_date !== undefined) updatePayload.planned_end_date = planned_end_date || null;
     if (actual_end_date !== undefined) updatePayload.actual_end_date = actual_end_date || null;
+    if (planned_progress_percent !== undefined) updatePayload.planned_progress_percent = Number(planned_progress_percent);
+    if (delay_days !== undefined) updatePayload.delay_days = Number(delay_days);
+    if (delay_reason !== undefined) updatePayload.delay_reason = delay_reason;
+    if (recovery_deadline !== undefined) updatePayload.recovery_deadline = recovery_deadline || null;
     if (warranty_end_date !== undefined) updatePayload.warranty_end_date = warranty_end_date || null;
     if (acceptance_status !== undefined) updatePayload.acceptance_status = acceptance_status;
     if (acceptance_date !== undefined) updatePayload.acceptance_date = acceptance_date || null;
@@ -678,6 +899,22 @@ export async function deleteProject(req: AuthRequest, res: Response): Promise<vo
     if (hasDocs && action !== 'force_delete') {
       res.status(409).json({
         message: `Dự án [${project.project_code}] đã có hồ sơ tài liệu đính kèm. Không thể xóa vĩnh viễn.`
+      });
+      return;
+    }
+
+    const hasDisb = await db('project_payment_disbursements').where('project_id', project.id).first();
+    if (hasDisb && action !== 'force_delete') {
+      res.status(409).json({
+        message: `Dự án [${project.project_code}] đã phát sinh đợt thanh toán/giải ngân. Không thể xóa vĩnh viễn.`
+      });
+      return;
+    }
+
+    const hasObstacle = await db('project_obstacles').where('project_id', project.id).first();
+    if (hasObstacle && action !== 'force_delete') {
+      res.status(409).json({
+        message: `Dự án [${project.project_code}] đã có danh mục vướng mắc ghi nhận. Không thể xóa vĩnh viễn.`
       });
       return;
     }
@@ -1185,20 +1422,97 @@ export async function getDashboard(req: AuthRequest, res: Response): Promise<voi
  */
 export async function exportExcel(req: AuthRequest, res: Response): Promise<void> {
   try {
-    const projects = await db('projects as pr')
+    const user = req.user;
+    const {
+      search,
+      investment_group,
+      lifecycle_status,
+      acceptance_status,
+      settlement_status,
+      obstacle_type,
+      funding_source,
+      year
+    } = req.query;
+
+    let query = db('projects as pr')
       .leftJoin('public_investment_projects as inv', 'pr.investment_project_id', 'inv.id')
       .leftJoin('users as pm', 'pr.project_manager_id', 'pm.id')
       .select(
         'pr.*',
         'pm.fullname as project_manager_name',
         'inv.funding_source as inv_funding_source',
+        'inv.planned_capital as inv_planned_capital',
         'inv.allocated_capital as inv_allocated_capital',
         'inv.disbursed_amount as inv_disbursed_amount',
         'inv.disbursement_rate as inv_disbursement_rate',
         'inv.actual_progress_percent as inv_actual_progress_percent',
-        'inv.contractor as inv_contractor'
-      )
-      .orderBy('pr.id', 'asc');
+        'inv.contractor as inv_contractor',
+        'inv.obstacle_type as inv_obstacle_type'
+      );
+
+    if (user && user.role === 'EMPLOYEE') {
+      query = query.where((builder) => {
+        builder.where('pr.project_manager_id', user.id).orWhere('pr.created_by', user.id);
+      });
+    }
+
+    if (search) {
+      const searchStr = String(search).trim();
+      query = query.where((builder) => {
+        builder
+          .where('pr.project_code', 'like', `%${searchStr}%`)
+          .orWhere('pr.project_name', 'like', `%${searchStr}%`)
+          .orWhere('pr.contract_no', 'like', `%${searchStr}%`)
+          .orWhere('pr.contractor_name', 'like', `%${searchStr}%`)
+          .orWhere('inv.contractor', 'like', `%${searchStr}%`);
+      });
+    }
+
+    if (investment_group) {
+      query = query.where('pr.investment_group', String(investment_group));
+    }
+
+    if (lifecycle_status) {
+      const normalizedStatus = normalizeProjectStatus(String(lifecycle_status));
+      query = query.where((builder) => {
+        builder.where('pr.lifecycle_status', String(lifecycle_status))
+          .orWhere('pr.lifecycle_status', normalizedStatus);
+      });
+    }
+
+    if (acceptance_status) {
+      query = query.where('pr.acceptance_status', String(acceptance_status));
+    }
+
+    if (settlement_status) {
+      query = query.where('pr.settlement_status', String(settlement_status));
+    }
+
+    if (obstacle_type) {
+      query = query.where((builder) => {
+        builder
+          .whereIn('pr.id', function () {
+            this.select('project_id').from('project_obstacles').where('obstacle_type', String(obstacle_type)).andWhereNot('status', 'RESOLVED');
+          })
+          .orWhere('inv.obstacle_type', String(obstacle_type));
+      });
+    }
+
+    if (funding_source) {
+      query = query.where('inv.funding_source', 'like', `%${funding_source}%`);
+    }
+
+    if (year) {
+      query = query.where((builder) => {
+        builder
+          .where('pr.start_date', 'like', `${year}%`)
+          .orWhere('pr.approval_date', 'like', `${year}%`)
+          .orWhere('pr.planned_end_date', 'like', `${year}%`)
+          .orWhere('pr.created_at', 'like', `${year}%`);
+      });
+    }
+
+    const projects = await query.orderBy('pr.id', 'asc');
 
     const rows = projects.map((p, idx) => ({
       'STT': idx + 1,
@@ -1211,10 +1525,12 @@ export async function exportExcel(req: AuthRequest, res: Response): Promise<void
       'Nhà Thầu Thi Công': p.contractor_name || p.inv_contractor || '-',
       'Số Hợp Đồng': p.contract_no || '-',
       'Giá Trị Hợp Đồng (đ)': p.contract_value || 0,
+      'Kế Hoạch Vốn (đ)': p.inv_planned_capital || 0,
       'Vốn Phân Bổ (đ)': p.inv_allocated_capital || 0,
       'Đã Giải Ngân (đ)': p.inv_disbursed_amount || 0,
       'Tỷ Lệ Giải Ngân (%)': p.inv_disbursement_rate || 0,
-      'Tiến Độ Thi Công (%)': p.inv_actual_progress_percent || 0,
+      'Tiến Độ Thi Công (%)': p.inv_actual_progress_percent || p.actual_progress_percent || 0,
+      'Trạng Thái Vòng Đời': p.lifecycle_status,
       'Trạng Thái Nghiệm Thu': p.acceptance_status,
       'Trạng Thái Quyết Toán': p.settlement_status,
       'Giá Trị Quyết Toán (đ)': p.settlement_value || 0,
@@ -1350,3 +1666,336 @@ export async function getProjectAuditLog(req: AuthRequest, res: Response): Promi
     res.status(500).json({ message: 'Lỗi máy chủ khi lấy lịch sử audit log.' });
   }
 }
+
+/**
+ * 15. Project Obstacles CRUD (Quản lý danh mục vướng mắc)
+ */
+export async function getProjectObstacles(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project) {
+      res.status(404).json({ message: 'Không tìm thấy dự án.' });
+      return;
+    }
+    const obstacles = await db('project_obstacles as ob')
+      .leftJoin('users as u', 'ob.responsible_user_id', 'u.id')
+      .select('ob.*', 'u.fullname as responsible_user_name', 'u.position as responsible_user_position')
+      .where('ob.project_id', Number(id))
+      .orderBy('ob.created_at', 'desc');
+
+    res.status(200).json({ obstacles });
+  } catch (err: any) {
+    console.error('Lỗi lấy danh sách vướng mắc:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi lấy danh sách vướng mắc.' });
+  }
+}
+
+export async function createProjectObstacle(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+    const { id } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project) {
+      res.status(404).json({ message: 'Không tìm thấy dự án.' });
+      return;
+    }
+    if (!canManageObstacles(user, project)) {
+      res.status(403).json({ message: 'Bạn không có quyền thêm vướng mắc cho dự án này.' });
+      return;
+    }
+    const {
+      obstacle_type = 'OTHER',
+      title,
+      content,
+      root_cause,
+      resolution_measure,
+      responsible_user_id,
+      deadline,
+      status = 'OPEN',
+      evidence_url
+    } = req.body;
+
+    if (!title || !title.trim()) {
+      res.status(400).json({ message: 'Tiêu đề vướng mắc là bắt buộc.' });
+      return;
+    }
+
+    const [newId] = await db('project_obstacles').insert({
+      project_id: project.id,
+      obstacle_type,
+      title: title.trim(),
+      content: content || null,
+      root_cause: root_cause || null,
+      resolution_measure: resolution_measure || null,
+      responsible_user_id: responsible_user_id ? Number(responsible_user_id) : user.id,
+      deadline: deadline || null,
+      status,
+      evidence_url: evidence_url || null,
+      created_by: user.id
+    });
+
+    await logAudit(
+      user.id,
+      'CREATE_PROJECT_OBSTACLE',
+      `Ghi nhận vướng mắc [${obstacle_type}] "${title}" cho dự án [${project.project_code}]`
+    );
+
+    res.status(201).json({ message: 'Ghi nhận vướng mắc thành công!', obstacle_id: newId });
+  } catch (err: any) {
+    console.error('Lỗi tạo vướng mắc:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi ghi nhận vướng mắc.' });
+  }
+}
+
+export async function updateProjectObstacle(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+    const { id, obstacleId } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project || !canManageObstacles(user, project)) {
+      res.status(403).json({ message: 'Không có quyền cập nhật vướng mắc.' });
+      return;
+    }
+    const obstacle = await db('project_obstacles').where({ id: Number(obstacleId), project_id: project.id }).first();
+    if (!obstacle) {
+      res.status(404).json({ message: 'Không tìm thấy vướng mắc.' });
+      return;
+    }
+
+    const {
+      obstacle_type,
+      title,
+      content,
+      root_cause,
+      resolution_measure,
+      responsible_user_id,
+      deadline,
+      status,
+      evidence_url
+    } = req.body;
+
+    const resolvedAt = status === 'RESOLVED' && obstacle.status !== 'RESOLVED' ? db.fn.now() : obstacle.resolved_at;
+
+    await db('project_obstacles').where({ id: Number(obstacleId), project_id: project.id }).update({
+      obstacle_type: obstacle_type || obstacle.obstacle_type,
+      title: title !== undefined ? title.trim() : obstacle.title,
+      content: content !== undefined ? content : obstacle.content,
+      root_cause: root_cause !== undefined ? root_cause : obstacle.root_cause,
+      resolution_measure: resolution_measure !== undefined ? resolution_measure : obstacle.resolution_measure,
+      responsible_user_id: responsible_user_id !== undefined ? Number(responsible_user_id) : obstacle.responsible_user_id,
+      deadline: deadline !== undefined ? deadline : obstacle.deadline,
+      status: status || obstacle.status,
+      evidence_url: evidence_url !== undefined ? evidence_url : obstacle.evidence_url,
+      resolved_at: resolvedAt,
+      updated_at: db.fn.now()
+    });
+
+    await logAudit(
+      user.id,
+      'UPDATE_PROJECT_OBSTACLE',
+      `Cập nhật vướng mắc #${obstacleId} trạng thái [${status || obstacle.status}] cho dự án [${project.project_code}]`
+    );
+
+    res.status(200).json({ message: 'Cập nhật vướng mắc thành công!' });
+  } catch (err: any) {
+    console.error('Lỗi cập nhật vướng mắc:', err);
+    res.status(500).json({ message: 'Lỗi máy chủ khi cập nhật vướng mắc.' });
+  }
+}
+
+export async function deleteProjectObstacle(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực.' });
+      return;
+    }
+    const { id, obstacleId } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project || !canManageObstacles(user, project)) {
+      res.status(403).json({ message: 'Không có quyền xóa vướng mắc.' });
+      return;
+    }
+    await db('project_obstacles').where({ id: Number(obstacleId), project_id: project.id }).del();
+    await logAudit(
+      user.id,
+      'DELETE_PROJECT_OBSTACLE',
+      `Xóa vướng mắc #${obstacleId} khỏi dự án [${project.project_code}]`
+    );
+    res.status(200).json({ message: 'Xóa vướng mắc thành công!' });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Lỗi xóa vướng mắc.' });
+  }
+}
+
+/**
+ * 16. Project Payment Disbursements CRUD (Quản lý các đợt thanh toán & chứng từ)
+ */
+export async function getProjectDisbursements(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project) {
+      res.status(404).json({ message: 'Không tìm thấy dự án.' });
+      return;
+    }
+    const disbursements = await db('project_payment_disbursements as d')
+      .leftJoin('users as u', 'd.created_by', 'u.id')
+      .select('d.*', 'u.fullname as creator_name')
+      .where('d.project_id', Number(id))
+      .orderBy('d.payment_date', 'desc');
+
+    res.status(200).json({ disbursements });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Lỗi lấy danh sách giải ngân/thanh toán.' });
+  }
+}
+
+export async function createProjectDisbursement(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực.' });
+      return;
+    }
+    const { id } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project) {
+      res.status(404).json({ message: 'Không tìm thấy dự án.' });
+      return;
+    }
+    if (!canManageDisbursements(user, project)) {
+      res.status(403).json({ message: 'Bạn không có quyền ghi nhận thanh toán/giải ngân.' });
+      return;
+    }
+
+    const {
+      voucher_no,
+      payment_date,
+      amount,
+      funding_source = 'Ngân sách xã',
+      payment_type = 'VOLUME_PAYMENT',
+      completed_volume_amount = 0,
+      treasury_control_status = 'APPROVED',
+      voucher_url,
+      justification_note
+    } = req.body;
+
+    if (!voucher_no || !payment_date || amount === undefined) {
+      res.status(400).json({ message: 'Số chứng từ, ngày thanh toán và số tiền là bắt buộc.' });
+      return;
+    }
+
+    if (Number(amount) <= 0) {
+      res.status(400).json({ message: 'Số tiền thanh toán phải lớn hơn 0.' });
+      return;
+    }
+
+    const [dId] = await db('project_payment_disbursements').insert({
+      project_id: project.id,
+      voucher_no: voucher_no.trim(),
+      payment_date,
+      amount: Number(amount),
+      funding_source,
+      payment_type,
+      completed_volume_amount: Number(completed_volume_amount || 0),
+      treasury_control_status,
+      voucher_url: voucher_url || null,
+      justification_note: justification_note || null,
+      created_by: user.id
+    });
+
+    await logAudit(
+      user.id,
+      'CREATE_PROJECT_DISBURSEMENT',
+      `Ghi nhận đợt thanh toán [${voucher_no}] số tiền ${Number(amount).toLocaleString('vi-VN')}đ (${payment_type}) cho dự án [${project.project_code}]`
+    );
+
+    res.status(201).json({ message: 'Ghi nhận đợt thanh toán thành công!', disbursement_id: dId });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Lỗi ghi nhận thanh toán giải ngân.' });
+  }
+}
+
+export async function updateProjectDisbursement(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực.' });
+      return;
+    }
+    const { id, disbursementId } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project || !canManageDisbursements(user, project)) {
+      res.status(403).json({ message: 'Không có quyền sửa đợt thanh toán.' });
+      return;
+    }
+    const {
+      voucher_no,
+      payment_date,
+      amount,
+      funding_source,
+      payment_type,
+      completed_volume_amount,
+      treasury_control_status,
+      voucher_url,
+      justification_note
+    } = req.body;
+
+    if (amount !== undefined && Number(amount) <= 0) {
+      res.status(400).json({ message: 'Số tiền thanh toán phải lớn hơn 0.' });
+      return;
+    }
+
+    await db('project_payment_disbursements')
+      .where({ id: Number(disbursementId), project_id: project.id })
+      .update({
+        voucher_no,
+        payment_date,
+        amount: amount !== undefined ? Number(amount) : undefined,
+        funding_source,
+        payment_type,
+        completed_volume_amount: completed_volume_amount !== undefined ? Number(completed_volume_amount) : undefined,
+        treasury_control_status,
+        voucher_url,
+        justification_note,
+        updated_at: db.fn.now()
+      });
+
+    res.status(200).json({ message: 'Cập nhật đợt thanh toán thành công!' });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Lỗi cập nhật đợt thanh toán.' });
+  }
+}
+
+export async function deleteProjectDisbursement(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực.' });
+      return;
+    }
+    const { id, disbursementId } = req.params;
+    const project = await db('projects').where('id', Number(id)).first();
+    if (!project || !canManageDisbursements(user, project)) {
+      res.status(403).json({ message: 'Không có quyền xóa đợt thanh toán.' });
+      return;
+    }
+    await db('project_payment_disbursements')
+      .where({ id: Number(disbursementId), project_id: project.id })
+      .del();
+    res.status(200).json({ message: 'Xóa đợt thanh toán thành công!' });
+  } catch (err: any) {
+    res.status(500).json({ message: 'Lỗi xóa đợt thanh toán.' });
+  }
+}
+

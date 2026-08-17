@@ -15,7 +15,15 @@ import {
   getProjectAuditLog,
   addMilestone,
   updateMilestone,
-  deleteMilestone
+  deleteMilestone,
+  getProjectObstacles,
+  createProjectObstacle,
+  updateProjectObstacle,
+  deleteProjectObstacle,
+  getProjectDisbursements,
+  createProjectDisbursement,
+  updateProjectDisbursement,
+  deleteProjectDisbursement
 } from '../controllers/projectController';
 import { authenticate } from '../middleware/auth';
 
@@ -51,4 +59,17 @@ router.put('/:id/milestones/:milestoneId', authenticate, updateMilestone);
 router.patch('/:id/milestones/:milestoneId', authenticate, updateMilestone);
 router.delete('/:id/milestones/:milestoneId', authenticate, deleteMilestone);
 
+// Obstacles
+router.get('/:id/obstacles', authenticate, getProjectObstacles);
+router.post('/:id/obstacles', authenticate, createProjectObstacle);
+router.put('/:id/obstacles/:obstacleId', authenticate, updateProjectObstacle);
+router.delete('/:id/obstacles/:obstacleId', authenticate, deleteProjectObstacle);
+
+// Payment Disbursements
+router.get('/:id/disbursements', authenticate, getProjectDisbursements);
+router.post('/:id/disbursements', authenticate, createProjectDisbursement);
+router.put('/:id/disbursements/:disbursementId', authenticate, updateProjectDisbursement);
+router.delete('/:id/disbursements/:disbursementId', authenticate, deleteProjectDisbursement);
+
 export default router;
+

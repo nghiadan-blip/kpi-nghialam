@@ -676,6 +676,12 @@ export const projectApi = {
     acceptance_status?: string;
     settlement_status?: string;
     project_manager_id?: number;
+    obstacle_type?: string;
+    funding_source?: string;
+    investor?: string;
+    year?: string | number;
+    progress_gap_alert?: string;
+    is_delayed?: string;
     page?: number;
     limit?: number;
   }) => {
@@ -755,8 +761,8 @@ export const projectApi = {
     const res = await api.get<{ logs: any[] }>(`/projects/${projectId}/audit-log`);
     return res.data;
   },
-  getDashboard: async () => {
-    const res = await api.get<ProjectDashboardStats>('/projects/dashboard');
+  getDashboard: async (params?: { warning_gap?: number; danger_gap?: number }) => {
+    const res = await api.get<ProjectDashboardStats>('/projects/dashboard', { params });
     return res.data;
   },
   addMilestone: async (projectId: number, data: any) => {
@@ -771,8 +777,43 @@ export const projectApi = {
     const res = await api.delete<{ message: string }>(`/projects/${projectId}/milestones/${milestoneId}`);
     return res.data;
   },
-  exportExcel: () => {
-    window.open('/api/projects/export', '_blank');
+  // Obstacles
+  getObstacles: async (projectId: number) => {
+    const res = await api.get<{ obstacles: any[] }>(`/projects/${projectId}/obstacles`);
+    return res.data;
+  },
+  createObstacle: async (projectId: number, data: any) => {
+    const res = await api.post<{ message: string; obstacle_id: number }>(`/projects/${projectId}/obstacles`, data);
+    return res.data;
+  },
+  updateObstacle: async (projectId: number, obstacleId: number, data: any) => {
+    const res = await api.put<{ message: string }>(`/projects/${projectId}/obstacles/${obstacleId}`, data);
+    return res.data;
+  },
+  deleteObstacle: async (projectId: number, obstacleId: number) => {
+    const res = await api.delete<{ message: string }>(`/projects/${projectId}/obstacles/${obstacleId}`);
+    return res.data;
+  },
+  // Disbursements
+  getDisbursements: async (projectId: number) => {
+    const res = await api.get<{ disbursements: any[] }>(`/projects/${projectId}/disbursements`);
+    return res.data;
+  },
+  createDisbursement: async (projectId: number, data: any) => {
+    const res = await api.post<{ message: string; disbursement_id: number }>(`/projects/${projectId}/disbursements`, data);
+    return res.data;
+  },
+  updateDisbursement: async (projectId: number, disbursementId: number, data: any) => {
+    const res = await api.put<{ message: string }>(`/projects/${projectId}/disbursements/${disbursementId}`, data);
+    return res.data;
+  },
+  deleteDisbursement: async (projectId: number, disbursementId: number) => {
+    const res = await api.delete<{ message: string }>(`/projects/${projectId}/disbursements/${disbursementId}`);
+    return res.data;
+  },
+  exportExcel: (params?: any) => {
+    const query = new URLSearchParams(params || {}).toString();
+    window.open(`/api/projects/export${query ? '?' + query : ''}`, '_blank');
   }
 };
 

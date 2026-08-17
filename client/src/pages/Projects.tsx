@@ -14,7 +14,8 @@ import {
   RefreshCw,
   TrendingUp,
   Archive,
-  AlertOctagon
+  AlertOctagon,
+  XCircle
 } from 'lucide-react';
 import { Project, ProjectDashboardStats } from '../types';
 import { projectApi } from '../services/api';
@@ -27,11 +28,15 @@ export const Projects: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [stats, setStats] = useState<ProjectDashboardStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+
+  // Filters
   const [search, setSearch] = useState<string>('');
   const [groupFilter, setGroupFilter] = useState<string>('');
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('');
-  const [acceptanceFilter, setAcceptanceFilter] = useState<string>('');
-  const [settlementFilter, setSettlementFilter] = useState<string>('');
+  const [obstacleFilter, setObstacleFilter] = useState<string>('');
+  const [yearFilter, setYearFilter] = useState<string>('');
+  const [delayedOnly, setDelayedOnly] = useState<boolean>(false);
+  const [gapAlertOnly, setGapAlertOnly] = useState<boolean>(false);
 
   // Modals
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
@@ -51,11 +56,13 @@ export const Projects: React.FC = () => {
       setErrorMsg(null);
       const [pRes, sRes] = await Promise.all([
         projectApi.getProjects({
-          search,
+          search: search || undefined,
           investment_group: groupFilter || undefined,
           lifecycle_status: lifecycleFilter || undefined,
-          acceptance_status: acceptanceFilter || undefined,
-          settlement_status: settlementFilter || undefined
+          obstacle_type: obstacleFilter || undefined,
+          year: yearFilter || undefined,
+          is_delayed: delayedOnly ? 'true' : undefined,
+          progress_gap_alert: gapAlertOnly ? 'warning' : undefined
         }),
         projectApi.getDashboard()
       ]);
@@ -71,7 +78,17 @@ export const Projects: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [search, groupFilter, lifecycleFilter, acceptanceFilter, settlementFilter]);
+  }, [search, groupFilter, lifecycleFilter, obstacleFilter, yearFilter, delayedOnly, gapAlertOnly]);
+
+  const handleClearFilters = () => {
+    setSearch('');
+    setGroupFilter('');
+    setLifecycleFilter('');
+    setObstacleFilter('');
+    setYearFilter('');
+    setDelayedOnly(false);
+    setGapAlertOnly(false);
+  };
 
   const handleDelete = async (p: Project) => {
     if (!canDelete) return;
@@ -95,34 +112,70 @@ export const Projects: React.FC = () => {
     }
   };
 
-  const getLifecycleBadge = (status: string) => {
+  const handleExport = () => {
+    projectApi.exportExcel({
+      search: search || undefined,
+      investment_group: groupFilter || undefined,
+      lifecycle_status: lifecycleFilter || undefined,
+      obstacle_type: obstacleFilter || undefined,
+      year: yearFilter || undefined
+    });
+  };
+
+  const getLifecycleBadge = (status: string, isDelayed?: boolean) => {
+    if (isDelayed || status === 'DELAYED') {
+      return (
+        <span className="bg-red-100 text-red-800 px-2 py-0.5 rounded text-[11px] font-bold border border-red-200 inline-flex items-center space-x-1">
+          <AlertTriangle className="w-3 h-3 text-red-600" />
+          <span>Chậm tiến độ</span>
+        </span>
+      );
+    }
+
     switch (status) {
       case 'PREPARATION':
-        return <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">1. Chuẩn bị đầu tư</span>;
-      case 'INVESTMENT_APPROVED':
-        return <span className="bg-sky-100 text-[#1864AB] px-2 py-0.5 rounded text-[11px] font-bold">2. Đã duyệt BCKTKT</span>;
-      case 'PROCUREMENT':
-        return <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[11px] font-bold">3. Lựa chọn nhà thầu</span>;
+        return <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold">1. Đang chuẩn bị</span>;
+      case 'BIDDING':
+        return <span className="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded text-[11px] font-bold">2. Lựa chọn nhà thầu</span>;
+      case 'CONTRACTED':
       case 'CONTRACT_SIGNED':
-        return <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-bold">4. Đã ký HĐ</span>;
+        return <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-bold">3. Đã ký hợp đồng</span>;
       case 'CONSTRUCTION':
-        return <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-[11px] font-bold">5. Đang thi công</span>;
+        return <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded text-[11px] font-bold">4. Đang thi công</span>;
+      case 'PARTIAL_ACCEPTANCE':
+        return <span className="bg-sky-100 text-sky-800 px-2 py-0.5 rounded text-[11px] font-bold">5. NT từng phần</span>;
       case 'COMPLETION_ACCEPTANCE':
-        return <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-bold">7. Nghiệm thu HT</span>;
+        return <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-bold">6. NT hoàn thành</span>;
+      case 'HANDED_OVER':
       case 'HANDOVER':
-        return <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-[11px] font-bold">8. Đã bàn giao</span>;
+        return <span className="bg-teal-100 text-teal-800 px-2 py-0.5 rounded text-[11px] font-bold">7. Đã bàn giao</span>;
+      case 'SETTLEMENT_UNDER_REVIEW':
       case 'SETTLEMENT':
-        return <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[11px] font-bold">9. Đang/Đã QT</span>;
+        return <span className="bg-purple-100 text-purple-800 px-2 py-0.5 rounded text-[11px] font-bold">8. Đang thẩm tra QT</span>;
+      case 'SETTLEMENT_APPROVED':
+        return <span className="bg-purple-200 text-purple-900 px-2 py-0.5 rounded text-[11px] font-extrabold">9. Đã duyệt QT</span>;
       case 'WARRANTY':
         return <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded text-[11px] font-bold">10. Đang bảo hành</span>;
+      case 'COMPLETED':
       case 'CLOSED':
         return <span className="bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded text-[11px] font-extrabold">11. Tất toán / Đóng</span>;
       case 'ARCHIVED':
         return <span className="bg-gray-200 text-gray-700 px-2 py-0.5 rounded text-[11px]">Lưu trữ</span>;
+      case 'CANCELLED_DRAFT':
+        return <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded text-[11px]">Đã hủy</span>;
       default:
         return <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[11px]">{status}</span>;
     }
   };
+
+  const hasActiveFilters =
+    Boolean(search) ||
+    Boolean(groupFilter) ||
+    Boolean(lifecycleFilter) ||
+    Boolean(obstacleFilter) ||
+    Boolean(yearFilter) ||
+    delayedOnly ||
+    gapAlertOnly;
 
   return (
     <div className="space-y-6">
@@ -147,11 +200,12 @@ export const Projects: React.FC = () => {
 
         <div className="flex items-center space-x-2.5">
           <button
-            onClick={() => projectApi.exportExcel()}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center space-x-1.5 transition border border-slate-300"
+            onClick={handleExport}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center space-x-1.5 transition border border-slate-300 shadow-2xs"
+            title="Xuất Excel theo bộ lọc hiện tại"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-            <span>Xuất Excel Báo Cáo</span>
+            <span>Xuất Báo Cáo Đầu Tư</span>
           </button>
           <button
             onClick={fetchData}
@@ -195,7 +249,7 @@ export const Projects: React.FC = () => {
                 </div>
                 <button
                   onClick={() => setSelectedProjectId(gap.id)}
-                  className="px-2 py-1 bg-amber-100 text-amber-900 rounded text-[11px] font-bold shrink-0 ml-2"
+                  className="px-2 py-1 bg-amber-100 text-amber-900 rounded text-[11px] font-bold shrink-0 ml-2 hover:bg-amber-200"
                 >
                   Xem ngay
                 </button>
@@ -273,73 +327,122 @@ export const Projects: React.FC = () => {
         </div>
       )}
 
-      {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row items-center gap-3">
-        <div className="relative flex-1 w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Tìm theo mã dự án, tên công trình, nhà thầu, số hợp đồng..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white transition"
-          />
+      {/* Advanced Filter Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row items-center gap-3">
+          <div className="relative flex-1 w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm theo mã DA, tên công trình, nhà thầu, số hợp đồng..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white transition"
+            />
+          </div>
+
+          <div className="flex items-center space-x-2 w-full md:w-auto overflow-x-auto">
+            <select
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+            >
+              <option value="">-- Nhóm DA --</option>
+              <option value="A">Nhóm A</option>
+              <option value="B">Nhóm B</option>
+              <option value="C">Nhóm C</option>
+            </select>
+
+            <select
+              value={lifecycleFilter}
+              onChange={(e) => setLifecycleFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+            >
+              <option value="">-- Trạng thái vòng đời --</option>
+              <option value="PREPARATION">1. Đang chuẩn bị hồ sơ</option>
+              <option value="BIDDING">2. Lựa chọn nhà thầu</option>
+              <option value="CONTRACTED">3. Đã ký hợp đồng</option>
+              <option value="CONSTRUCTION">4. Đang thi công</option>
+              <option value="DELAYED">Chậm tiến độ</option>
+              <option value="PARTIAL_ACCEPTANCE">5. Nghiệm thu từng phần</option>
+              <option value="COMPLETION_ACCEPTANCE">6. Nghiệm thu hoàn thành</option>
+              <option value="HANDED_OVER">7. Bàn giao đưa vào SD</option>
+              <option value="SETTLEMENT_UNDER_REVIEW">8. Đang thẩm tra QT</option>
+              <option value="SETTLEMENT_APPROVED">9. Đã duyệt quyết toán</option>
+              <option value="WARRANTY">10. Đang bảo hành</option>
+              <option value="COMPLETED">11. Tất toán / Đóng DA</option>
+              <option value="ARCHIVED">Lưu trữ hồ sơ</option>
+            </select>
+
+            <select
+              value={obstacleFilter}
+              onChange={(e) => setObstacleFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+            >
+              <option value="">-- Danh mục Vướng mắc --</option>
+              <option value="LAND_CLEARANCE">Giải phóng mặt bằng</option>
+              <option value="LEGAL_PROCEDURE">Thủ tục pháp lý</option>
+              <option value="WEATHER">Thời tiết / Thiên tai</option>
+              <option value="CONTRACTOR">Tiến độ nhà thầu</option>
+              <option value="FUNDING">Nguồn vốn đối ứng</option>
+              <option value="DESIGN">Thiết kế / Phát sinh</option>
+              <option value="OTHER">Vướng mắc khác</option>
+            </select>
+
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
+            >
+              <option value="">-- Năm kế hoạch --</option>
+              <option value="2026">Năm 2026</option>
+              <option value="2025">Năm 2025</option>
+              <option value="2024">Năm 2024</option>
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-2 w-full md:w-auto overflow-x-auto">
-          <select
-            value={groupFilter}
-            onChange={(e) => setGroupFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-          >
-            <option value="">-- Nhóm DA --</option>
-            <option value="A">Nhóm A</option>
-            <option value="B">Nhóm B</option>
-            <option value="C">Nhóm C</option>
-          </select>
+        {/* Filter Quick Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 text-xs">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setDelayedOnly(!delayedOnly)}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition ${
+                delayedOnly
+                  ? 'bg-red-600 text-white shadow-xs'
+                  : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Chỉ hiện DA Chậm tiến độ</span>
+            </button>
 
-          <select
-            value={lifecycleFilter}
-            onChange={(e) => setLifecycleFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-          >
-            <option value="">-- Giai đoạn vòng đời --</option>
-            <option value="PREPARATION">1. Chuẩn bị đầu tư</option>
-            <option value="INVESTMENT_APPROVED">2. Đã duyệt BCKTKT</option>
-            <option value="PROCUREMENT">3. Lựa chọn nhà thầu</option>
-            <option value="CONTRACT_SIGNED">4. Đã ký hợp đồng</option>
-            <option value="CONSTRUCTION">5. Đang thi công</option>
-            <option value="COMPLETION_ACCEPTANCE">7. Nghiệm thu hoàn thành</option>
-            <option value="HANDOVER">8. Đã bàn giao</option>
-            <option value="SETTLEMENT">9. Quyết toán</option>
-            <option value="WARRANTY">10. Đang bảo hành</option>
-            <option value="CLOSED">11. Tất toán đóng</option>
-            <option value="ARCHIVED">Lưu trữ</option>
-          </select>
+            <button
+              onClick={() => setGapAlertOnly(!gapAlertOnly)}
+              className={`px-2.5 py-1 rounded-lg font-bold flex items-center space-x-1 transition ${
+                gapAlertOnly
+                  ? 'bg-amber-600 text-white shadow-xs'
+                  : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+              }`}
+            >
+              <AlertOctagon className="w-3.5 h-3.5" />
+              <span>Cảnh báo Chênh lệch Giải ngân</span>
+            </button>
 
-          <select
-            value={acceptanceFilter}
-            onChange={(e) => setAcceptanceFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-          >
-            <option value="">-- Nghiệm thu --</option>
-            <option value="chua_nghiem_thu">Chưa nghiệm thu</option>
-            <option value="nghiem_thu_tung_phan">Nghiệm thu từng phần</option>
-            <option value="nghiem_thu_hoan_thanh">Nghiệm thu hoàn thành</option>
-            <option value="khong_dat">Không đạt</option>
-          </select>
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg flex items-center space-x-1 font-semibold transition"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Xóa bộ lọc</span>
+              </button>
+            )}
+          </div>
 
-          <select
-            value={settlementFilter}
-            onChange={(e) => setSettlementFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700"
-          >
-            <option value="">-- Quyết toán --</option>
-            <option value="chua_quyet_toan">Chưa quyết toán</option>
-            <option value="dang_quyet_toan">Đang quyết toán</option>
-            <option value="da_quyet_toan">Đã duyệt quyết toán</option>
-            <option value="quyet_toan_xong">Quyết toán xong</option>
-          </select>
+          <p className="text-slate-500 font-medium">
+            Tìm thấy <strong className="text-slate-800">{projects.length}</strong> dự án
+          </p>
         </div>
       </div>
 
@@ -353,8 +456,16 @@ export const Projects: React.FC = () => {
         ) : projects.length === 0 ? (
           <div className="py-16 text-center text-slate-500 space-y-2">
             <Building2 className="w-10 h-10 text-slate-300 mx-auto" />
-            <p className="text-sm font-semibold text-slate-700">Chưa có dự án đầu tư công nào</p>
-            <p className="text-xs text-slate-400">Nhấn nút "Thêm Dự án Mới" để khởi tạo dự án đầu tiên.</p>
+            <p className="text-sm font-semibold text-slate-700">Không tìm thấy dự án nào phù hợp</p>
+            <p className="text-xs text-slate-400">Vui lòng thử lại với các tiêu chí tìm kiếm hoặc bộ lọc khác.</p>
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearFilters}
+                className="mt-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg"
+              >
+                Xóa tất cả bộ lọc
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -368,79 +479,88 @@ export const Projects: React.FC = () => {
                   <th className="py-3 px-4 text-right">Vốn phân bổ</th>
                   <th className="py-3 px-3 text-center">% Giải ngân</th>
                   <th className="py-3 px-3 text-center">% Tiến độ</th>
-                  <th className="py-3 px-3 text-center">Trạng thái</th>
+                  <th className="py-3 px-3 text-center">Tiến độ/Chậm</th>
                   <th className="py-3 px-4 text-center">Hành động</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {projects.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                      {p.project_code}
-                    </td>
-                    <td className="py-3.5 px-4 max-w-xs">
-                      <p className="font-bold text-slate-800 line-clamp-1">{p.project_name}</p>
-                      <p className="text-[11px] text-slate-500">
-                        {p.investor_name || 'UBND xã Nghĩa Lâm'} • Phụ trách: {p.project_manager_name || 'Chưa gán'}
-                      </p>
-                    </td>
-                    <td className="py-3.5 px-3 text-center">
-                      <span className="font-bold text-[11px] px-2 py-0.5 bg-sky-100 text-[#1864AB] rounded-md">
-                        {p.investment_group}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 whitespace-nowrap">
-                      {getLifecycleBadge(p.lifecycle_status)}
-                    </td>
-                    <td className="py-3.5 px-4 text-right font-extrabold text-slate-800 whitespace-nowrap">
-                      {(p.inv_allocated_capital || 0).toLocaleString()} đ
-                    </td>
-                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                      <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                        {p.inv_disbursement_rate || 0}%
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                      <span className="font-bold text-slate-800">
-                        {p.inv_actual_progress_percent || 0}%
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                      <span className="text-[11px] text-slate-600">
-                        {p.acceptance_status === 'nghiem_thu_hoan_thanh' ? 'Đã nghiệm thu' : 'Chưa NT'}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      <div className="flex items-center justify-center space-x-1.5">
-                        <button
-                          onClick={() => setSelectedProjectId(p.id)}
-                          className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-[#1864AB] rounded-lg text-xs font-semibold flex items-center space-x-1 transition border border-sky-200"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Hồ sơ</span>
-                        </button>
-                        {canDelete && (
-                          <>
-                            <button
-                              onClick={() => handleArchive(p)}
-                              className="p-1 text-slate-400 hover:text-amber-600 rounded transition"
-                              title="Lưu trữ hồ sơ"
-                            >
-                              <Archive className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(p)}
-                              className="p-1 text-slate-400 hover:text-red-600 rounded transition"
-                              title="Xóa dự án"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </>
+                {projects.map((p) => {
+                  const isDelayed = Boolean((p as any).is_delayed || (p as any).delay_days > 0);
+                  return (
+                    <tr key={p.id} className={`hover:bg-slate-50/80 transition ${isDelayed ? 'bg-red-50/30' : ''}`}>
+                      <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                        {p.project_code}
+                      </td>
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <p className="font-bold text-slate-800 line-clamp-1">{p.project_name}</p>
+                        <p className="text-[11px] text-slate-500">
+                          {p.investor_name || 'UBND xã Nghĩa Lâm'} • Phụ trách: {p.project_manager_name || 'Chưa gán'}
+                        </p>
+                      </td>
+                      <td className="py-3.5 px-3 text-center">
+                        <span className="font-bold text-[11px] px-2 py-0.5 bg-sky-100 text-[#1864AB] rounded-md">
+                          {p.investment_group}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4 whitespace-nowrap">
+                        {getLifecycleBadge(p.lifecycle_status, isDelayed)}
+                      </td>
+                      <td className="py-3.5 px-4 text-right font-extrabold text-slate-800 whitespace-nowrap">
+                        {(p.inv_allocated_capital || 0).toLocaleString()} đ
+                      </td>
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <span className="font-black text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                          {p.inv_disbursement_rate || 0}%
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        <span className="font-bold text-slate-800">
+                          {p.inv_actual_progress_percent || 0}%
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-3 text-center whitespace-nowrap">
+                        {isDelayed ? (
+                          <span className="text-red-700 font-bold bg-red-100 px-2 py-0.5 rounded text-[11px]">
+                            Chậm {(p as any).delay_days || 0} ngày
+                          </span>
+                        ) : (
+                          <span className="text-emerald-700 font-medium text-[11px]">Đúng tiến độ</span>
                         )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center space-x-1.5">
+                          <button
+                            onClick={() => setSelectedProjectId(p.id)}
+                            className="px-2.5 py-1 bg-sky-50 hover:bg-sky-100 text-[#1864AB] rounded-lg text-xs font-bold flex items-center space-x-1 transition border border-sky-200 shadow-2xs"
+                            title="Xem chi tiết, 16 bước quy trình & hồ sơ"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Chi tiết / 16 bước</span>
+                          </button>
+
+                          {canDelete && (
+                            <>
+                              <button
+                                onClick={() => handleArchive(p)}
+                                className="p-1 text-slate-400 hover:text-amber-600 rounded transition"
+                                title="Lưu trữ hồ sơ"
+                              >
+                                <Archive className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleDelete(p)}
+                                className="p-1 text-slate-400 hover:text-red-600 rounded transition"
+                                title="Xóa dự án"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

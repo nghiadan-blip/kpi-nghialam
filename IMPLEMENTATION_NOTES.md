@@ -441,3 +441,44 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
   - `test_project_master_spec.ts` $\rightarrow$ **100% PASS**.
   - `npm run build` $\rightarrow$ **100% SUCCESS**.
   - Tuyệt đối tuân thủ kỷ luật: Không tự merge vào main, không deploy production.
+
+---
+
+## 13. Nâng Cấp Toàn Diện Giao Diện, Dữ Liệu & Nghiệp Vụ Module Quản Lý Dự Án (V2 Comprehensive Upgrade)
+
+- **Nhánh làm việc (Branch)**: `feat/project-legal-compliance-2026`
+- **Mục tiêu**: Chuẩn hóa toàn diện cơ sở dữ liệu, model, migration, backend API, validation, frontend giao diện, bộ lọc, modal 5 tab, RBAC, audit log và 20 kịch bản kiểm thử tự động.
+
+### 13.1. Các Hạng Mục Đã Triển Khai & Hoàn Thành:
+1. **Chuẩn hóa danh mục & Dữ liệu**:
+   - Mã trạng thái chuẩn nội bộ: `PREPARATION`, `INVESTMENT_APPROVED`, `BIDDING`, `CONTRACTED`, `CONSTRUCTION`, `DELAYED`, `PARTIAL_ACCEPTANCE`, `COMPLETION_ACCEPTANCE`, `HANDOVER`, `SETTLEMENT_APPROVED`, `WARRANTY`, `COMPLETED`, `ARCHIVED`, `CANCELLED_DRAFT`.
+   - Bảng mới `project_obstacles`: Quản lý danh mục vướng mắc (`LAND_CLEARANCE`, `LEGAL_PROCEDURE`, `WEATHER`, `CONTRACTOR`, `FUNDING`, `DESIGN`, `OTHER`).
+   - Bảng mới `project_payment_disbursements`: Quản lý chi tiết các đợt tạm ứng, nghiệm thu thanh toán khối lượng hoàn thành, tình trạng kiểm soát kho bạc (`PENDING`, `APPROVED`, `REJECTED`).
+   - Dọn sạch chuỗi rác "Chưa lựa chọn nhà thầu", quản lý riêng trường tên và trạng thái lựa chọn nhà thầu.
+2. **Nghiệp vụ Vòng đời & Gate Rules**:
+   - Chặn chuyển `COMPLETION_ACCEPTANCE` khi thiếu Biên bản nghiệm thu.
+   - Chặn chuyển `HANDED_OVER` khi thiếu Biên bản bàn giao.
+   - Chặn chuyển `SETTLEMENT_APPROVED` khi thiếu Quyết định phê duyệt quyết toán.
+   - Chặn chuyển `COMPLETED` khi chưa xác định thời hạn bảo hành công trình.
+   - Chặn xóa cứng (Hard Delete) dự án đã phát sinh giải ngân / hồ sơ tài liệu $\rightarrow$ Trả về **HTTP 409 Conflict**.
+3. **Tiến độ & Cảnh báo**:
+   - Tự động tính toán số ngày chậm tiến độ `delay_days` và gắn nhãn `is_delayed`.
+   - Cảnh báo chênh lệch tiến độ - giải ngân (Progress Gap) hỗ trợ cấu hình động qua query params (`?warning_gap=15&danger_gap=30`).
+4. **Giao diện & Trải nghiệm Người dùng**:
+   - Bộ lọc đa tiêu chí 7 dropdown + công tắc trễ hạn + input tìm kiếm tiếng Việt không dấu.
+   - Nút Xóa lọc (Clear filters), bộ đếm kết quả động, trạng thái không có dữ liệu (Empty state).
+   - Modal chi tiết 5 tab trực quan: Thông tin chung, 16 bước quy trình, Quản lý vướng mắc, Quản lý đợt thanh toán, Nhật ký Audit trail.
+   - Form Wizard tạo mới với validation mã `DA-YYYY-NN`, chặn số âm, chặn giải ngân vượt vốn.
+   - Xuất file Excel thực tế khớp chính xác theo bộ lọc hiện tại.
+
+### 13.2. Kết Quả Kiểm Thử Toàn Diện (20/20 Test Cases Passed)
+- File test: [`server/test_project_comprehensive_v2.ts`](./server/test_project_comprehensive_v2.ts)
+- Kết quả: **20/20 PASSED (100%)**
+- Các báo cáo bàn giao chi tiết:
+  - [`PROJECT_UI_UAT_REPORT.md`](./PROJECT_UI_UAT_REPORT.md)
+  - [`PROJECT_DATA_QUALITY_REPORT.md`](./PROJECT_DATA_QUALITY_REPORT.md)
+  - [`PROJECT_MODULE_FIX_REPORT.md`](./PROJECT_MODULE_FIX_REPORT.md)
+- Kiểm thử đóng gói:
+  - Server TypeScript Build: **Exit code 0**
+  - Client Vite Build: **Exit code 0**
+- Tuân thủ nghiêm ngặt quy chế: **Giữ toàn bộ commit trên branch `feat/project-legal-compliance-2026`, không merge main, không deploy production.**

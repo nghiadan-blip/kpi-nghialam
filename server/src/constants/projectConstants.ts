@@ -31,21 +31,72 @@ export const BIDDING_METHODS = [
 ] as const;
 
 export const LIFECYCLE_STATUSES = [
-  { value: 'PREPARATION', label: '1. Chuẩn bị đầu tư (Lập chủ trương)' },
-  { value: 'INVESTMENT_APPROVED', label: '2. Đã phê duyệt dự án / BCKTKT' },
-  { value: 'PROCUREMENT', label: '3. Kế hoạch & Lựa chọn nhà thầu' },
-  { value: 'CONTRACT_SIGNED', label: '4. Đã ký hợp đồng xây lắp' },
-  { value: 'CONSTRUCTION', label: '5. Đang tổ chức thi công' },
-  { value: 'PARTIAL_ACCEPTANCE', label: '6. Nghiệm thu từng giai đoạn/hạng mục' },
-  { value: 'COMPLETION_ACCEPTANCE', label: '7. Nghiệm thu hoàn thành công trình' },
-  { value: 'HANDOVER', label: '8. Đã bàn giao đưa vào sử dụng' },
-  { value: 'SETTLEMENT', label: '9. Thẩm tra & Phê duyệt quyết toán' },
-  { value: 'WARRANTY', label: '10. Đang trong thời hạn bảo hành' },
-  { value: 'CLOSED', label: '11. Kết thúc dự án & Tất toán tài khoản' },
+  { value: 'PREPARATION', label: 'Đang chuẩn bị hồ sơ' },
+  { value: 'BIDDING', label: 'Đang lựa chọn nhà thầu' },
+  { value: 'CONTRACTED', label: 'Đã ký hợp đồng' },
+  { value: 'CONSTRUCTION', label: 'Đang thi công' },
+  { value: 'DELAYED', label: 'Chậm tiến độ' },
+  { value: 'PARTIAL_ACCEPTANCE', label: 'Nghiệm thu từng phần' },
+  { value: 'COMPLETION_ACCEPTANCE', label: 'Nghiệm thu hoàn thành' },
+  { value: 'HANDED_OVER', label: 'Bàn giao đưa vào sử dụng' },
+  { value: 'SETTLEMENT_UNDER_REVIEW', label: 'Đang thẩm tra quyết toán' },
+  { value: 'SETTLEMENT_APPROVED', label: 'Đã phê duyệt quyết toán' },
+  { value: 'WARRANTY', label: 'Đang trong thời hạn bảo hành' },
+  { value: 'COMPLETED', label: 'Hoàn thành / Tất toán' },
   { value: 'ARCHIVED', label: 'Lưu trữ hồ sơ' },
   { value: 'CANCELLED_DRAFT', label: 'Hủy bản nháp' }
 ] as const;
 export type LifecycleStatus = typeof LIFECYCLE_STATUSES[number]['value'];
+
+export const OBSTACLE_TYPES = [
+  { value: 'LAND_CLEARANCE', label: 'Vướng mắc giải phóng mặt bằng' },
+  { value: 'LEGAL_PROCEDURE', label: 'Thủ tục pháp lý / Phê duyệt hồ sơ' },
+  { value: 'WEATHER', label: 'Thời tiết / Thiên tai bất lợi' },
+  { value: 'CONTRACTOR', label: 'Năng lực / Tiến độ nhà thầu' },
+  { value: 'FUNDING', label: 'Nguồn vốn / Đối ứng ngân sách' },
+  { value: 'DESIGN', label: 'Thiết kế / Phát sinh khối lượng điều chỉnh' },
+  { value: 'OTHER', label: 'Vướng mắc khác' }
+] as const;
+export type ObstacleType = typeof OBSTACLE_TYPES[number]['value'];
+
+export const CONTRACTOR_SELECTION_STATUSES = [
+  { value: 'NOT_SELECTED', label: 'Chưa lựa chọn nhà thầu' },
+  { value: 'IN_SELECTION', label: 'Đang tổ chức lựa chọn nhà thầu' },
+  { value: 'SELECTED', label: 'Đã có kết quả lựa chọn nhà thầu' },
+  { value: 'CONTRACT_SIGNED', label: 'Đã ký hợp đồng kinh tế' },
+  { value: 'CANCELLED', label: 'Hủy thầu / Đấu thầu lại' }
+] as const;
+
+export const PAYMENT_TYPES = [
+  { value: 'ADVANCE', label: 'Tạm ứng hợp đồng' },
+  { value: 'VOLUME_PAYMENT', label: 'Thanh toán khối lượng hoàn thành' },
+  { value: 'SETTLEMENT', label: 'Thanh toán quyết toán A-B' },
+  { value: 'OTHER', label: 'Chi phí khác' }
+] as const;
+
+/**
+ * Hàm chuẩn hóa trạng thái từ text tiếng Việt / legacy strings sang mã nội bộ
+ */
+export function normalizeProjectStatus(rawStatus?: string | null): string {
+  if (!rawStatus) return 'PREPARATION';
+  const clean = rawStatus.trim().toLowerCase();
+  if (clean === 'đang chuẩn bị hồ sơ' || clean === 'đang chuẩn bị' || clean === 'preparing' || clean === 'preparation') return 'PREPARATION';
+  if (clean === 'đang lựa chọn nhà thầu' || clean === 'bidding' || clean === 'procurement') return 'BIDDING';
+  if (clean === 'đã ký hợp đồng' || clean === 'contracted' || clean === 'contract_signed') return 'CONTRACTED';
+  if (clean === 'đang thi công' || clean === 'executing' || clean === 'construction') return 'CONSTRUCTION';
+  if (clean === 'bị chậm tiến độ' || clean === 'chậm tiến độ' || clean === 'delayed') return 'DELAYED';
+  if (clean === 'nghiệm thu từng phần' || clean === 'nghiệm thu từng giai đoạn/hạng mục' || clean === 'partial_acceptance') return 'PARTIAL_ACCEPTANCE';
+  if (clean === 'nghiệm thu hoàn thành' || clean === 'nghiệm thu hoàn thành công trình' || clean === 'completion_acceptance' || clean === 'acceptance_pending' || clean === 'acceptance') return 'COMPLETION_ACCEPTANCE';
+  if (clean === 'bàn giao đưa vào sử dụng' || clean === 'đã bàn giao đưa vào sử dụng' || clean === 'bàn giao' || clean === 'handover' || clean === 'handed_over') return 'HANDED_OVER';
+  if (clean === 'đang thẩm tra quyết toán' || clean === 'đang quyết toán' || clean === 'thẩm tra & phê duyệt quyết toán' || clean === 'settling' || clean === 'settlement_under_review') return 'SETTLEMENT_UNDER_REVIEW';
+  if (clean === 'đã quyết toán' || clean === 'đã phê duyệt quyết toán' || clean === 'settlement_approved' || clean === 'settlement') return 'SETTLEMENT_APPROVED';
+  if (clean === 'đang bảo hành' || clean === 'đang trong thời hạn bảo hành' || clean === 'bảo hành' || clean === 'warranty') return 'WARRANTY';
+  if (clean === 'hoàn thành' || clean === 'đã hoàn thành' || clean === 'kết thúc dự án & tất toán tài khoản' || clean === 'tất toán' || clean === 'closed' || clean === 'completed') return 'COMPLETED';
+  if (clean === 'lưu trữ' || clean === 'lưu trữ hồ sơ' || clean === 'archived') return 'ARCHIVED';
+  if (clean === 'đã hủy' || clean === 'hủy bản nháp' || clean === 'cancelled_draft') return 'CANCELLED_DRAFT';
+
+  return 'DATA_REVIEW_REQUIRED';
+}
 
 export const ACCEPTANCE_STATUSES = [
   { value: 'chua_nghiem_thu', label: 'Chưa nghiệm thu' },

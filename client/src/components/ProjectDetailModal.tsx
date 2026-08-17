@@ -71,12 +71,14 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<
-    'general' | 'workflow' | 'documents' | 'bidding' | 'investment' | 'settlement' | 'audit'
+    'general' | 'workflow' | 'obstacles' | 'disbursements' | 'documents' | 'bidding' | 'investment' | 'settlement' | 'audit'
   >('general');
 
   const [project, setProject] = useState<Project | null>(null);
   const [workflowSteps, setWorkflowSteps] = useState<ProjectWorkflowStep[]>([]);
   const [documents, setDocuments] = useState<ProjectDocument[]>([]);
+  const [obstacles, setObstacles] = useState<any[]>([]);
+  const [disbursements, setDisbursements] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [settlementFramework, setSettlementFramework] = useState<any>(null);
 
@@ -92,6 +94,46 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const [stepChecklist, setStepChecklist] = useState<Record<string, string>>({});
   const [stepNotes, setStepNotes] = useState<string>('');
   const [stepDecisionNo, setStepDecisionNo] = useState<string>('');
+
+  // Obstacle Form State
+  const [showAddObstacle, setShowAddObstacle] = useState<boolean>(false);
+  const [newObstacle, setNewObstacle] = useState<{
+    obstacle_type: string;
+    title: string;
+    content: string;
+    root_cause: string;
+    resolution_measure: string;
+    deadline: string;
+    status: string;
+  }>({
+    obstacle_type: 'FUNDING',
+    title: '',
+    content: '',
+    root_cause: '',
+    resolution_measure: '',
+    deadline: '',
+    status: 'OPEN'
+  });
+
+  // Disbursement Form State
+  const [showAddDisb, setShowAddDisb] = useState<boolean>(false);
+  const [newDisb, setNewDisb] = useState<{
+    voucher_no: string;
+    payment_date: string;
+    amount: number;
+    funding_source: string;
+    payment_type: string;
+    completed_volume_amount: number;
+    justification_note: string;
+  }>({
+    voucher_no: '',
+    payment_date: new Date().toISOString().slice(0, 10),
+    amount: 0,
+    funding_source: 'Ngân sách xã',
+    payment_type: 'VOLUME_PAYMENT',
+    completed_volume_amount: 0,
+    justification_note: ''
+  });
 
   // New Document State
   const [showAddDoc, setShowAddDoc] = useState<boolean>(false);
@@ -117,10 +159,18 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
     try {
       setLoading(true);
       setErrorMsg(null);
-      const data = await projectApi.getProjectById(projectId);
+      const [data, obsRes, disbRes, auditRes] = await Promise.all([
+        projectApi.getProjectById(projectId),
+        projectApi.getObstacles(projectId).catch(() => ({ obstacles: [] })),
+        projectApi.getDisbursements(projectId).catch(() => ({ disbursements: [] })),
+        projectApi.getProjectAuditLog(projectId).catch(() => ({ logs: [] }))
+      ]);
       setProject(data.project);
       setWorkflowSteps(data.workflow_steps || []);
       setDocuments(data.documents || []);
+      setObstacles(obsRes.obstacles || []);
+      setDisbursements(disbRes.disbursements || []);
+      setAuditLogs(auditRes.logs || []);
       setSettlementFramework(data.applicable_settlement_framework || null);
       setEditFormData({
         ...data.project,
@@ -145,12 +195,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
           setStepChecklist({});
         }
       }
-
-      // Fetch audit logs
-      const auditRes = await projectApi.getProjectAuditLog(projectId);
-      setAuditLogs(auditRes.logs || []);
     } catch (err: any) {
-      setErrorMsg(err.response?.data?.message || 'Không thể tải chi tiết dự án.');
+      console.error('Lỗi tải chi tiết dự án:', err);
+      setErrorMsg(err.response?.data?.message || 'Không thể tải chi tiết hồ sơ dự án.');
     } finally {
       setLoading(false);
     }
@@ -244,6 +291,88 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
     }
   };
 
+  const handleCreateObstacleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+    try {
+      setSaving(true);
+      await projectApi.createObstacle(project.id, newObstacle);
+      setShowAddObstacle(false);
+      setNewObstacle({
+        obstacle_type: 'FUNDING',
+        title: '',
+        content: '',
+        root_cause: '',
+        resolution_measure: '',
+        deadline: '',
+        status: 'OPEN'
+      });
+      await fetchDetail();
+      setSuccessMsg('Ghi nhận vướng mắc thành công!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Lỗi khi ghi nhận vướng mắc.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateObstacleStatus = async (obstacleId: number, status: string) => {
+    if (!project) return;
+    try {
+      await projectApi.updateObstacle(project.id, obstacleId, { status });
+      await fetchDetail();
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Lỗi khi cập nhật trạng thái vướng mắc.');
+    }
+  };
+
+  const handleDeleteObstacle = async (obstacleId: number) => {
+    if (!project || !window.confirm('Bạn có chắc chắn muốn xóa vướng mắc này?')) return;
+    try {
+      await projectApi.deleteObstacle(project.id, obstacleId);
+      await fetchDetail();
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Lỗi khi xóa vướng mắc.');
+    }
+  };
+
+  const handleCreateDisbursementSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+    try {
+      setSaving(true);
+      await projectApi.createDisbursement(project.id, newDisb);
+      setShowAddDisb(false);
+      setNewDisb({
+        voucher_no: '',
+        payment_date: new Date().toISOString().slice(0, 10),
+        amount: 0,
+        funding_source: 'Ngân sách xã',
+        payment_type: 'VOLUME_PAYMENT',
+        completed_volume_amount: 0,
+        justification_note: ''
+      });
+      await fetchDetail();
+      setSuccessMsg('Ghi nhận đợt thanh toán thành công!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Lỗi khi ghi nhận đợt thanh toán.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteDisbursement = async (disbursementId: number) => {
+    if (!project || !window.confirm('Bạn có chắc chắn muốn xóa đợt thanh toán này?')) return;
+    try {
+      await projectApi.deleteDisbursement(project.id, disbursementId);
+      await fetchDetail();
+    } catch (err: any) {
+      setErrorMsg(err.response?.data?.message || 'Lỗi khi xóa đợt thanh toán.');
+    }
+  };
+
   const getStepStatusBadge = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -333,6 +462,28 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             <span>2. Quy trình 16 bước kiểm soát</span>
           </button>
           <button
+            onClick={() => setActiveTab('obstacles')}
+            className={`py-3 px-3.5 border-b-2 flex items-center space-x-2 transition ${
+              activeTab === 'obstacles'
+                ? 'border-[#1864AB] text-[#1864AB] font-bold bg-white shadow-2xs'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4 text-amber-600" />
+            <span>3. Vướng mắc ({obstacles.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('disbursements')}
+            className={`py-3 px-3.5 border-b-2 flex items-center space-x-2 transition ${
+              activeTab === 'disbursements'
+                ? 'border-[#1864AB] text-[#1864AB] font-bold bg-white shadow-2xs'
+                : 'border-transparent text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <DollarSign className="w-4 h-4 text-emerald-600" />
+            <span>4. Đợt thanh toán ({disbursements.length})</span>
+          </button>
+          <button
             onClick={() => setActiveTab('documents')}
             className={`py-3 px-3.5 border-b-2 flex items-center space-x-2 transition ${
               activeTab === 'documents'
@@ -340,8 +491,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
-            <FolderOpen className="w-4 h-4 text-amber-600" />
-            <span>3. Kho hồ sơ điện tử ({documents.length})</span>
+            <FolderOpen className="w-4 h-4 text-sky-600" />
+            <span>5. Hồ sơ ({documents.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('bidding')}
@@ -352,7 +503,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>4. Đấu thầu & Hợp đồng</span>
+            <span>6. Đấu thầu & HĐ</span>
           </button>
           <button
             onClick={() => setActiveTab('investment')}
@@ -362,8 +513,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 : 'border-transparent text-slate-600 hover:text-slate-900'
             }`}
           >
-            <DollarSign className="w-4 h-4" />
-            <span>5. Kế hoạch vốn & Giải ngân</span>
+            <TrendingUp className="w-4 h-4" />
+            <span>7. Vốn ĐTC</span>
           </button>
           <button
             onClick={() => setActiveTab('settlement')}
@@ -374,7 +525,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             }`}
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>6. Nghiệm thu, Quyết toán & BH</span>
+            <span>8. Quyết toán & BH</span>
           </button>
           <button
             onClick={() => setActiveTab('audit')}
@@ -385,7 +536,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             }`}
           >
             <History className="w-4 h-4 text-purple-600" />
-            <span>7. Lịch sử Audit</span>
+            <span>9. Audit ({auditLogs.length})</span>
           </button>
         </div>
 
@@ -630,7 +781,394 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 </div>
               )}
 
-              {/* TAB 3: KHO HỒ SƠ ĐIỆN TỬ */}
+              {/* TAB 3: DANH MỤC VƯỚNG MẮC & BIỆN PHÁP XỬ LÝ */}
+              {activeTab === 'obstacles' && (
+                <div className="space-y-4 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        <span>Danh mục Vướng mắc & Kế hoạch Khắc phục</span>
+                      </h3>
+                      <p className="text-slate-500 text-xs">
+                        Ghi nhận khó khăn (Mặt bằng, Pháp lý, Thời tiết, Nhà thầu, Vốn, Thiết kế), người phụ trách và hạn xử lý.
+                      </p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddObstacle(!showAddObstacle)}
+                        className="px-3 py-1.5 bg-[#1864AB] hover:bg-[#0C3260] text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ghi nhận vướng mắc</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {showAddObstacle && (
+                    <div className="p-4 bg-slate-50 border border-slate-300 rounded-xl space-y-3 animate-in fade-in duration-150">
+                      <h4 className="font-bold text-slate-800">Ghi nhận khó khăn / vướng mắc mới</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-slate-600 font-medium">Nhóm vướng mắc:</label>
+                          <select
+                            value={newObstacle.obstacle_type}
+                            onChange={(e) => setNewObstacle({ ...newObstacle, obstacle_type: e.target.value })}
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          >
+                            <option value="LAND_CLEARANCE">Giải phóng mặt bằng</option>
+                            <option value="LEGAL_PROCEDURE">Thủ tục pháp lý</option>
+                            <option value="WEATHER">Thời tiết / Thiên tai</option>
+                            <option value="CONTRACTOR">Tiến độ nhà thầu</option>
+                            <option value="FUNDING">Nguồn vốn đối ứng</option>
+                            <option value="DESIGN">Thiết kế / Thay đổi quy mô</option>
+                            <option value="OTHER">Vướng mắc khác</option>
+                          </select>
+                        </div>
+                        <div className="md:col-span-2">
+                          <label className="text-slate-600 font-medium">Tiêu đề vướng mắc:</label>
+                          <input
+                            type="text"
+                            value={newObstacle.title}
+                            onChange={(e) => setNewObstacle({ ...newObstacle, title: e.target.value })}
+                            placeholder="VD: Chưa thỏa thuận được phương án đền bù 2 hộ dân xóm 3"
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-slate-600 font-medium">Nguyên nhân cốt lõi:</label>
+                          <textarea
+                            rows={2}
+                            value={newObstacle.root_cause}
+                            onChange={(e) => setNewObstacle({ ...newObstacle, root_cause: e.target.value })}
+                            placeholder="Nguyên nhân phát sinh vướng mắc..."
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 font-medium">Biện pháp xử lý / Tháo gỡ:</label>
+                          <textarea
+                            rows={2}
+                            value={newObstacle.resolution_measure}
+                            onChange={(e) => setNewObstacle({ ...newObstacle, resolution_measure: e.target.value })}
+                            placeholder="Đề xuất giải pháp và cơ quan phối hợp..."
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-slate-600 font-medium">Hạn hoàn thành xử lý:</label>
+                          <input
+                            type="date"
+                            value={newObstacle.deadline}
+                            onChange={(e) => setNewObstacle({ ...newObstacle, deadline: e.target.value })}
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 font-medium">Trạng thái ban đầu:</label>
+                          <select
+                            value={newObstacle.status}
+                            onChange={(e) => setNewObstacle({ ...newObstacle, status: e.target.value })}
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          >
+                            <option value="OPEN">Mới ghi nhận (OPEN)</option>
+                            <option value="IN_PROGRESS">Đang xử lý (IN_PROGRESS)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddObstacle(false)}
+                          className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-semibold"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateObstacleSubmit}
+                          disabled={saving}
+                          className="px-4 py-1.5 bg-[#1864AB] text-white rounded-lg text-xs font-semibold hover:bg-[#0C3260]"
+                        >
+                          Lưu vướng mắc
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {obstacles.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
+                      Không có vướng mắc nào đang ghi nhận cho công trình này. Tiến độ bình thường.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {obstacles.map((ob) => (
+                        <div
+                          key={ob.id}
+                          className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2 hover:border-slate-300 transition text-xs shadow-2xs"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded text-[10px] font-bold">
+                                  {ob.obstacle_type}
+                                </span>
+                                <h4 className="font-bold text-slate-800">{ob.title}</h4>
+                              </div>
+                              <p className="text-slate-600 text-[11px] mt-1">
+                                <strong>Nguyên nhân:</strong> {ob.root_cause || 'Chưa nêu'} | <strong>Giải pháp:</strong> {ob.resolution_measure || 'Chưa nêu'}
+                              </p>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              {ob.status === 'RESOLVED' ? (
+                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-md text-[11px] font-bold">
+                                  Đã tháo gỡ
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded-md text-[11px] font-bold">
+                                  {ob.status === 'IN_PROGRESS' ? 'Đang tháo gỡ' : 'Chưa tháo gỡ'}
+                                </span>
+                              )}
+
+                              {canEdit && (
+                                <>
+                                  {ob.status !== 'RESOLVED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdateObstacleStatus(ob.id, 'RESOLVED')}
+                                      className="px-2 py-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 rounded text-[10px] font-bold border border-emerald-200"
+                                    >
+                                      Xác nhận đã giải quyết
+                                    </button>
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteObstacle(ob.id)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded"
+                                    title="Xóa vướng mắc"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
+                            <span>Phụ trách: <strong>{ob.responsible_user_name || 'Cán bộ phụ trách'}</strong></span>
+                            <span>Hạn tháo gỡ: <strong>{ob.deadline ? new Date(ob.deadline).toLocaleDateString('vi-VN') : 'Không có hạn'}</strong></span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: QUẢN LÝ CÁC ĐỢT THANH TOÁN & GIẢI NGÂN CHI TIẾT */}
+              {activeTab === 'disbursements' && (
+                <div className="space-y-4 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-800 text-sm flex items-center space-x-2">
+                        <DollarSign className="w-4 h-4 text-emerald-600" />
+                        <span>Các Đợt Tạm Ứng & Thanh Toán Khối Lượng Hoàn Thành (KBNN)</span>
+                      </h3>
+                      <p className="text-slate-500 text-xs">
+                        Chi tiết từng giấy rút dự toán / ủy nhiệm chi, ngày thanh toán, giá trị nghiệm thu tương ứng.
+                      </p>
+                    </div>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddDisb(!showAddDisb)}
+                        className="px-3 py-1.5 bg-[#1864AB] hover:bg-[#0C3260] text-white text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Ghi nhận đợt thanh toán</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {showAddDisb && (
+                    <div className="p-4 bg-slate-50 border border-slate-300 rounded-xl space-y-3 animate-in fade-in duration-150">
+                      <h4 className="font-bold text-slate-800">Ghi nhận đợt thanh toán / tạm ứng mới</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-slate-600 font-medium">Số chứng từ / Ủy nhiệm chi:</label>
+                          <input
+                            type="text"
+                            value={newDisb.voucher_no}
+                            onChange={(e) => setNewDisb({ ...newDisb, voucher_no: e.target.value })}
+                            placeholder="VD: UNC-2026/05"
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-xs"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 font-medium">Ngày thanh toán KBNN:</label>
+                          <input
+                            type="date"
+                            value={newDisb.payment_date}
+                            onChange={(e) => setNewDisb({ ...newDisb, payment_date: e.target.value })}
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 font-medium">Loại hình thanh toán:</label>
+                          <select
+                            value={newDisb.payment_type}
+                            onChange={(e) => setNewDisb({ ...newDisb, payment_type: e.target.value })}
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          >
+                            <option value="ADVANCE">Tạm ứng hợp đồng</option>
+                            <option value="VOLUME_PAYMENT">Thanh toán khối lượng hoàn thành</option>
+                            <option value="SETTLEMENT">Thanh toán quyết toán dự án</option>
+                            <option value="OTHER">Thanh toán khác</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-slate-600 font-medium">Số tiền thanh toán (VNĐ):</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={newDisb.amount || ''}
+                            onChange={(e) => setNewDisb({ ...newDisb, amount: Number(e.target.value) })}
+                            placeholder="50000000"
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-extrabold text-xs"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 font-medium">Giá trị khối lượng nghiệm thu (VNĐ):</label>
+                          <input
+                            type="number"
+                            min="0"
+                            value={newDisb.completed_volume_amount || ''}
+                            onChange={(e) => setNewDisb({ ...newDisb, completed_volume_amount: Number(e.target.value) })}
+                            placeholder="50000000"
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-slate-600 font-medium">Nguồn vốn thanh toán:</label>
+                          <input
+                            type="text"
+                            value={newDisb.funding_source}
+                            onChange={(e) => setNewDisb({ ...newDisb, funding_source: e.target.value })}
+                            className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-slate-600 font-medium">Ghi chú giải trình / Diễn giải nội dung:</label>
+                        <input
+                          type="text"
+                          value={newDisb.justification_note}
+                          onChange={(e) => setNewDisb({ ...newDisb, justification_note: e.target.value })}
+                          placeholder="Thanh toán đợt 1 hoàn thành phần móng và trụ..."
+                          className="mt-1 w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs"
+                        />
+                      </div>
+
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowAddDisb(false)}
+                          className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded-lg text-xs font-semibold"
+                        >
+                          Hủy
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateDisbursementSubmit}
+                          disabled={saving}
+                          className="px-4 py-1.5 bg-[#1864AB] text-white rounded-lg text-xs font-semibold hover:bg-[#0C3260]"
+                        >
+                          Lưu đợt thanh toán
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {disbursements.length === 0 ? (
+                    <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-500 text-xs">
+                      Chưa ghi nhận đợt thanh toán hay tạm ứng nào qua KBNN cho dự án này.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                            <th className="p-2.5">Số chứng từ</th>
+                            <th className="p-2.5">Ngày thanh toán</th>
+                            <th className="p-2.5">Loại hình</th>
+                            <th className="p-2.5 text-right">Số tiền (VNĐ)</th>
+                            <th className="p-2.5 text-right">KL nghiệm thu</th>
+                            <th className="p-2.5">Nguồn vốn</th>
+                            <th className="p-2.5">Kiểm soát KBNN</th>
+                            {canEdit && <th className="p-2.5 text-center">Xóa</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 bg-white">
+                          {disbursements.map((d) => (
+                            <tr key={d.id} className="hover:bg-slate-50">
+                              <td className="p-2.5 font-mono font-bold text-slate-800">{d.voucher_no}</td>
+                              <td className="p-2.5">{d.payment_date ? new Date(d.payment_date).toLocaleDateString('vi-VN') : '-'}</td>
+                              <td className="p-2.5">
+                                <span className="px-2 py-0.5 bg-blue-50 text-[#1864AB] rounded text-[10px] font-bold">
+                                  {d.payment_type}
+                                </span>
+                              </td>
+                              <td className="p-2.5 text-right font-bold text-emerald-700">
+                                {Number(d.amount).toLocaleString('vi-VN')} đ
+                              </td>
+                              <td className="p-2.5 text-right font-medium text-slate-600">
+                                {Number(d.completed_volume_amount || 0).toLocaleString('vi-VN')} đ
+                              </td>
+                              <td className="p-2.5 text-slate-600">{d.funding_source}</td>
+                              <td className="p-2.5">
+                                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">
+                                  {d.treasury_control_status || 'APPROVED'}
+                                </span>
+                              </td>
+                              {canEdit && (
+                                <td className="p-2.5 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteDisbursement(d.id)}
+                                    className="p-1 text-slate-400 hover:text-red-600 rounded"
+                                    title="Xóa đợt thanh toán"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 5: KHO HỒ SƠ ĐIỆN TỬ */}
               {activeTab === 'documents' && (
                 <div className="space-y-4 text-xs">
                   <div className="flex items-center justify-between">

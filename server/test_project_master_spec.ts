@@ -68,10 +68,10 @@ async function runProjectMasterSpecTests() {
       );
       if (pNew.status === 201 && pNew.body.id) {
         const pCheck = await db('projects').where('id', pNew.body.id).first();
-        if (pCheck.project_code.startsWith('DA-2026-')) {
+        if (pCheck && pCheck.project_code && pCheck.project_code.startsWith('DA-2026-')) {
           console.log(`  ✅ PASS: 1.1 Tự sinh mã dự án chuẩn hóa thành công: [${pCheck.project_code}]`);
         } else {
-          throw new Error('FAIL 1.1: Code not standardized: ' + pCheck.project_code);
+          throw new Error('FAIL 1.1: Code not standardized: ' + (pCheck ? pCheck.project_code : 'none'));
         }
       } else {
         throw new Error('FAIL 1.1: ' + JSON.stringify(pNew));
@@ -94,10 +94,10 @@ async function runProjectMasterSpecTests() {
       );
       if (pArchive.status === 200) {
         const pCheckArchived = await db('projects').where('id', pNew.body.id).first();
-        if (pCheckArchived.lifecycle_status === 'ARCHIVED') {
+        if (pCheckArchived && pCheckArchived.lifecycle_status === 'ARCHIVED') {
           console.log('  ✅ PASS: 1.3 Chuyển hồ sơ dự án sang trạng thái Lưu trữ (ARCHIVED) thành công');
         } else {
-          throw new Error('FAIL 1.3: Status is ' + pCheckArchived.lifecycle_status);
+          throw new Error('FAIL 1.3: Status is ' + (pCheckArchived ? pCheckArchived.lifecycle_status : 'none'));
         }
       } else {
         throw new Error('FAIL 1.3: ' + JSON.stringify(pArchive));
@@ -147,10 +147,10 @@ async function runProjectMasterSpecTests() {
       );
       if (approveStep1Ok.status === 200) {
         const step2 = await db('project_workflow_steps').where({ project_id: pNew.body.id, step_number: 2 }).first();
-        if (step2.status === 'IN_PROGRESS') {
+        if (step2 && step2.status === 'IN_PROGRESS') {
           console.log('  ✅ PASS: 2.4 Phê duyệt Bước 1 thành công & tự động kích hoạt Bước 2 sang IN_PROGRESS');
         } else {
-          throw new Error('FAIL 2.4: Step 2 status is ' + step2.status);
+          throw new Error('FAIL 2.4: Step 2 status is ' + (step2 ? step2.status : 'none'));
         }
       } else {
         throw new Error('FAIL 2.4: ' + JSON.stringify(approveStep1Ok));

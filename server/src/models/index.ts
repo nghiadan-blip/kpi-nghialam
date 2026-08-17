@@ -276,11 +276,14 @@ export interface Project {
   approving_authority?: string | null;
   design_approval_no?: string | null;
   bidding_method?: string | null;
+  contractor_selection_status?: string | null;
   contractor_selection_date?: string | Date | null;
   contract_no?: string | null;
   contract_value: number;
   contractor_name?: string | null;
   contract_signed_date?: string | Date | null;
+  contract_start_date?: string | Date | null;
+  contract_end_date?: string | Date | null;
   project_type?: string | null;
   location?: string | null;
   scale?: string | null;
@@ -291,9 +294,15 @@ export interface Project {
   warranty_end_date?: string | Date | null;
   lifecycle_status: 'PREPARATION' | 'INVESTMENT_APPROVED' | 'PROCUREMENT' | 'CONTRACT_SIGNED' | 'CONSTRUCTION' | 'PARTIAL_ACCEPTANCE' | 'COMPLETION_ACCEPTANCE' | 'HANDOVER' | 'SETTLEMENT' | 'WARRANTY' | 'CLOSED' | 'ARCHIVED' | 'CANCELLED_DRAFT' | string;
   data_review_flag?: string | null;
+  planned_start_date?: string | Date | null;
+  actual_start_date?: string | Date | null;
   start_date?: string | Date | null;
   planned_end_date?: string | Date | null;
   actual_end_date?: string | Date | null;
+  planned_progress_percent?: number | null;
+  delay_days?: number | null;
+  delay_reason?: string | null;
+  recovery_deadline?: string | Date | null;
   acceptance_status: 'chua_nghiem_thu' | 'nghiem_thu_tung_phan' | 'nghiem_thu_hoan_thanh' | 'khong_dat' | string;
   acceptance_date?: string | Date | null;
   settlement_status: 'chua_quyet_toan' | 'dang_quyet_toan' | 'da_quyet_toan' | 'quyet_toan_xong' | string;
@@ -301,10 +310,46 @@ export interface Project {
   settlement_date?: string | Date | null;
   handover_date?: string | Date | null;
   project_manager_id?: number | null;
+  responsible_user_id?: number | null;
   supervisor_unit?: string | null;
   created_by?: number | null;
   updated_by?: number | null;
   version: number;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectObstacle {
+  id: number;
+  project_id: number;
+  obstacle_type: 'LAND_CLEARANCE' | 'LEGAL_PROCEDURE' | 'WEATHER' | 'CONTRACTOR' | 'FUNDING' | 'DESIGN' | 'OTHER' | string;
+  title: string;
+  content?: string | null;
+  root_cause?: string | null;
+  resolution_measure?: string | null;
+  responsible_user_id?: number | null;
+  deadline?: string | Date | null;
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'ESCALATED' | string;
+  evidence_url?: string | null;
+  created_by?: number | null;
+  resolved_at?: string | Date | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectPaymentDisbursement {
+  id: number;
+  project_id: number;
+  voucher_no: string;
+  payment_date: string | Date;
+  amount: number;
+  funding_source: string;
+  payment_type: 'ADVANCE' | 'VOLUME_PAYMENT' | 'SETTLEMENT' | 'OTHER' | string;
+  completed_volume_amount?: number;
+  treasury_control_status: 'PENDING' | 'APPROVED' | 'REJECTED' | string;
+  voucher_url?: string | null;
+  justification_note?: string | null;
+  created_by?: number | null;
   created_at?: string | Date;
   updated_at?: string | Date;
 }

@@ -104,6 +104,10 @@ export const CreateProjectWizardModal: React.FC<CreateProjectWizardModalProps> =
         setErrorMsg('Vui lòng nhập Mã công trình / dự án.');
         return false;
       }
+      if (!/^DA-\d{4}-\d{2}$/.test(formData.project_code.trim())) {
+        setErrorMsg('Mã dự án không đúng định dạng DA-YYYY-NN (Ví dụ: DA-2026-01).');
+        return false;
+      }
       if (!formData.project_name.trim()) {
         setErrorMsg('Vui lòng nhập Tên công trình / dự án.');
         return false;
@@ -118,9 +122,30 @@ export const CreateProjectWizardModal: React.FC<CreateProjectWizardModalProps> =
         setErrorMsg('Giá trị hợp đồng không được âm.');
         return false;
       }
+      if (formData.contractor_name && formData.contractor_name.trim().toLowerCase().includes('chưa lựa chọn')) {
+        setErrorMsg('Không được nhập "Chưa lựa chọn nhà thầu" vào trường tên nhà thầu.');
+        return false;
+      }
+      if (formData.contract_no && (!formData.contractor_name || !formData.contract_value)) {
+        setErrorMsg('Khi có số hợp đồng, bắt buộc phải có tên nhà thầu và giá trị hợp đồng.');
+        return false;
+      }
       if (formData.start_date && formData.planned_end_date && new Date(formData.start_date) > new Date(formData.planned_end_date)) {
         setErrorMsg('Hạn hoàn thành dự kiến phải sau ngày khởi công.');
         return false;
+      }
+    }
+    if (step === 3) {
+      if (linkingMode === 'new') {
+        const inv = formData.investment_payload;
+        if (inv.planned_capital < 0 || inv.allocated_capital < 0 || inv.disbursed_amount < 0) {
+          setErrorMsg('Kế hoạch vốn, vốn phân bổ và giải ngân không được mang giá trị âm.');
+          return false;
+        }
+        if (inv.disbursed_amount > inv.allocated_capital) {
+          setErrorMsg('Số tiền giải ngân không được vượt quá vốn phân bổ.');
+          return false;
+        }
       }
     }
     return true;
