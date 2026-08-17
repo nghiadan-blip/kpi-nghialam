@@ -15,7 +15,10 @@ import {
   PublicInvestmentProject,
   LandCertificateCase,
   KH965Progress,
-  OfficeRequest
+  OfficeRequest,
+  Project,
+  ProjectMilestone,
+  ProjectDashboardStats
 } from '../types';
 
 export type { HealthCheckResponse };
@@ -655,3 +658,71 @@ export const executiveDashboardApi = {
     return res.data;
   }
 };
+
+// --- Project Lifecycle Management APIs (Quản lý Dự án) ---
+export const projectApi = {
+  getProjects: async (params?: {
+    search?: string;
+    investment_group?: string;
+    acceptance_status?: string;
+    settlement_status?: string;
+    project_manager_id?: number;
+    page?: number;
+    limit?: number;
+  }) => {
+    const res = await api.get<{
+      projects: Project[];
+      total: number;
+      page: number;
+      limit: number;
+    }>('/projects', { params });
+    return res.data;
+  },
+  getProjectById: async (id: number) => {
+    const res = await api.get<{
+      project: Project;
+      milestones: ProjectMilestone[];
+    }>(`/projects/${id}`);
+    return res.data;
+  },
+  createProject: async (data: any) => {
+    const res = await api.post<{ message: string; id: number; investment_project_id?: number }>('/projects', data);
+    return res.data;
+  },
+  updateProject: async (id: number, data: any) => {
+    const res = await api.put<{ message: string; version: number }>(`/projects/${id}`, data);
+    return res.data;
+  },
+  deleteProject: async (id: number, reason?: string) => {
+    const res = await api.delete<{ message: string }>(`/projects/${id}`, { data: { reason } });
+    return res.data;
+  },
+  linkInvestment: async (id: number, investment_project_id: number) => {
+    const res = await api.post<{ message: string }>(`/projects/${id}/link-investment`, { investment_project_id });
+    return res.data;
+  },
+  unlinkInvestment: async (id: number) => {
+    const res = await api.post<{ message: string }>(`/projects/${id}/unlink-investment`);
+    return res.data;
+  },
+  getDashboard: async () => {
+    const res = await api.get<ProjectDashboardStats>('/projects/dashboard');
+    return res.data;
+  },
+  addMilestone: async (projectId: number, data: any) => {
+    const res = await api.post<{ message: string; id: number }>(`/projects/${projectId}/milestones`, data);
+    return res.data;
+  },
+  updateMilestone: async (projectId: number, milestoneId: number, data: any) => {
+    const res = await api.put<{ message: string }>(`/projects/${projectId}/milestones/${milestoneId}`, data);
+    return res.data;
+  },
+  deleteMilestone: async (projectId: number, milestoneId: number) => {
+    const res = await api.delete<{ message: string }>(`/projects/${projectId}/milestones/${milestoneId}`);
+    return res.data;
+  },
+  exportExcel: () => {
+    window.open('/api/projects/export', '_blank');
+  }
+};
+

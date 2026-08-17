@@ -61,6 +61,8 @@ export async function seed(knex: Knex): Promise<void> {
   }
 
   // Clear existing records in reverse dependency order
+  await knex('project_milestones').del();
+  await knex('projects').del();
   await knex('office_requests').del();
   await knex('kh965_progress').del();
   await knex('land_certificate_cases').del();
@@ -91,7 +93,9 @@ export async function seed(knex: Knex): Promise<void> {
       'public_investment_projects',
       'land_certificate_cases',
       'kh965_progress',
-      'office_requests'
+      'office_requests',
+      'projects',
+      'project_milestones'
     ];
     for (const tbl of tablesToReset) {
       await knex.raw(`DELETE FROM sqlite_sequence WHERE name = '${tbl}'`);
@@ -682,4 +686,171 @@ export async function seed(knex: Knex): Promise<void> {
     }
   ];
   await knex('office_requests').insert(officeRequests);
+
+  // 10. Insert Projects (Vòng đời dự án liên kết ĐTC)
+  const projects = [
+    {
+      id: 1,
+      investment_project_id: 1,
+      project_code: 'DA-2026-01',
+      project_name: 'Xây dựng đường bê tông liên thôn xóm 3 và xóm 4 Nghĩa Lâm',
+      investment_group: 'C',
+      approval_decision_no: '88/QĐ-UBND',
+      approval_date: '2026-01-15',
+      approving_authority: 'UBND huyện Nghĩa Đàn',
+      design_approval_no: 'TK-12/2026/SXD',
+      bidding_method: 'Chỉ định thầu rút gọn',
+      contractor_selection_date: '2026-02-05',
+      contract_no: '01/2026/HĐ-XL',
+      contract_value: 3450000000,
+      start_date: '2026-02-10',
+      planned_end_date: '2026-11-30',
+      actual_end_date: null,
+      acceptance_status: 'chua_nghiem_thu',
+      acceptance_date: null,
+      settlement_status: 'chua_quyet_toan',
+      settlement_value: 0,
+      settlement_date: null,
+      handover_date: null,
+      project_manager_id: 6, // Vũ Minh Tuấn
+      supervisor_unit: 'Ban Giám sát đầu tư của cộng đồng xã Nghĩa Lâm',
+      created_by: 2,
+      updated_by: 6,
+      version: 1
+    },
+    {
+      id: 2,
+      investment_project_id: 2,
+      project_code: 'DA-2026-02',
+      project_name: 'Cải tạo, nâng cấp Nhà văn hóa đa năng xã Nghĩa Lâm',
+      investment_group: 'C',
+      approval_decision_no: '112/QĐ-UBND',
+      approval_date: '2026-02-20',
+      approving_authority: 'HĐND & UBND xã Nghĩa Lâm',
+      design_approval_no: 'TK-04/2026/UBND',
+      bidding_method: 'Đấu thầu rộng rãi qua mạng',
+      contractor_selection_date: '2026-03-25',
+      contract_no: '04/2026/HĐ-XD',
+      contract_value: 1780000000,
+      start_date: '2026-04-01',
+      planned_end_date: '2026-12-15',
+      actual_end_date: null,
+      acceptance_status: 'chua_nghiem_thu',
+      acceptance_date: null,
+      settlement_status: 'chua_quyet_toan',
+      settlement_value: 0,
+      settlement_date: null,
+      handover_date: null,
+      project_manager_id: 6, // Vũ Minh Tuấn
+      supervisor_unit: 'Công ty TNHH Tư vấn Giám sát Miền Trung',
+      created_by: 2,
+      updated_by: 6,
+      version: 1
+    },
+    {
+      id: 3,
+      investment_project_id: 3,
+      project_code: 'DA-2026-03',
+      project_name: 'Xây mới Trạm Y tế xã Nghĩa Lâm đạt chuẩn Quốc gia',
+      investment_group: 'B',
+      approval_decision_no: '456/QĐ-UBND',
+      approval_date: '2026-03-10',
+      approving_authority: 'UBND tỉnh Nghệ An',
+      design_approval_no: 'TK-28/2026/SYT',
+      bidding_method: 'Đấu thầu rộng rãi qua mạng',
+      contractor_selection_date: '2026-05-10',
+      contract_no: '12/2026/HĐ-YT',
+      contract_value: 5850000000,
+      start_date: '2026-05-15',
+      planned_end_date: '2027-04-30',
+      actual_end_date: null,
+      acceptance_status: 'chua_nghiem_thu',
+      acceptance_date: null,
+      settlement_status: 'chua_quyet_toan',
+      settlement_value: 0,
+      settlement_date: null,
+      handover_date: null,
+      project_manager_id: 5, // Lê Hoàng Anh
+      supervisor_unit: 'Sở Y tế tỉnh Nghệ An & Ban QLDA huyện',
+      created_by: 2,
+      updated_by: 5,
+      version: 1
+    }
+  ];
+  await knex('projects').insert(projects);
+
+  // 11. Insert Project Milestones (Mốc tiến độ chi tiết)
+  const projectMilestones = [
+    {
+      id: 1,
+      project_id: 1,
+      milestone_name: 'Phê duyệt chủ trương & dự án đầu tư',
+      milestone_type: 'approval',
+      planned_date: '2026-01-15',
+      actual_date: '2026-01-15',
+      status: 'completed',
+      note: 'Hoàn thành thẩm định và ban hành QĐ 88/QĐ-UBND'
+    },
+    {
+      id: 2,
+      project_id: 1,
+      milestone_name: 'Lựa chọn nhà thầu & ký hợp đồng xây lắp',
+      milestone_type: 'contract',
+      planned_date: '2026-02-05',
+      actual_date: '2026-02-05',
+      status: 'completed',
+      note: 'Ký kết HĐ 01/2026/HĐ-XL với Công ty 37'
+    },
+    {
+      id: 3,
+      project_id: 1,
+      milestone_name: 'Khởi công và thi công nền đường',
+      milestone_type: 'construction_start',
+      planned_date: '2026-02-10',
+      actual_date: '2026-02-10',
+      status: 'completed',
+      note: 'Đã hoàn thành lu lèn nền đường'
+    },
+    {
+      id: 4,
+      project_id: 1,
+      milestone_name: 'Đổ bê tông mặt đường liên thôn xóm 3 - 4',
+      milestone_type: 'structure',
+      planned_date: '2026-07-30',
+      actual_date: '2026-08-05',
+      status: 'completed',
+      note: 'Chậm 5 ngày do ảnh hưởng mưa bão'
+    },
+    {
+      id: 5,
+      project_id: 1,
+      milestone_name: 'Nghiệm thu kỹ thuật và hoàn thành xây lắp',
+      milestone_type: 'acceptance',
+      planned_date: '2026-11-15',
+      actual_date: null,
+      status: 'in_progress',
+      note: 'Đang hoàn thiện lề đường và cọc tiêu biển báo'
+    },
+    {
+      id: 6,
+      project_id: 2,
+      milestone_name: 'Lựa chọn nhà thầu qua mạng',
+      milestone_type: 'bidding',
+      planned_date: '2026-03-25',
+      actual_date: '2026-03-25',
+      status: 'completed',
+      note: 'Mở thầu thành công'
+    },
+    {
+      id: 7,
+      project_id: 2,
+      milestone_name: 'Thi công cải tạo phần mái và hội trường',
+      milestone_type: 'structure',
+      planned_date: '2026-08-15',
+      actual_date: null,
+      status: 'delayed',
+      note: 'Vướng mắc nguồn vốn ngân sách xã đối ứng'
+    }
+  ];
+  await knex('project_milestones').insert(projectMilestones);
 }

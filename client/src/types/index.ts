@@ -394,3 +394,99 @@ export interface OfficeRequest {
   updated_at?: string;
 }
 
+export interface Project {
+  id: number;
+  investment_project_id?: number | null;
+  project_code: string;
+  project_name: string;
+  investment_group: 'A' | 'B' | 'C' | 'Chưa phân loại' | string;
+  approval_decision_no?: string | null;
+  approval_date?: string | null;
+  approving_authority?: string | null;
+  design_approval_no?: string | null;
+  bidding_method?: string | null;
+  contractor_selection_date?: string | null;
+  contract_no?: string | null;
+  contract_value: number;
+  start_date?: string | null;
+  planned_end_date?: string | null;
+  actual_end_date?: string | null;
+  acceptance_status: 'chua_nghiem_thu' | 'nghiem_thu_tung_phan' | 'nghiem_thu_hoan_thanh' | 'khong_dat' | string;
+  acceptance_date?: string | null;
+  settlement_status: 'chua_quyet_toan' | 'dang_quyet_toan' | 'da_quyet_toan' | 'quyet_toan_xong' | string;
+  settlement_value: number;
+  settlement_date?: string | null;
+  handover_date?: string | null;
+  project_manager_id?: number | null;
+  project_manager_name?: string | null;
+  project_manager_position?: string | null;
+  supervisor_unit?: string | null;
+  created_by?: number | null;
+  creator_name?: string | null;
+  updated_by?: number | null;
+  version: number;
+  created_at?: string;
+  updated_at?: string;
+
+  // Joined fields from linked public_investment_projects
+  inv_project_code?: string | null;
+  inv_project_name?: string | null;
+  inv_investor_name?: string | null;
+  inv_funding_source?: string | null;
+  inv_planned_capital?: number | null;
+  inv_allocated_capital?: number | null;
+  inv_disbursed_amount?: number | null;
+  inv_disbursement_rate?: number | null;
+  inv_actual_progress_percent?: number | null;
+  inv_status?: string | null;
+  inv_contractor?: string | null;
+  inv_obstacle_type?: string | null;
+  inv_obstacle_note?: string | null;
+}
+
+export interface ProjectMilestone {
+  id: number;
+  project_id: number;
+  milestone_name: string;
+  milestone_type: 'approval' | 'bidding' | 'contract' | 'construction_start' | 'foundation' | 'structure' | 'completion' | 'acceptance' | 'settlement' | 'handover' | 'other' | string;
+  planned_date: string;
+  actual_date?: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | string;
+  note?: string | null;
+  created_by?: number | null;
+  updated_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectDashboardStats {
+  total_projects: number;
+  by_group: { A: number; B: number; C: number; other: number };
+  by_lifecycle: {
+    preparing: number;
+    contracting: number;
+    executing: number;
+    acceptance_pending: number;
+    settling: number;
+    completed: number;
+  };
+  financials: {
+    total_planned_capital: number;
+    total_allocated_capital: number;
+    total_disbursed_amount: number;
+    average_disbursement_rate: number;
+    total_contract_value: number;
+    total_settlement_value: number;
+  };
+  obstacles_summary: Record<string, number>;
+  priority_projects: Array<{
+    id: number;
+    project_code: string;
+    project_name: string;
+    reason: string;
+    disbursement_rate: number;
+    progress: number;
+  }>;
+}
+
+

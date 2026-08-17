@@ -237,3 +237,86 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
   - `npm run build:server` -> **SUCCESS** (Exit code 0).
   - `npm run build:client` -> **SUCCESS** (Exit code 0).
   - `npm run build` -> **SUCCESS** (Exit code 0).
+
+---
+
+## 10. Xây Dựng Module Quản Lý Toàn Bộ Vòng Đời Dự Án (`/projects`) Liên Kết Có Kiểm Soát Với Giải Ngân Đầu Tư Công (`/public-investment`)
+
+- **Nhánh làm việc (Branch)**: `feat/project-management-module`
+- **Mục tiêu**: Xây dựng phân hệ quản lý toàn bộ vòng đời dự án đầu tư công từ:
+  $$\text{Chủ trương} \rightarrow \text{Phê duyệt} \rightarrow \text{Đấu thầu/Hợp đồng} \rightarrow \text{Thi công} \rightarrow \text{Nghiệm thu} \rightarrow \text{Quyết toán} \rightarrow \text{Bàn giao đưa vào sử dụng}$$
+  liên kết chặt chẽ và không trùng lặp số liệu với module giải ngân vốn đầu tư công (`/public-investment`).
+
+### 10.1. Cấu trúc Cơ sở Dữ liệu & Migration
+- **Migration**: [`server/database/migrations/20260817000000_create_projects_and_milestones_tables.ts`](./server/database/migrations/20260817000000_create_projects_and_milestones_tables.ts)
+- **Bảng `projects`**:
+  - `id`: Khóa chính;
+  - `investment_project_id`: FK liên kết duy nhất (`UNIQUE`, `NULLABLE`) tới `public_investment_projects.id`;
+  - `project_code`: Unique (Mã công trình/dự án);
+  - `project_name`: Tên công trình;
+  - `investment_group`: Nhóm A / B / C theo Luật Đầu tư công;
+  - `approval_decision_no`, `approval_date`, `approving_authority`, `design_approval_no`;
+  - `bidding_method`, `contractor_selection_date`, `contract_no`, `contract_value`;
+  - `start_date`, `planned_end_date`, `actual_end_date`;
+  - `acceptance_status`, `acceptance_date`;
+  - `settlement_status`, `settlement_value`, `settlement_date`, `handover_date`;
+  - `project_manager_id`: FK tới `users`;
+  - `supervisor_unit`: Đơn vị tư vấn/Ban giám sát cộng đồng;
+  - `version`: Optimistic locking;
+  - `created_by`, `updated_by`, `created_at`, `updated_at`.
+- **Bảng `project_milestones`**:
+  - `id`, `project_id` (FK cascade), `milestone_name`, `milestone_type`, `planned_date`, `actual_date`, `status`, `note`.
+
+### 10.2. Nguyên Tắc Nguồn Dữ Liệu & Đồng Bộ Hai Chiều Không Trùng Lặp
+1. **Nguồn dữ liệu tài chính chính**:
+   - Vốn kế hoạch, Vốn phân bổ, Đã giải ngân, Tỷ lệ giải ngân, Tiến độ hiện trường (%) và Vướng mắc được lưu trữ duy nhất tại `public_investment_projects`.
+   - Phân hệ `/projects` chỉ truy vấn (Left Join) trực tiếp từ nguồn ĐTC để hiển thị, tuyệt đối không tạo bản sao hoặc nhập lại số liệu tài chính.
+2. **Giao dịch an toàn (Transactions)**:
+   - Khi tạo mới dự án đồng thời với công trình ĐTC, hệ thống bọc trong Knex Transaction: nếu một bên lỗi sẽ rollback toàn bộ.
+   - Ràng buộc $1:1$ được bảo đảm chặt chẽ (1 công trình ĐTC chỉ liên kết tối đa 1 dự án).
+3. **Bảo vệ toàn vẹn dữ liệu**:
+   - Cấm xóa dự án nếu công trình đã phát sinh giải ngân ($>0$ VNĐ) hoặc đã nghiệm thu/quyết toán hoàn thành $\rightarrow$ Trả HTTP `409 Conflict`.
+   - Cấm đổi mã dự án khi đã có số liệu giải ngân/nghiệm thu.
+
+### 10.3. Phân Quyền RBAC & Route Guard
+- **API Endpoints**:
+  - `GET /api/projects`: Trả danh sách có lọc và phân trang (Lãnh đạo & Dept 3 xem toàn bộ; cán bộ khác chỉ xem dự án được gán làm PM).
+  - `GET /api/projects/:id`: Trả chi tiết, milestones và dữ liệu ĐTC liên kết (Chặn 403 đối với cán bộ không liên quan).
+  - `POST /api/projects`: Chỉ Lãnh đạo, Trưởng bộ phận Địa chính (Dept 3), và Cán bộ Địa chính.
+  - `PUT /api/projects/:id`: Kiểm soát chi tiết theo cấp thẩm quyền (Sửa QĐ phê duyệt/Hợp đồng và Nghiệm thu/Quyết toán yêu cầu thẩm quyền Lãnh đạo/Trưởng phòng).
+  - `DELETE /api/projects/:id`: Chỉ Lãnh đạo và Admin (có ràng buộc 409).
+  - `POST /api/projects/:id/link-investment` & `unlink-investment`: Kiểm soát liên kết.
+  - `GET /api/projects/dashboard`: Thống kê theo nhóm A/B/C, giai đoạn vòng đời, tài chính tổng hợp từ ĐTC.
+  - `GET /api/projects/export`: Xuất báo cáo Excel định dạng hành chính xã Nghĩa Lâm.
+- **Frontend Route Guard**:
+  - `/projects`: Bảo vệ bởi `ProtectedRoute allowedDepartments={[3]}`.
+  - Menu `Quản lý dự án` hiển thị linh hoạt theo vai trò trên [`Navbar.tsx`](./client/src/components/Navbar.tsx).
+
+### 10.4. Kết Quả Kiểm Thử Toàn Diện
+1. **Data Linking & 2-Way Integrity Suite (`test_project_linking.ts`)**: **5/5 PASS**
+   - Chặn liên kết trùng;
+   - Tạo đồng thời qua Transaction;
+   - Đọc tự động số liệu giải ngân mới nhất từ nguồn;
+   - Bảo toàn số liệu ĐTC khi sửa vòng đời;
+   - Chặn xóa dự án có giải ngân với HTTP 409.
+2. **Project RBAC Matrix Suite (`test_project_rbac.ts`)**: **7/7 PASS**
+   - Chặn cán bộ ngoài Dept 3 xem và tạo dự án;
+   - Cho phép PM xem dự án được gán;
+   - Chặn PM sửa trường nhạy cảm;
+   - Cho phép Trưởng phòng và Lãnh đạo thao tác theo thẩm quyền.
+3. **Project Lifecycle, Milestones & Validation Suite (`test_project_lifecycle.ts`)**: **5/5 PASS**
+   - Chặn ngày kết thúc trước ngày khởi công;
+   - Chặn giá trị hợp đồng/quyết toán âm;
+   - Thêm, sửa, xóa mốc tiến độ;
+   - Dashboard tổng hợp chính xác.
+4. **All Existing Regression Suites**:
+   - `test_rbac_full_matrix.ts` $\rightarrow$ **11/11 PASS**.
+   - `test_p0_kpi_formula.ts` $\rightarrow$ **10/10 PASS**.
+   - `test_e2e_full.ts` $\rightarrow$ **23/23 PASS**.
+5. **Build Verification**:
+   - `npm run build:server` $\rightarrow$ **SUCCESS** (Exit code 0).
+   - `npm run build:client` $\rightarrow$ **SUCCESS** (Exit code 0).
+   - `npm run build` $\rightarrow$ **SUCCESS** (Exit code 0).
+
+### 10.5. Các Nội Dung Đánh Dấu `LEGAL_REVIEW_REQUIRED`
+- Tiêu chí phân loại dự án nhóm A/B/C theo hạn mức tổng mức đầu tư quy định tại Điều 8, 9, 10 Luật Đầu tư công cần được Hội đồng nhân dân / UBND tỉnh Nghệ An và huyện Nghĩa Đàn rà soát định kỳ theo các văn bản phân cấp quản lý đầu tư công mới nhất.

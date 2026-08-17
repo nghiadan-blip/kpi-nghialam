@@ -6,9 +6,11 @@ server/dist/
 
 server/database/*.sqlite
 server/database/*.sqlite-*
+server/database/*.sqlite3
 
 .env
 .env.*
+vps_auth.json
 
 *.log
 .vscode/

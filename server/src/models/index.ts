@@ -265,6 +265,53 @@ export interface OfficeRequest {
   updated_at?: string | Date;
 }
 
+export interface Project {
+  id: number;
+  investment_project_id?: number | null;
+  project_code: string;
+  project_name: string;
+  investment_group: 'A' | 'B' | 'C' | 'Chưa phân loại' | string;
+  approval_decision_no?: string | null;
+  approval_date?: string | Date | null;
+  approving_authority?: string | null;
+  design_approval_no?: string | null;
+  bidding_method?: string | null;
+  contractor_selection_date?: string | Date | null;
+  contract_no?: string | null;
+  contract_value: number;
+  start_date?: string | Date | null;
+  planned_end_date?: string | Date | null;
+  actual_end_date?: string | Date | null;
+  acceptance_status: 'chua_nghiem_thu' | 'nghiem_thu_tung_phan' | 'nghiem_thu_hoan_thanh' | 'khong_dat' | string;
+  acceptance_date?: string | Date | null;
+  settlement_status: 'chua_quyet_toan' | 'dang_quyet_toan' | 'da_quyet_toan' | 'quyet_toan_xong' | string;
+  settlement_value: number;
+  settlement_date?: string | Date | null;
+  handover_date?: string | Date | null;
+  project_manager_id?: number | null;
+  supervisor_unit?: string | null;
+  created_by?: number | null;
+  updated_by?: number | null;
+  version: number;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
+export interface ProjectMilestone {
+  id: number;
+  project_id: number;
+  milestone_name: string;
+  milestone_type: 'approval' | 'bidding' | 'contract' | 'construction_start' | 'foundation' | 'structure' | 'completion' | 'acceptance' | 'settlement' | 'handover' | 'other' | string;
+  planned_date: string | Date;
+  actual_date?: string | Date | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | string;
+  note?: string | null;
+  created_by?: number | null;
+  updated_by?: number | null;
+  created_at?: string | Date;
+  updated_at?: string | Date;
+}
+
 declare module 'knex/types/tables' {
   interface Tables {
     departments: Department;
@@ -280,5 +327,7 @@ declare module 'knex/types/tables' {
     land_certificate_cases: LandCertificateCase;
     kh965_progress: KH965Progress;
     office_requests: OfficeRequest;
+    projects: Project;
+    project_milestones: ProjectMilestone;
   }
 }
