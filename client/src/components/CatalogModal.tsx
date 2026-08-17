@@ -67,14 +67,26 @@ export const CatalogModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess
       return;
     }
 
+    const coeff = Number(formData.coefficient);
+    if (isNaN(coeff) || coeff <= 0) {
+      setError('Hệ số quy đổi K phải là số dương lớn hơn 0.');
+      return;
+    }
+
+    const baseScore = Number(formData.baseline_score);
+    if (isNaN(baseScore) || baseScore <= 0) {
+      setError('Điểm chuẩn gốc phải là số dương lớn hơn 0.');
+      return;
+    }
+
     setLoading(true);
     try {
       if (isEditing && item) {
         await catalogApi.updateCatalogItem(item.id, {
           name: formData.name.trim(),
           category: formData.category,
-          coefficient: Number(formData.coefficient),
-          baseline_score: Number(formData.baseline_score),
+          coefficient: coeff,
+          baseline_score: baseScore,
           description: formData.description ? formData.description.trim() : null,
           status: formData.status,
         });
@@ -83,8 +95,8 @@ export const CatalogModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess
           code: formData.code.trim().toUpperCase(),
           name: formData.name.trim(),
           category: formData.category,
-          coefficient: Number(formData.coefficient),
-          baseline_score: Number(formData.baseline_score),
+          coefficient: coeff,
+          baseline_score: baseScore,
           description: formData.description ? formData.description.trim() : null,
           status: formData.status,
         });
@@ -116,7 +128,7 @@ export const CatalogModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4 overflow-y-auto flex-1">
           {error && (
             <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -178,15 +190,13 @@ export const CatalogModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess
               <input
                 type="number"
                 step="0.05"
-                min="0.1"
-                max="10"
                 required
                 value={formData.coefficient}
-                onChange={(e) => setFormData({ ...formData, coefficient: parseFloat(e.target.value) || 1.0 })}
+                onChange={(e) => setFormData({ ...formData, coefficient: e.target.value as any })}
                 className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 text-sm font-bold"
               />
               <p className="text-[11px] text-slate-500 mt-1">
-                Điểm chuẩn = {(formData.coefficient * formData.baseline_score).toFixed(1)} điểm/sản phẩm
+                Điểm chuẩn = {(Number(formData.coefficient || 0) * Number(formData.baseline_score || 0)).toFixed(1)} điểm/sản phẩm
               </p>
             </div>
 
@@ -198,8 +208,8 @@ export const CatalogModal: React.FC<Props> = ({ isOpen, item, onClose, onSuccess
                 type="number"
                 step="0.5"
                 value={formData.baseline_score}
-                onChange={(e) => setFormData({ ...formData, baseline_score: parseFloat(e.target.value) || 5.0 })}
-                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 text-sm"
+                onChange={(e) => setFormData({ ...formData, baseline_score: e.target.value as any })}
+                className="w-full px-3.5 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 text-sm font-bold"
               />
             </div>
           </div>

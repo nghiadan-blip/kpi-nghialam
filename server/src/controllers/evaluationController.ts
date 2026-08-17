@@ -463,13 +463,19 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     // Manager Task Details
     if (items && Array.isArray(items)) {
       for (const it of items) {
-        const mgrPts = Number(it.manager_points) || 0;
+        const existingDetail = await trx('evaluation_details')
+          .where({ id: Number(it.id), evaluation_id: Number(id) })
+          .first();
+        const mgrPts = it.manager_points !== undefined && !isNaN(Number(it.manager_points))
+          ? Number(it.manager_points)
+          : (existingDetail?.manager_points ?? existingDetail?.self_points ?? 0.0);
+
         await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
           .update({
             manager_points: mgrPts,
             final_points: mgrPts,
-            remarks: it.remarks ? it.remarks.trim() : null,
+            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail?.remarks ?? null),
           });
       }
     }
@@ -609,12 +615,18 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
 
     if (items && Array.isArray(items)) {
       for (const it of items) {
-        const finalPts = Number(it.final_points !== undefined ? it.final_points : it.manager_points) || 0;
+        const existingDetail = await trx('evaluation_details')
+          .where({ id: Number(it.id), evaluation_id: Number(id) })
+          .first();
+        const finalPts = it.final_points !== undefined && !isNaN(Number(it.final_points))
+          ? Number(it.final_points)
+          : (existingDetail?.final_points ?? existingDetail?.manager_points ?? existingDetail?.self_points ?? 0.0);
+
         await trx('evaluation_details')
           .where({ id: Number(it.id), evaluation_id: Number(id) })
           .update({
             final_points: finalPts,
-            remarks: it.remarks ? it.remarks.trim() : null,
+            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail?.remarks ?? null),
           });
       }
     }
@@ -1215,4 +1227,48 @@ export async function unlockEvaluationPeriod(req: AuthRequest, res: Response): P
     console.error('Lỗi mở khóa kỳ đánh giá:', err);
     res.status(500).json({ message: 'Lỗi máy chủ khi mở khóa kỳ đánh giá.' });
   }
+}
+
+export async function checkPeriodLockForDate(
+  dateVal: any,
+  reason: string | undefined,
+  userRole: string
+): Promise<{ locked: boolean; message?: string }> {
+  if (!dateVal) return { locked: false };
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return { locked: false };
+
+  const month = d.toISOString().substring(0, 7); // YYYY-MM
+  const locked = await isPeriodLocked(month);
+  if (locked) {
+    const hasOverride = ['ADMIN', 'LEADERSHIP'].includes(userRole) && reason && reason.trim().length > 0;
+    if (!hasOverride) {
+      return {
+        locked: true,
+        message: `Kỳ đánh giá tháng ${month} đã bị khóa. Không thể thực hiện thao tác này thuộc kỳ này trừ khi bạn có quyền ADMIN/Lãnh đạo và cung cấp lý do giải trình.`
+      };
+    }
+  }
+  return { locked: false };
+}
+
+export async function checkPeriodLockForRecord(
+  tableName: string,
+  recordId: number,
+  reason: string | undefined,
+  userRole: string
+): Promise<{ locked: boolean; message?: string }> {
+  const record = await db(tableName).where('id', recordId).first();
+  if (!record) return { locked: false };
+
+  let dateVal: any = record.created_at || record.updated_at || new Date();
+  if (tableName === 'budget_revenue_items' && record.due_date) {
+    dateVal = record.due_date;
+  } else if (tableName === 'budget_expenditure_items' && record.payment_date) {
+    dateVal = record.payment_date;
+  } else if (tableName === 'office_requests' && record.start_time) {
+    dateVal = record.start_time;
+  }
+
+  return checkPeriodLockForDate(dateVal, reason, userRole);
 }

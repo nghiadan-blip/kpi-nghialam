@@ -56,6 +56,12 @@ export async function createCatalogItem(req: AuthRequest, res: Response): Promis
       return;
     }
 
+    const K = Number(coefficient);
+    if (isNaN(K) || K <= 0) {
+      res.status(400).json({ message: 'Hệ số quy đổi K phải là số dương lớn hơn 0.' });
+      return;
+    }
+
     const existing = await db('product_catalog').where('code', code.trim()).first();
     if (existing) {
       res.status(400).json({ message: `Mã sản phẩm "${code}" đã tồn tại.` });
@@ -66,7 +72,7 @@ export async function createCatalogItem(req: AuthRequest, res: Response): Promis
       code: code.trim(),
       name: name.trim(),
       category,
-      coefficient: Number(coefficient),
+      coefficient: K,
       baseline_score: baseline_score !== undefined ? Number(baseline_score) : 5.0,
       description: description ? description.trim() : null,
       status: status || 'ACTIVE',
@@ -278,7 +284,14 @@ export async function updateCatalogItem(req: AuthRequest, res: Response): Promis
     const updates: any = {};
     if (name !== undefined) updates.name = name.trim();
     if (category !== undefined) updates.category = category;
-    if (coefficient !== undefined) updates.coefficient = Number(coefficient);
+    if (coefficient !== undefined) {
+      const K = Number(coefficient);
+      if (isNaN(K) || K <= 0) {
+        res.status(400).json({ message: 'Hệ số quy đổi K phải là số dương lớn hơn 0.' });
+        return;
+      }
+      updates.coefficient = K;
+    }
     if (baseline_score !== undefined) updates.baseline_score = Number(baseline_score);
     if (description !== undefined) updates.description = description ? description.trim() : null;
     if (status !== undefined) updates.status = status;

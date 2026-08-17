@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
+import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
 export async function getBudgets(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -111,6 +112,12 @@ export async function createRevenue(req: AuthRequest, res: Response): Promise<vo
       evidence_ref
     } = req.body;
 
+    const lockCheck = await checkPeriodLockForDate(due_date || new Date(), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
+
     if (!year || !category || !source_name) {
       res.status(400).json({ message: 'Các trường Năm ngân sách, Nhóm khoản thu và Tên nguồn thu là bắt buộc.' });
       return;
@@ -172,6 +179,12 @@ export async function updateRevenue(req: AuthRequest, res: Response): Promise<vo
     const revenue = await db('budget_revenue_items').where('id', Number(id)).first();
     if (!revenue) {
       res.status(404).json({ message: 'Không tìm thấy khoản thu ngân sách.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('budget_revenue_items', Number(id), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 
@@ -260,6 +273,12 @@ export async function deleteRevenue(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
+    const lockCheck = await checkPeriodLockForRecord('budget_revenue_items', Number(id), req.body.reason || req.query.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
+
     await db('budget_revenue_items').where('id', Number(id)).del();
 
     const clientIp = req.ip || req.socket.remoteAddress;
@@ -295,6 +314,12 @@ export async function createExpenditure(req: AuthRequest, res: Response): Promis
       paid_amount,
       note
     } = req.body;
+
+    const lockCheck = await checkPeriodLockForDate(new Date(), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
 
     if (!year || !category || !expense_name) {
       res.status(400).json({ message: 'Các trường Năm ngân sách, Nhóm khoản chi và Nội dung chi là bắt buộc.' });
@@ -357,6 +382,12 @@ export async function updateExpenditure(req: AuthRequest, res: Response): Promis
     const exp = await db('budget_expenditure_items').where('id', Number(id)).first();
     if (!exp) {
       res.status(404).json({ message: 'Không tìm thấy đề xuất chi ngân sách.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('budget_expenditure_items', Number(id), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 
@@ -438,6 +469,12 @@ export async function deleteExpenditure(req: AuthRequest, res: Response): Promis
     const exp = await db('budget_expenditure_items').where('id', Number(id)).first();
     if (!exp) {
       res.status(404).json({ message: 'Không tìm thấy khoản chi.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('budget_expenditure_items', Number(id), req.body.reason || req.query.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 

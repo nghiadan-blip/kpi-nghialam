@@ -95,14 +95,20 @@ export async function logAudit(
   userId: number | null,
   action: string,
   details?: string,
-  ipAddress?: string
+  ipAddress?: string,
+  oldVal?: string,
+  newVal?: string,
+  reason?: string
 ): Promise<void> {
   try {
     await db('audit_logs').insert({
       user_id: userId,
       action,
       details: details || null,
-      ip_address: ipAddress || null
+      ip_address: ipAddress || null,
+      old_value: oldVal || null,
+      new_value: newVal || null,
+      reason: reason || null
     });
   } catch (err) {
     console.error('Lỗi khi ghi audit log:', err);

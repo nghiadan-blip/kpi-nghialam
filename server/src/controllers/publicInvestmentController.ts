@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
+import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
 export async function getProjects(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -71,6 +72,12 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
       status
     } = req.body;
 
+    const lockCheck = await checkPeriodLockForDate(new Date(), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
+
     if (!project_code || !project_name || !funding_source) {
       res.status(400).json({ message: 'Các trường Mã dự án, Tên dự án và Nguồn vốn là bắt buộc.' });
       return;
@@ -130,6 +137,12 @@ export async function updateProject(req: AuthRequest, res: Response): Promise<vo
     const project = await db('public_investment_projects').where('id', Number(id)).first();
     if (!project) {
       res.status(404).json({ message: 'Không tìm thấy công trình đầu tư công.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('public_investment_projects', Number(id), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 
@@ -213,6 +226,12 @@ export async function deleteProject(req: AuthRequest, res: Response): Promise<vo
     const project = await db('public_investment_projects').where('id', Number(id)).first();
     if (!project) {
       res.status(404).json({ message: 'Không tìm thấy công trình.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('public_investment_projects', Number(id), req.body.reason || req.query.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 

@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
+import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
 export async function getCases(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -70,6 +71,12 @@ export async function createCase(req: AuthRequest, res: Response): Promise<void>
       evidence_ref
     } = req.body;
 
+    const lockCheck = await checkPeriodLockForDate(new Date(), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
+
     if (!case_code || !citizen_name || !village || !land_plot_ref) {
       res.status(400).json({ message: 'Các trường Mã hồ sơ, Tên công dân, Xóm và Số tờ số thửa là bắt buộc.' });
       return;
@@ -119,6 +126,12 @@ export async function updateCase(req: AuthRequest, res: Response): Promise<void>
     const landCase = await db('land_certificate_cases').where('id', Number(id)).first();
     if (!landCase) {
       res.status(404).json({ message: 'Không tìm thấy hồ sơ đất đai.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('land_certificate_cases', Number(id), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 
@@ -190,6 +203,12 @@ export async function deleteCase(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    const lockCheck = await checkPeriodLockForRecord('land_certificate_cases', Number(id), req.body.reason || req.query.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
+
     await db('land_certificate_cases').where('id', Number(id)).del();
 
     const clientIp = req.ip || req.socket.remoteAddress;
@@ -249,6 +268,12 @@ export async function updateKH965Progress(req: AuthRequest, res: Response): Prom
       responsible_user_id,
       note
     } = req.body;
+
+    const lockCheck = await checkPeriodLockForDate(new Date(), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
 
     if (!village) {
       res.status(400).json({ message: 'Trường Xóm là bắt buộc.' });

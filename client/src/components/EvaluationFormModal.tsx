@@ -784,10 +784,36 @@ export const EvaluationFormModal: React.FC<Props> = ({
                         </td>
                         <td className="py-2 px-3 text-center font-bold text-sky-700">{it.self_points}đ</td>
                         {(status === 'SUBMITTED' || isManager || status === 'MANAGER_REVIEWED' || status === 'APPROVED') && (
-                          <td className="py-2 px-3 text-center font-bold text-blue-700">{it.manager_points}đ</td>
+                          <td className="py-2 px-3 text-center font-bold text-blue-700">
+                            {isManager ? (
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                value={it.manager_points}
+                                onChange={(e) => handleItemChange(idx, 'manager_points', parseFloat(e.target.value) || 0)}
+                                className="w-16 px-1.5 py-1 border border-slate-300 rounded text-center text-xs font-bold text-blue-700"
+                              />
+                            ) : (
+                              (status === 'SUBMITTED') ? '-' : `${it.manager_points}đ`
+                            )}
+                          </td>
                         )}
                         {(status === 'MANAGER_REVIEWED' || isLeadership || status === 'APPROVED') && (
-                          <td className="py-2 px-3 text-center font-bold text-red-700">{it.final_points}đ</td>
+                          <td className="py-2 px-3 text-center font-bold text-red-700">
+                            {isLeadership ? (
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                value={it.final_points !== undefined ? it.final_points : it.manager_points}
+                                onChange={(e) => handleItemChange(idx, 'final_points', parseFloat(e.target.value) || 0)}
+                                className="w-16 px-1.5 py-1 border border-slate-300 rounded text-center text-xs font-bold text-red-700"
+                              />
+                            ) : (
+                              (status === 'MANAGER_REVIEWED') ? '-' : `${it.final_points}đ`
+                            )}
+                          </td>
                         )}
                         <td className="py-2 px-3">
                           {status === 'DRAFT' ? (

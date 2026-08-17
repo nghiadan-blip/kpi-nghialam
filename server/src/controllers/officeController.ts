@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
+import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
 export async function getRequests(req: AuthRequest, res: Response): Promise<void> {
   try {
@@ -65,6 +66,12 @@ export async function createRequest(req: AuthRequest, res: Response): Promise<vo
       funding_source
     } = req.body;
 
+    const lockCheck = await checkPeriodLockForDate(start_time || new Date(), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
+      return;
+    }
+
     if (!request_type || !title) {
       res.status(400).json({ message: 'Các trường Loại yêu cầu và Tiêu đề là bắt buộc.' });
       return;
@@ -116,6 +123,12 @@ export async function updateRequestStatus(req: AuthRequest, res: Response): Prom
     const request = await db('office_requests').where('id', Number(id)).first();
     if (!request) {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('office_requests', Number(id), req.body.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 
@@ -194,6 +207,12 @@ export async function deleteRequest(req: AuthRequest, res: Response): Promise<vo
     const request = await db('office_requests').where('id', Number(id)).first();
     if (!request) {
       res.status(404).json({ message: 'Không tìm thấy yêu cầu.' });
+      return;
+    }
+
+    const lockCheck = await checkPeriodLockForRecord('office_requests', Number(id), req.body.reason || req.query.reason, user.role);
+    if (lockCheck.locked) {
+      res.status(400).json({ message: lockCheck.message });
       return;
     }
 

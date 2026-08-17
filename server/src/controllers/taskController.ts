@@ -243,6 +243,11 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       weight,
       status,
       assigned_quantity = 1.0,
+      related_land_case_id,
+      related_project_id,
+      related_revenue_id,
+      related_expenditure_id,
+      related_office_request_id,
     } = req.body;
 
     if (!title || !title.trim() || !assigned_to || !deadline) {
@@ -257,6 +262,12 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    const qty = Number(assigned_quantity);
+    if (isNaN(qty) || qty <= 0) {
+      res.status(400).json({ message: 'Số lượng giao việc phải là số dương lớn hơn 0.' });
+      return;
+    }
+
     // Verify assignee exists
     const assignee = await db('users').where('id', Number(assigned_to)).first();
     if (!assignee) {
@@ -266,7 +277,6 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
 
     const cat = await db('product_catalog').where('id', Number(product_catalog_id)).first();
     const coeff = cat?.coefficient || (weight !== undefined ? Number(weight) : 1.0);
-    const qty = Math.max(0.1, Number(assigned_quantity) || 1.0);
     const convertedQty = Number((qty * coeff).toFixed(2));
 
     const [id] = await db('tasks').insert({
@@ -280,13 +290,26 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       deadline: new Date(deadline).toISOString(),
       weight: coeff,
       status: status || 'PENDING',
+      related_land_case_id: related_land_case_id ? Number(related_land_case_id) : null,
+      related_project_id: related_project_id ? Number(related_project_id) : null,
+      related_revenue_id: related_revenue_id ? Number(related_revenue_id) : null,
+      related_expenditure_id: related_expenditure_id ? Number(related_expenditure_id) : null,
+      related_office_request_id: related_office_request_id ? Number(related_office_request_id) : null,
     });
+
+    const relationsLog: string[] = [];
+    if (related_land_case_id) relationsLog.push(`Đất đai ID ${related_land_case_id}`);
+    if (related_project_id) relationsLog.push(`Đầu tư công ID ${related_project_id}`);
+    if (related_revenue_id) relationsLog.push(`Nguồn thu ID ${related_revenue_id}`);
+    if (related_expenditure_id) relationsLog.push(`Khoản chi ID ${related_expenditure_id}`);
+    if (related_office_request_id) relationsLog.push(`Văn phòng ID ${related_office_request_id}`);
+    const relationStr = relationsLog.length > 0 ? ` (Liên kết: ${relationsLog.join(', ')})` : '';
 
     const clientIp = req.ip || req.socket.remoteAddress;
     await logAudit(
       user.id,
       'CREATE_TASK',
-      `Giao nhiệm vụ mới ID ${id}: "${title.trim()}" cho cán bộ ${assignee.fullname}`,
+      `Giao nhiệm vụ mới ID ${id}: "${title.trim()}" cho cán bộ ${assignee.fullname}${relationStr}`,
       clientIp
     );
 
@@ -325,7 +348,22 @@ export async function updateTask(req: AuthRequest, res: Response): Promise<void>
   try {
     const user = req.user;
     const { id } = req.params;
-    const { title, description, assigned_to, product_catalog_id, deadline, weight, status, evidence } = req.body;
+    const {
+      title,
+      description,
+      assigned_to,
+      product_catalog_id,
+      deadline,
+      weight,
+      status,
+      evidence,
+      assigned_quantity,
+      related_land_case_id,
+      related_project_id,
+      related_revenue_id,
+      related_expenditure_id,
+      related_office_request_id,
+    } = req.body;
 
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
@@ -371,10 +409,40 @@ export async function updateTask(req: AuthRequest, res: Response): Promise<void>
     }
     if (evidence !== undefined) updates.evidence = evidence ? evidence.trim() : null;
 
+    if (assigned_quantity !== undefined) {
+      const qty = Number(assigned_quantity);
+      if (isNaN(qty) || qty <= 0) {
+        res.status(400).json({ message: 'Số lượng giao việc phải là số dương lớn hơn 0.' });
+        return;
+      }
+      updates.assigned_quantity = qty;
+      const currentCatalogId = product_catalog_id !== undefined ? product_catalog_id : task.product_catalog_id;
+      if (currentCatalogId) {
+        const cat = await db('product_catalog').where('id', Number(currentCatalogId)).first();
+        const coeff = cat?.coefficient || 1.0;
+        updates.converted_assigned_quantity = Number((qty * coeff).toFixed(2));
+      }
+    }
+
+    if (related_land_case_id !== undefined) updates.related_land_case_id = related_land_case_id ? Number(related_land_case_id) : null;
+    if (related_project_id !== undefined) updates.related_project_id = related_project_id ? Number(related_project_id) : null;
+    if (related_revenue_id !== undefined) updates.related_revenue_id = related_revenue_id ? Number(related_revenue_id) : null;
+    if (related_expenditure_id !== undefined) updates.related_expenditure_id = related_expenditure_id ? Number(related_expenditure_id) : null;
+    if (related_office_request_id !== undefined) updates.related_office_request_id = related_office_request_id ? Number(related_office_request_id) : null;
+
     await db('tasks').where('id', Number(id)).update(updates);
 
     const clientIp = req.ip || req.socket.remoteAddress;
-    await logAudit(user.id, 'UPDATE_TASK', `Cập nhật nhiệm vụ ID ${id}: ${task.title}`, clientIp);
+    
+    // Log audit trail including old/new values
+    await logAudit(
+      user.id,
+      'UPDATE_TASK',
+      `Cập nhật nhiệm vụ ID ${id}: ${task.title}`,
+      clientIp,
+      JSON.stringify(task),
+      JSON.stringify({ ...task, ...updates })
+    );
 
     const updated = await db('tasks as t')
       .leftJoin('users as u_assignee', 't.assigned_to', 'u_assignee.id')

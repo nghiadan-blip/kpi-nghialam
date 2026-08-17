@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { tasksApi, aiApi } from '../services/api';
-import { Task, User, ProductCatalog } from '../types';
+import { tasksApi, aiApi, budgetApi, publicInvestmentApi, landCertificateApi, officeApi } from '../services/api';
+import { Task, User, ProductCatalog, BudgetRevenueItem, BudgetExpenditureItem, PublicInvestmentProject, LandCertificateCase, OfficeRequest } from '../types';
 import {
   X,
   CheckSquare,
@@ -16,6 +16,7 @@ import {
   FileText,
   Zap,
   RefreshCw,
+  Link,
 } from 'lucide-react';
 
 interface Props {
@@ -89,13 +90,38 @@ export const TaskModal: React.FC<Props> = ({
     deadline: '',
     weight: 1.0,
     status: 'PENDING',
-    assigned_quantity: 1.0,
+    assigned_quantity: 1.0 as any,
+    related_land_case_id: '',
+    related_project_id: '',
+    related_revenue_id: '',
+    related_expenditure_id: '',
+    related_office_request_id: '',
   });
 
   const [loading, setLoading] = useState(false);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [matchingAI, setMatchingAI] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // States to hold cross-linking tables data
+  const [landCases, setLandCases] = useState<LandCertificateCase[]>([]);
+  const [projects, setProjects] = useState<PublicInvestmentProject[]>([]);
+  const [revenues, setRevenues] = useState<BudgetRevenueItem[]>([]);
+  const [expenditures, setExpenditures] = useState<BudgetExpenditureItem[]>([]);
+  const [officeRequests, setOfficeRequests] = useState<OfficeRequest[]>([]);
+
+  // Load related documents on open
+  useEffect(() => {
+    if (isOpen) {
+      landCertificateApi.getCases().then(res => setLandCases(res.cases || [])).catch(() => {});
+      publicInvestmentApi.getProjects().then(res => setProjects(res.projects || [])).catch(() => {});
+      budgetApi.getBudgets().then(res => {
+        setRevenues(res.revenues || []);
+        setExpenditures(res.expenditures || []);
+      }).catch(() => {});
+      officeApi.getRequests().then(res => setOfficeRequests(res.requests || [])).catch(() => {});
+    }
+  }, [isOpen]);
 
   // Catalog Filter & Search States
   const [catalogSearch, setCatalogSearch] = useState('');
@@ -132,6 +158,11 @@ export const TaskModal: React.FC<Props> = ({
         weight: task.weight,
         status: task.status,
         assigned_quantity: task.assigned_quantity || 1.0,
+        related_land_case_id: task.related_land_case_id ? String(task.related_land_case_id) : '',
+        related_project_id: task.related_project_id ? String(task.related_project_id) : '',
+        related_revenue_id: task.related_revenue_id ? String(task.related_revenue_id) : '',
+        related_expenditure_id: task.related_expenditure_id ? String(task.related_expenditure_id) : '',
+        related_office_request_id: task.related_office_request_id ? String(task.related_office_request_id) : '',
       });
     } else {
       const defaultDate = new Date();
@@ -147,6 +178,11 @@ export const TaskModal: React.FC<Props> = ({
         weight: 1.0,
         status: 'PENDING',
         assigned_quantity: 1.0,
+        related_land_case_id: '',
+        related_project_id: '',
+        related_revenue_id: '',
+        related_expenditure_id: '',
+        related_office_request_id: '',
       });
     }
     setError(null);
@@ -287,6 +323,12 @@ export const TaskModal: React.FC<Props> = ({
       return;
     }
 
+    const qty = Number(formData.assigned_quantity);
+    if (isNaN(qty) || qty <= 0) {
+      setError('Số lượng giao việc phải là số dương lớn hơn 0.');
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -297,7 +339,12 @@ export const TaskModal: React.FC<Props> = ({
         deadline: new Date(formData.deadline).toISOString(),
         weight: Number(formData.weight) || 1.0,
         status: formData.status,
-        assigned_quantity: Number(formData.assigned_quantity) || 1.0,
+        assigned_quantity: qty,
+        related_land_case_id: formData.related_land_case_id ? Number(formData.related_land_case_id) : null,
+        related_project_id: formData.related_project_id ? Number(formData.related_project_id) : null,
+        related_revenue_id: formData.related_revenue_id ? Number(formData.related_revenue_id) : null,
+        related_expenditure_id: formData.related_expenditure_id ? Number(formData.related_expenditure_id) : null,
+        related_office_request_id: formData.related_office_request_id ? Number(formData.related_office_request_id) : null,
       };
 
       if (isEditing && task) {
@@ -341,7 +388,7 @@ export const TaskModal: React.FC<Props> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 text-xs sm:text-sm">
+        <form onSubmit={handleSubmit} noValidate className="p-6 space-y-4 overflow-y-auto flex-1 text-xs sm:text-sm">
           {error && (
             <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs flex items-start space-x-2">
               <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-600" />
@@ -611,14 +658,13 @@ export const TaskModal: React.FC<Props> = ({
               <input
                 type="number"
                 step="0.5"
-                min="0.1"
                 required
                 value={formData.assigned_quantity}
-                onChange={(e) => setFormData({ ...formData, assigned_quantity: parseFloat(e.target.value) || 1.0 })}
+                onChange={(e) => setFormData({ ...formData, assigned_quantity: e.target.value as any })}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#CFEBFC] focus:ring-2 focus:ring-[#27A4F2] text-xs sm:text-sm bg-white font-mono font-bold text-[#0C3260]"
               />
               <span className="text-[10px] text-sky-700 font-semibold block mt-0.5">
-                Quy đổi: {Number(((formData.assigned_quantity || 1) * (formData.weight || 1)).toFixed(1))} SP chuẩn
+                Quy đổi: {Number(((Number(formData.assigned_quantity || 0)) * (formData.weight || 1)).toFixed(1))} SP chuẩn
               </span>
             </div>
 
@@ -652,6 +698,113 @@ export const TaskModal: React.FC<Props> = ({
                 <option value="COMPLETED">Đã hoàn thành (COMPLETED)</option>
                 <option value="OVERDUE">Quá hạn (OVERDUE)</option>
               </select>
+            </div>
+          </div>
+
+          {/* Section: LIÊN KẾT CHÉO MÔ-ĐUN ĐIỀU HÀNH */}
+          <div className="p-4 rounded-2xl border border-sky-100 bg-[#F0F7FD]/30 space-y-3">
+            <div className="flex items-center space-x-1.5 border-b border-sky-100 pb-1.5">
+              <Link className="w-4 h-4 text-sky-600" />
+              <span className="font-bold text-xs text-[#0C3260] uppercase tracking-wide">
+                Liên kết chéo mô-đun điều hành (Tùy chọn)
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Land Certificate Case selection */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Hồ sơ Đất đai (KH965)
+                </label>
+                <select
+                  value={formData.related_land_case_id}
+                  onChange={(e) => setFormData({ ...formData, related_land_case_id: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700"
+                >
+                  <option value="">-- Chọn hồ sơ đất đai --</option>
+                  {landCases.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      [{c.case_code}] {c.citizen_name} - {c.village}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Public Investment Project selection */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Dự án Đầu tư công
+                </label>
+                <select
+                  value={formData.related_project_id}
+                  onChange={(e) => setFormData({ ...formData, related_project_id: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700"
+                >
+                  <option value="">-- Chọn công trình đầu tư công --</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      [{p.project_code}] {p.project_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Budget Revenue item selection */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Khoản thu Ngân sách
+                </label>
+                <select
+                  value={formData.related_revenue_id}
+                  onChange={(e) => setFormData({ ...formData, related_revenue_id: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700"
+                >
+                  <option value="">-- Chọn khoản thu ngân sách --</option>
+                  {revenues.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      [{r.year}] {r.source_name} ({r.planned_amount.toLocaleString()}đ)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Budget Expenditure item selection */}
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Đề xuất chi Ngân sách
+                </label>
+                <select
+                  value={formData.related_expenditure_id}
+                  onChange={(e) => setFormData({ ...formData, related_expenditure_id: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700"
+                >
+                  <option value="">-- Chọn đề xuất chi ngân sách --</option>
+                  {expenditures.map((ex) => (
+                    <option key={ex.id} value={ex.id}>
+                      [{ex.year}] {ex.expense_name} ({ex.approved_amount.toLocaleString()}đ)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Office Request selection */}
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Yêu cầu Hậu cần Văn phòng (Lịch xe, phòng họp, công tác)
+                </label>
+                <select
+                  value={formData.related_office_request_id}
+                  onChange={(e) => setFormData({ ...formData, related_office_request_id: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-slate-700"
+                >
+                  <option value="">-- Chọn yêu cầu hậu cần văn phòng --</option>
+                  {officeRequests.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      [{o.request_type === 'vehicle' ? 'Xe' : o.request_type === 'room' ? 'Họp' : 'Khác'}] {o.title} - {o.start_time ? new Date(o.start_time).toLocaleDateString('vi-VN') : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
 

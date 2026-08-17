@@ -90,6 +90,11 @@ export interface Task {
   actual_completed_date?: string | Date | null;
   delay_count?: number | null;
   rework_count?: number | null;
+  related_land_case_id?: number | null;
+  related_project_id?: number | null;
+  related_revenue_id?: number | null;
+  related_expenditure_id?: number | null;
+  related_office_request_id?: number | null;
   created_at?: string | Date;
   updated_at?: string | Date;
 

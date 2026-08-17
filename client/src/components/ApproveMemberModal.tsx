@@ -165,6 +165,14 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
 
   const handleApprove = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedDeptId) {
+      setError('Vui lòng chọn Đơn vị / Phòng ban công tác của cán bộ.');
+      return;
+    }
+    if (!selectedPositionCode) {
+      setError('Vui lòng chọn Vị trí việc làm (VTVL) chuẩn theo Nghị định 335.');
+      return;
+    }
     if (!assignedPosition.trim()) {
       setError('Vui lòng nhập hoặc chọn vị trí việc làm chính thức.');
       return;
@@ -175,9 +183,9 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
     try {
       await usersApi.approveMembership(candidate.id, {
         role: assignedRole,
-        department_id: selectedDeptId ? Number(selectedDeptId) : null,
+        department_id: Number(selectedDeptId),
         position: assignedPosition.trim(),
-        position_code: selectedPositionCode || undefined,
+        position_code: selectedPositionCode,
       });
       onSuccess();
       onClose();
@@ -263,7 +271,7 @@ export const ApproveMemberModal: React.FC<Props> = ({ isOpen, onClose, candidate
 
         {!isRejecting ? (
           /* Approval & Assignment Form */
-          <form onSubmit={handleApprove} className="space-y-4">
+          <form onSubmit={handleApprove} noValidate className="space-y-4">
             <div>
               <label className="block text-xs font-bold uppercase text-[#0C3260] mb-1">
                 Phòng ban / Bộ phận chính thức <span className="text-red-500">*</span>

@@ -100,8 +100,8 @@ export async function approveMembership(req: AuthRequest, res: Response): Promis
     const { id } = req.params;
     const { role, department_id, position, position_code, is_disciplined, discipline_details } = req.body;
 
-    if (!role || (!position && !position_code)) {
-      res.status(400).json({ message: 'Vui lòng chọn vai trò phân quyền và vị trí việc làm chuẩn.' });
+    if (!role || !department_id || !position_code) {
+      res.status(400).json({ message: 'Vui lòng chọn đầy đủ: Vai trò phân quyền, Đơn vị/Phòng ban và Vị trí việc làm (VTVL) chuẩn.' });
       return;
     }
 
@@ -111,21 +111,19 @@ export async function approveMembership(req: AuthRequest, res: Response): Promis
       return;
     }
 
-    let finalPosCode = position_code || null;
+    let finalPosCode = position_code;
     let finalPosName = position ? position.trim() : '';
 
-    if (finalPosCode) {
-      const posObj = await db('job_positions').where('code', finalPosCode).first();
-      if (posObj && !finalPosName) {
-        finalPosName = posObj.name;
-      }
+    const posObj = await db('job_positions').where('code', finalPosCode).first();
+    if (posObj && !finalPosName) {
+      finalPosName = posObj.name;
     }
 
     await db('users')
       .where('id', Number(id))
       .update({
         role,
-        department_id: department_id ? Number(department_id) : null,
+        department_id: Number(department_id),
         position: finalPosName,
         position_code: finalPosCode,
         is_disciplined: Boolean(is_disciplined),
@@ -136,11 +134,22 @@ export async function approveMembership(req: AuthRequest, res: Response): Promis
       });
 
     const clientIp = req.ip || req.socket.remoteAddress;
+    
+    // Log audit trail with VTVL and department change info
     await logAudit(
       req.user?.id || null,
       'APPROVE_MEMBER',
-      `Phê duyệt tài khoản: ${user.fullname} (${user.email || user.username}) - Vị trí: [${finalPosCode || 'N/A'}] ${finalPosName}, Vai trò: ${role}`,
-      clientIp
+      `Phê duyệt tài khoản: ${user.fullname} (${user.email || user.username}) - Đơn vị ID: ${department_id}, VTVL: [${finalPosCode}] ${finalPosName}, Vai trò: ${role}`,
+      clientIp,
+      JSON.stringify(user),
+      JSON.stringify({
+        ...user,
+        role,
+        department_id: Number(department_id),
+        position: finalPosName,
+        position_code: finalPosCode,
+        status: 'ACTIVE'
+      })
     );
 
     const updatedUser = await db('users')
@@ -438,7 +447,7 @@ export async function importUsersExcel(req: AuthRequest, res: Response): Promise
 export async function updateUser(req: AuthRequest, res: Response): Promise<void> {
   try {
     const { id } = req.params;
-    const { fullname, email, phone, role, position, department_id, status } = req.body;
+    const { fullname, email, phone, role, position, position_code, department_id, status } = req.body;
 
     const user = await db('users').where('id', Number(id)).first();
     if (!user) {
@@ -457,25 +466,47 @@ export async function updateUser(req: AuthRequest, res: Response): Promise<void>
       }
     }
 
+    let finalPosName = position ? position.trim() : user.position;
+    if (position_code && position_code !== user.position_code) {
+      const posObj = await db('job_positions').where('code', position_code).first();
+      if (posObj) {
+        finalPosName = posObj.name;
+      }
+    }
+
+    const updates: any = {
+      fullname: fullname ? fullname.trim() : user.fullname,
+      email: email !== undefined ? (email ? email.trim() : null) : user.email,
+      phone: phone !== undefined ? (phone ? phone.trim() : null) : user.phone,
+      role: role || user.role,
+      position: finalPosName,
+      position_code: position_code !== undefined ? position_code : user.position_code,
+      department_id: department_id !== undefined ? (department_id ? Number(department_id) : null) : user.department_id,
+      status: status || user.status,
+      updated_at: new Date(),
+    };
+
     await db('users')
       .where('id', Number(id))
-      .update({
-        fullname: fullname ? fullname.trim() : user.fullname,
-        email: email !== undefined ? (email ? email.trim() : null) : user.email,
-        phone: phone !== undefined ? (phone ? phone.trim() : null) : user.phone,
-        role: role || user.role,
-        position: position ? position.trim() : user.position,
-        department_id: department_id !== undefined ? (department_id ? Number(department_id) : null) : user.department_id,
-        status: status || user.status,
-        updated_at: new Date(),
-      });
+      .update(updates);
+
+    const changes: string[] = [];
+    if (department_id !== undefined && Number(department_id) !== user.department_id) {
+      changes.push(`Đơn vị: ${user.department_id} -> ${department_id}`);
+    }
+    if (position_code !== undefined && position_code !== user.position_code) {
+      changes.push(`VTVL: ${user.position_code} -> ${position_code}`);
+    }
+    const auditDetail = changes.length > 0 ? ` (${changes.join(', ')})` : '';
 
     const clientIp = req.ip || req.socket.remoteAddress;
     await logAudit(
       req.user?.id || null,
       'UPDATE_USER',
-      `Cập nhật thông tin cán bộ ID ${id}: ${user.fullname}`,
-      clientIp
+      `Cập nhật thông tin cán bộ ID ${id}: ${user.fullname}${auditDetail}`,
+      clientIp,
+      JSON.stringify(user),
+      JSON.stringify({ ...user, ...updates })
     );
 
     const updatedUser = await db('users')

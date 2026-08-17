@@ -2,6 +2,64 @@ import type { Knex } from 'knex';
 import bcrypt from 'bcryptjs';
 
 export async function seed(knex: Knex): Promise<void> {
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd) {
+    console.log('⚠️ Đang chạy seed trong môi trường production. Chỉ kiểm tra và khởi tạo dữ liệu danh mục/phòng ban/admin nếu chưa có.');
+    
+    // 1. Kiểm tra phòng ban
+    const deptCount = await knex('departments').count({ count: '*' }).first();
+    const hasDepts = Number(deptCount && (deptCount['count'] || (deptCount as any).count) || 0) > 0;
+    if (!hasDepts) {
+      const departments = [
+        { id: 1, name: 'Lãnh đạo UBND xã Nghĩa Lâm', parent_id: null },
+        { id: 2, name: 'Trung tâm Phục vụ Hành chính công (TTPVHCC)', parent_id: 1 },
+        { id: 3, name: 'Bộ phận Địa chính - Xây dựng - Nông nghiệp & Môi trường', parent_id: 1 },
+        { id: 4, name: 'Bộ phận Văn hóa - Xã hội & Thông tin', parent_id: 1 },
+        { id: 5, name: 'Bộ phận Văn phòng - Thống kê & Tư pháp - Hộ tịch', parent_id: 1 },
+        { id: 6, name: 'Bộ phận Tài chính - Kế toán', parent_id: 1 },
+        { id: 7, name: 'Ban Chỉ huy Quân sự xã', parent_id: 1 }
+      ];
+      await knex('departments').insert(departments);
+    }
+    
+    // 2. Kiểm tra danh mục
+    const catCount = await knex('product_catalog').count({ count: '*' }).first();
+    const hasCatalog = Number(catCount && (catCount['count'] || (catCount as any).count) || 0) > 0;
+    if (!hasCatalog) {
+      const catalog = [
+        { id: 1, code: 'DOC_SIMPLE', name: 'Soạn thảo văn bản hành chính đơn giản', category: 'PART_A', coefficient: 1.00, baseline_score: 5.00, description: 'Công văn, thông báo, giấy mời đơn giản', status: 'ACTIVE' },
+        { id: 2, code: 'DOC_COMPLEX', name: 'Soạn thảo văn bản quy phạm / Kế hoạch phức tạp', category: 'PART_A', coefficient: 1.50, baseline_score: 5.00, description: 'Quyết định, kế hoạch phát triển KTXH, báo cáo chuyên đề', status: 'ACTIVE' },
+        { id: 3, code: 'HCC_ON_TIME', name: 'Giải quyết hồ sơ TTPVHCC đúng/trước hạn', category: 'PART_B_GROUP_I', coefficient: 1.20, baseline_score: 5.00, description: 'Hồ sơ hành chính giải quyết đúng mốc thời gian quy định', status: 'ACTIVE' },
+        { id: 4, code: 'HCC_OVERDUE', name: 'Giải quyết hồ sơ TTPVHCC quá hạn', category: 'PART_B_GROUP_I', coefficient: 0.50, baseline_score: 5.00, description: 'Hồ sơ giải quyết trễ hạn (bị trừ điểm hệ số)', status: 'ACTIVE' },
+        { id: 5, code: 'CITIZEN_RECEPTION', name: 'Tiếp công dân và xử lý phản ánh kiến nghị', category: 'PART_B_GROUP_II', coefficient: 1.00, baseline_score: 5.00, description: 'Tiếp dân định kỳ và xử lý đơn thư trực tiếp', status: 'ACTIVE' },
+        { id: 6, code: 'SPECIAL_TASK', name: 'Thực hiện nhiệm vụ đột xuất / Chuyên đề đặc biệt', category: 'PART_B_GROUP_II', coefficient: 2.00, baseline_score: 5.00, description: 'Công tác ứng phó thiên tai, giải phóng mặt bằng, dự án trọng điểm', status: 'ACTIVE' }
+      ];
+      await knex('product_catalog').insert(catalog);
+    }
+    
+    // 3. Kiểm tra admin mặc định
+    const adminExists = await knex('users').where('role', 'ADMIN').first();
+    if (!adminExists) {
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash('admin123456', saltRounds);
+      await knex('users').insert({
+        id: 1,
+        username: 'admin',
+        password_hash: hashedPassword,
+        fullname: 'Quản trị viên Hệ thống',
+        email: 'admin@nghialam.gov.vn',
+        phone: '0912345678',
+        role: 'ADMIN',
+        position: 'Quản trị viên hệ thống',
+        department_id: 1,
+        status: 'ACTIVE'
+      });
+    }
+    
+    return;
+  }
+
   // Clear existing records in reverse dependency order
   await knex('office_requests').del();
   await knex('kh965_progress').del();
