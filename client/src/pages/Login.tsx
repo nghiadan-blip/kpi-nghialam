@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import { LogIn, User, Lock, AlertCircle, Sparkles, Building, ShieldCheck, Mail, UserPlus, Clock } from 'lucide-react';
 import { VietnameseEmblem } from '../components/VietnameseEmblem';
+import { APP_NAME, SUB_TITLE } from '../constants';
 
 export const Login: React.FC = () => {
   const { login } = useAuth();
@@ -136,37 +137,47 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[85vh] flex flex-col justify-center items-center py-10 px-4">
-      {/* Container with Vietnix palette shadow */}
-      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl shadow-[#27A4F2]/10 border border-[#CFEBFC] overflow-hidden relative">
-        {/* Header with National Emblem & Vietnix Blue Gradient */}
-        <div className="bg-gradient-to-br from-[#0C3260] via-[#1864AB] to-[#27A4F2] text-white p-6 md:p-8 text-center relative border-b-2 border-[#9FD7F9]/40">
-          <div className="relative inline-block mb-3">
-            <div className="absolute -inset-2 bg-white/20 rounded-full blur-md" />
-            <VietnameseEmblem size={78} className="relative mx-auto drop-shadow-xl" />
-          </div>
-
-          <h2 className="text-base md:text-lg font-black tracking-wider uppercase drop-shadow-sm text-white">
+    <div className="min-h-[85vh] flex flex-col justify-center items-center py-10 px-4 space-y-6">
+      {/* Header chính (Ngoài login card) */}
+      <div className="text-center max-w-md w-full space-y-3">
+        <div className="relative inline-block">
+          <div className="absolute -inset-1.5 bg-[#27A4F2]/20 rounded-full blur-xs opacity-75" />
+          <VietnameseEmblem size={72} className="relative mx-auto drop-shadow-md" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-base md:text-lg font-black tracking-wider uppercase text-[#0C3260]">
             ỦY BAN NHÂN DÂN XÃ NGHĨA LÂM
           </h2>
-          <p className="text-xs text-[#CFEBFC] font-medium mt-1">
-            Hệ thống Quản lý Nhiệm vụ & Đánh giá Cán bộ, Công chức
+          <h3 className="text-sm font-bold text-[#1864AB]">
+            {APP_NAME}
+          </h3>
+          <p className="text-xs text-slate-500 font-medium">
+            {SUB_TITLE}
           </p>
-
-          <div className="inline-flex items-center space-x-1.5 mt-3 text-[11px] bg-[#0C3260]/60 text-[#9FD7F9] border border-[#6EC2F7]/30 px-3 py-1 rounded-full font-semibold">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#3EAEF4]" />
-            <span>Khung Đánh giá Nghị định số 335/2025/NĐ-CP</span>
-          </div>
         </div>
+      </div>
 
+      {/* Login Card */}
+      <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl shadow-[#27A4F2]/10 border border-[#CFEBFC] overflow-hidden relative">
         {/* Login Form Body */}
         <div className="p-6 md:p-8">
+          {/* Card branding header */}
+          <div className="text-center pb-5 mb-5 border-b border-slate-100">
+            <div className="inline-flex items-center justify-center p-2.5 bg-[#CFEBFC]/40 text-[#1864AB] rounded-2xl mb-2">
+              <LogIn className="w-6 h-6 text-[#27A4F2]" />
+            </div>
+            <h4 className="text-base font-extrabold text-[#0C3260]">Đăng nhập hệ thống</h4>
+            <p className="text-xs text-slate-500 mt-1">
+              {APP_NAME}
+            </p>
+          </div>
+
           <div className="flex items-center justify-between mb-5">
-            <h3 className="text-base font-bold text-[#0C3260] flex items-center space-x-2">
-              <LogIn className="w-4 h-4 text-[#27A4F2]" />
-              <span>Đăng nhập hệ thống</span>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center space-x-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#27A4F2]" />
+              <span>JWT Authentication</span>
             </h3>
-            <span className="text-xs text-slate-400 font-medium">Bảo mật JWT</span>
+            <span className="text-xs text-slate-400 font-medium">Phiên bản bảo mật</span>
           </div>
 
           {error && (

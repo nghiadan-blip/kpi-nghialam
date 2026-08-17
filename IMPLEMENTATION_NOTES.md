@@ -194,3 +194,41 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 7. **Đóng gói dự án (Vite & TSC build)**:
    - Build thành công toàn bộ ứng dụng (Exit code 0).
    - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
+
+---
+
+## 9. Nhật ký Chuẩn hóa Tên hệ thống và Dọn dẹp Branding (Giai đoạn Branding)
+
+- **Nhánh làm việc (Branch)**: `chore/standardize-system-branding`
+- **Commit SHA**: `33b1de69ad64faa1d60e3fabe99e77b53078e42b`
+- **Commit message**: `Standardize KPI system branding and login layout`
+- **Tên hệ thống thống nhất**: `Hệ thống Quản lý nhiệm vụ và đánh giá CBCC` (phụ đề: `Theo Nghị định 335/2025/NĐ-CP`)
+
+### 📂 Tệp nguồn và Constants dùng chung:
+- **Tạo mới**: [`client/src/constants.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/constants.ts) chứa các hằng số:
+  - `APP_NAME = "Hệ thống Quản lý nhiệm vụ và đánh giá CBCC"`
+  - `SUB_TITLE = "Theo Nghị định 335/2025/NĐ-CP"`
+  - `FOOTER_TEXT = "© 2026 UBND Xã Nghĩa Lâm — Hệ thống Quản lý nhiệm vụ và đánh giá CBCC."`
+
+### 📂 Các Component đã thay đổi để dùng hằng số:
+1. **Tiêu đề tab trình duyệt**:
+   - Chỉnh sửa [`client/index.html`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/index.html) đổi `<title>` thành `Hệ thống Quản lý nhiệm vụ và đánh giá CBCC`.
+2. **Footer chính của ứng dụng**:
+   - Chỉnh sửa [`client/src/App.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/App.tsx) import và sử dụng `{FOOTER_TEXT}` thay thế chuỗi hardcode cũ.
+3. **Banner đầu trang (Navbar)**:
+   - Chỉnh sửa [`client/src/components/Navbar.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/Navbar.tsx) import và sử dụng `{APP_NAME} — {SUB_TITLE}`.
+4. **Trang chào mừng (Dashboard)**:
+   - Chỉnh sửa [`client/src/pages/Dashboard.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/Dashboard.tsx) đổi text giới thiệu trong banner thành `{APP_NAME} — {SUB_TITLE}`.
+5. **Cấu hình Email hệ thống**:
+   - Chỉnh sửa [`server/src/services/emailService.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/services/emailService.ts) cập nhật tiêu đề email gửi đi và footer email thành tên hệ thống chuẩn.
+
+### 📂 Thiết kế lại Giao diện Trang `/login`:
+- Chỉnh sửa [`client/src/pages/Login.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/Login.tsx):
+  - **Khối Branding lớn bên ngoài**: Chuyển phần logo quốc huy lớn, tiêu đề `ỦY BAN NHÂN DÂN XÃ NGHĨA LÂM` và phụ đề tên hệ thống lên phía trên, tách biệt hoàn toàn khỏi hộp đăng nhập.
+  - **Hộp đăng nhập (Login Card)**: Đơn giản hóa tối đa, chỉ giữ biểu tượng khóa nhỏ (`LogIn` icon), tiêu đề `Đăng nhập hệ thống` và dòng phụ đề tên hệ thống chuẩn `{APP_NAME}`. Loại bỏ toàn bộ sự lặp lại của quốc huy lớn và các dòng text pháp lý rườm rà.
+  - Đảm bảo giao diện cân đối, responsive tốt và đạt thẩm mỹ cao.
+
+### 📂 Kết quả Kiểm thử & Build:
+- Chạy biên dịch toàn bộ hệ thống (`npm run build`) thành công, không lỗi biên dịch TypeScript hay Vite.
+- Kiểm thử E2E Test Suite chạy vượt qua 23/23 bài test thành công (Exit code 0).
+

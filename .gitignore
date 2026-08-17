@@ -13,3 +13,5 @@ server/database/*.sqlite-*
 *.log
 .vscode/
 .idea/
+vps_auth.json
+vps_key.pem

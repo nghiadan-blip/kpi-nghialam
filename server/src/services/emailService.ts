@@ -119,7 +119,7 @@ class EmailService {
       <div class="container">
         <div class="header">
           <h1>ỦY BAN NHÂN DÂN XÃ NGHĨA LÂM</h1>
-          <p>Hệ thống Đánh giá & Xếp loại Cán bộ, Công chức — Nghị định 335/2025/NĐ-CP</p>
+          <p>Hệ thống Quản lý nhiệm vụ và đánh giá CBCC — Theo Nghị định 335/2025/NĐ-CP</p>
         </div>
 
         <div class="content">
@@ -192,7 +192,7 @@ class EmailService {
         </div>
 
         <div class="footer">
-          <p style="margin: 0 0 4px 0;"><strong>HỆ THỐNG QUẢN TRỊ & ĐÁNH GIÁ CBCC XÃ NGHĨA LÂM</strong></p>
+          <p style="margin: 0 0 4px 0;"><strong>HỆ THỐNG QUẢN LÝ NHIỆM VỤ VÀ ĐÁNH GIÁ CBCC XÃ NGHĨA LÂM</strong></p>
           <p style="margin: 0;">Trụ sở: UBND xã Nghĩa Lâm, huyện Nghĩa Đàn, tỉnh Nghệ An — Email: ubnd@nghialam.nghean.gov.vn</p>
         </div>
       </div>

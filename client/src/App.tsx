@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { FOOTER_TEXT } from './constants';
 import { AuthProvider } from './context/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Navbar } from './components/Navbar';
@@ -94,7 +95,7 @@ export const App: React.FC = () => {
             </Routes>
           </main>
           <footer className="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500">
-            © 2026 UBND Xã Nghĩa Lâm — Khung Đánh giá & Xếp loại Cán bộ Công chức theo NĐ 335/2025/NĐ-CP.
+            {FOOTER_TEXT}
           </footer>
 
           {/* Floating DeepSeek AI Assistant */}

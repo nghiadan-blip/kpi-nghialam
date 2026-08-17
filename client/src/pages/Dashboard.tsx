@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { reportsApi, executiveDashboardApi } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { APP_NAME, SUB_TITLE } from '../constants';
 import {
   Users,
   Building2,
@@ -126,7 +127,7 @@ export const Dashboard: React.FC = () => {
             <div className="space-y-1.5">
               <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 bg-white/20 text-[#CFEBFC] border border-[#9FD7F9]/40 rounded-full text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                <span>Hệ thống Đánh giá & Xếp loại CBCC theo Nghị định 335/2025/NĐ-CP</span>
+                <span>{APP_NAME} — {SUB_TITLE}</span>
               </div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white drop-shadow-xs">
                 Xin chào, {user?.fullname}!

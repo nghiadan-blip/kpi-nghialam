@@ -19,6 +19,7 @@ import { VietnameseEmblem } from './VietnameseEmblem';
 import { StatusPing } from './StatusPing';
 import { useAuth } from '../context/AuthContext';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { APP_NAME, SUB_TITLE } from '../constants';
 
 export const Navbar: React.FC = () => {
   const { user, isAuthenticated, logout, hasRole } = useAuth();
@@ -107,7 +108,7 @@ export const Navbar: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-[#CFEBFC] font-medium tracking-wide">
-                Hệ thống Quản lý Nhiệm vụ & Đánh giá Cán bộ, Công chức — Nghị định 335/2025/NĐ-CP
+                {APP_NAME} — {SUB_TITLE}
               </p>
             </div>
           </div>
