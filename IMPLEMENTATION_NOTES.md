@@ -170,3 +170,27 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 - Xây dựng phân hệ cấu hình webhook gửi tin nhắn nhắc nhở trực tiếp đến tài khoản công chức khi có việc sắp quá hạn hoặc phiếu đánh giá chưa nộp.
 
 
+
+## 8. Nhật ký Xử lý UAT, Khóa Chéo Kỳ Đánh Giá & Kiểm Thử Tải (Giai đoạn UAT)
+
+- **Nhánh làm việc chính (Branch)**: `feature/ubnd-executive-modules` (Đã được merge hoàn toàn và đồng bộ sang nhánh `main`).
+- **Commit Hash cuối cùng trên cả 2 nhánh (main & feature)**: `4f5ae65e17de1eddc16195363ae8a760531f3baa`
+- **Tình trạng push GitHub**: Đã push và đồng bộ thành công cả 2 nhánh local lên `origin/main` và `origin/feature/ubnd-executive-modules`.
+
+### 📂 Nội dung đã hoàn thành & Tệp sửa đổi trong Giai đoạn UAT:
+1. **Sửa lỗi hệ số quy đổi K & Số lượng giao việc**:
+   - [`server/src/controllers/catalogController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/catalogController.ts) & [`client/src/components/CatalogModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/CatalogModal.tsx): Validate $K > 0$ và điểm gốc chuẩn $> 0$ ở cả frontend/backend.
+   - [`server/src/controllers/taskController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/taskController.ts) & [`client/src/components/TaskModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/TaskModal.tsx): Validate số lượng giao $> 0$.
+2. **Khóa chéo kỳ đánh giá toàn bộ phân hệ nghiệp vụ**:
+   - Tích hợp kiểm tra kỳ đánh giá tháng tại các hàm CRUD của [`budgetController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/budgetController.ts), [`publicInvestmentController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/publicInvestmentController.ts), [`landCertificateController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/landCertificateController.ts), và [`officeController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/officeController.ts).
+3. **Bảo toàn điểm tự chấm & Ô nhập điểm trực tiếp khi đánh giá**:
+   - [`server/src/controllers/evaluationController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/evaluationController.ts) & [`client/src/components/EvaluationFormModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/EvaluationFormModal.tsx): Bảo toàn điểm tự chấm/thẩm định khi không sửa đổi. Ẩn điểm mặc định `0đ` thành `-` khi chưa đánh giá, chuyển đổi cột điểm sang các ô nhập số trực tiếp cho cấp duyệt tương ứng (`isManager` hoặc `isLeadership`).
+4. **Enforce Đơn vị & VTVL khi phê duyệt tài khoản**:
+   - [`server/src/controllers/userController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/userController.ts) & [`client/src/components/ApproveMemberModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/ApproveMemberModal.tsx): Bắt buộc gán Đơn vị và VTVL khi duyệt đăng ký thành viên.
+5. **Liên kết chéo nhiệm vụ với các mô-đun**:
+   - Tạo migration `20260814200000_uat_enhancements.ts` thêm 5 cột liên kết chéo. Tích hợp form chọn và lưu liên kết chéo tại [`TaskModal.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/components/TaskModal.tsx).
+6. **Kiểm thử tải (Load Test)**:
+   - Viết [`seed_load_test.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/scripts/seed_load_test.ts) và [`run_load_test.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/scripts/run_load_test.ts) tạo 8 phòng ban, 58 cán bộ, 802 danh mục và 1050 nhiệm vụ. Kết quả truy vấn luôn có tốc độ xử lý nhanh xuất sắc (dưới 45ms).
+7. **Đóng gói dự án (Vite & TSC build)**:
+   - Build thành công toàn bộ ứng dụng (Exit code 0).
+   - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
