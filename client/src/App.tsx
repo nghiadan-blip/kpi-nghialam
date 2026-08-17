@@ -53,7 +53,7 @@ export const App: React.FC = () => {
               <Route
                 path="/budget"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedDepartments={[6]}>
                     <Budget />
                   </ProtectedRoute>
                 }
@@ -61,7 +61,7 @@ export const App: React.FC = () => {
               <Route
                 path="/public-investment"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedDepartments={[3]}>
                     <PublicInvestment />
                   </ProtectedRoute>
                 }
@@ -69,7 +69,7 @@ export const App: React.FC = () => {
               <Route
                 path="/land-certificates"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedDepartments={[3]}>
                     <LandCertificates />
                   </ProtectedRoute>
                 }

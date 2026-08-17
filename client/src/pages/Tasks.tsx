@@ -193,16 +193,18 @@ export const Tasks: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            setEditingTask(null);
-            setTaskModalOpen(true);
-          }}
-          className="flex items-center space-x-2 px-5 py-2.5 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-sm font-bold transition shadow-md shadow-[#27A4F2]/25 self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Giao Nhiệm Vụ Mới</span>
-        </button>
+        {['ADMIN', 'LEADERSHIP', 'DEPARTMENT_HEAD'].includes(user?.role || '') && (
+          <button
+            onClick={() => {
+              setEditingTask(null);
+              setTaskModalOpen(true);
+            }}
+            className="flex items-center space-x-2 px-5 py-2.5 bg-[#27A4F2] hover:bg-[#1864AB] text-white rounded-xl text-sm font-bold transition shadow-md shadow-[#27A4F2]/25 self-start md:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Giao Nhiệm Vụ Mới</span>
+          </button>
+        )}
       </div>
 
       {/* Action Notification */}

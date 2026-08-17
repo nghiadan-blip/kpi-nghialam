@@ -79,8 +79,8 @@ export const Navbar: React.FC = () => {
     { to: '/tasks', label: 'Nhiệm vụ', icon: CheckSquare, show: true },
     { to: '/evaluations', label: 'Đánh giá KPI', icon: Award, show: true },
     { to: '/budget', label: 'Ngân sách', icon: Wallet, show: isAuthenticated && (hasRole(['LEADERSHIP', 'ADMIN']) || user?.department_id === 6) },
-    { to: '/public-investment', label: 'Đầu tư công', icon: Building2, show: isAuthenticated },
-    { to: '/land-certificates', label: 'Đất đai (KH965)', icon: Map, show: isAuthenticated },
+    { to: '/public-investment', label: 'Đầu tư công', icon: Building2, show: isAuthenticated && (hasRole(['LEADERSHIP', 'ADMIN']) || user?.department_id === 3) },
+    { to: '/land-certificates', label: 'Đất đai (KH965)', icon: Map, show: isAuthenticated && (hasRole(['LEADERSHIP', 'ADMIN']) || user?.department_id === 3) },
     { to: '/office', label: 'Văn phòng', icon: Briefcase, show: isAuthenticated },
     { to: '/admin', label: 'Quản trị', icon: Shield, show: hasRole(['ADMIN']) },
   ];

@@ -3,11 +3,30 @@ import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
 import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
+function canAccessPublicInvestment(user: any): boolean {
+  if (!user) return false;
+  if (['ADMIN', 'LEADERSHIP'].includes(user.role)) return true;
+  if (user.department_id === 3) return true; // Bộ phận Địa chính - Xây dựng
+  return false;
+}
+
+function canModifyPublicInvestment(user: any): boolean {
+  if (!user) return false;
+  if (['ADMIN', 'LEADERSHIP'].includes(user.role)) return true;
+  if (user.department_id === 3) return true; // Cán bộ / Trưởng bộ phận Địa chính - Xây dựng
+  return false;
+}
+
 export async function getProjects(req: AuthRequest, res: Response): Promise<void> {
   try {
     const user = req.user;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canAccessPublicInvestment(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền truy cập dữ liệu Đầu tư công.' });
       return;
     }
 
@@ -47,8 +66,8 @@ export async function createProject(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    if (user.role !== 'ADMIN' && user.role !== 'LEADERSHIP' && user.role !== 'DEPARTMENT_HEAD') {
-      res.status(403).json({ message: 'Bạn không có quyền thực hiện thao tác này.' });
+    if (!canModifyPublicInvestment(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền tạo công trình đầu tư công.' });
       return;
     }
 
@@ -131,6 +150,11 @@ export async function updateProject(req: AuthRequest, res: Response): Promise<vo
     const { id } = req.params;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canModifyPublicInvestment(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền chỉnh sửa công trình đầu tư công.' });
       return;
     }
 
@@ -254,6 +278,17 @@ export async function deleteProject(req: AuthRequest, res: Response): Promise<vo
 
 export async function exportProjectsExcel(req: AuthRequest, res: Response): Promise<void> {
   try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canAccessPublicInvestment(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền xuất dữ liệu Đầu tư công.' });
+      return;
+    }
+
     const projects = await db('public_investment_projects as p')
       .leftJoin('users as u', 'p.responsible_user_id', 'u.id')
       .select('p.*', 'u.fullname as responsible_name')

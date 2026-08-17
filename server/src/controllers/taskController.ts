@@ -268,11 +268,28 @@ export async function createTask(req: AuthRequest, res: Response): Promise<void>
       return;
     }
 
+    // RBAC Security Check: Only ADMIN, LEADERSHIP, and DEPARTMENT_HEAD can assign tasks
+    if (user.role === 'EMPLOYEE') {
+      res.status(403).json({
+        message: 'Bạn không có quyền giao nhiệm vụ. Chỉ Lãnh đạo UBND xã, Quản trị viên và Trưởng bộ phận mới có quyền giao việc.'
+      });
+      return;
+    }
+
     // Verify assignee exists
     const assignee = await db('users').where('id', Number(assigned_to)).first();
     if (!assignee) {
       res.status(400).json({ message: 'Người tiếp nhận nhiệm vụ không tồn tại.' });
       return;
+    }
+
+    if (user.role === 'DEPARTMENT_HEAD') {
+      if (!user.department_id || (assignee.department_id !== user.department_id && assignee.id !== user.id)) {
+        res.status(403).json({
+          message: 'Trưởng bộ phận chỉ có quyền giao nhiệm vụ cho cán bộ thuộc đơn vị/phòng ban của mình.'
+        });
+        return;
+      }
     }
 
     const cat = await db('product_catalog').where('id', Number(product_catalog_id)).first();

@@ -194,3 +194,46 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 7. **Đóng gói dự án (Vite & TSC build)**:
    - Build thành công toàn bộ ứng dụng (Exit code 0).
    - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
+
+---
+
+## 9. Hoàn Thiện Module Đánh Giá CBCC KPI & Kiểm Soát Phân Quyền RBAC Toàn Diện (Giai Đoạn Final)
+
+- **Nhánh làm việc (Branch)**: `feat/complete-cbcc-kpi-module`
+- **Căn cứ pháp lý cốt lõi**:
+  - Nghị định số 335/2025/NĐ-CP ngày 31/12/2025 của Chính phủ;
+  - Sổ tay hướng dẫn đánh giá, xếp loại cán bộ, công chức của Bộ Nội vụ;
+  - Kế hoạch số 51-KH/TU ngày 07/5/2026 của Ban Thường vụ Tỉnh ủy Nghệ An;
+  - Quy định số 295-QĐ/ĐU ngày 09/4/2026 của Ban Thường vụ Đảng ủy xã Nghĩa Lâm;
+  - Văn bản ma trận chi tiết: [`KPI_LEGAL_TRACEABILITY_MATRIX.md`](./KPI_LEGAL_TRACEABILITY_MATRIX.md).
+
+### 9.1. Xử lý triệt để Lỗi P0 Tính điểm Phần II (Calculation Engine)
+- **Vấn đề trước đây**: Công thức cũ tính theo tỷ lệ hoàn thành 3 chiều dẫn đến việc phiếu chỉ có 1 sản phẩm 5 điểm vẫn bị tự động gán điểm trần 70/70.
+- **Giải pháp chuẩn hóa**:
+  - Xây dựng service độc lập [`server/src/services/kpiCalculationEngine.ts`](./server/src/services/kpiCalculationEngine.ts) áp dụng chiến lược duy nhất `WEIGHTED_DETAIL_SCORE` (Version `2026.08.1`).
+  - **Công thức tính điểm**:
+    $$\text{line\_score}_i = \text{quantity}_i \times \text{baseline\_score}_i \times \text{coefficient}_i$$
+    $$\text{taskScore} = \min\left(70.0, \sum(\text{line\_score}_i) \times \text{penaltyMultiplier}\right)$$
+    $$\text{totalScore} = \min\left(100.0, \text{commonCriteriaScore} + \text{taskScore}\right)$$
+  - Backend là nguồn sự thật duy nhất về điểm số. Mọi endpoint (`POST /draft`, `POST /review`, `POST /approve`, `GET /forms/:id`, `POST /forms/:id/recalculate`) đều sử dụng engine tính điểm thống nhất và cung cấp cấu trúc `auditFormula`.
+
+### 9.2. Xử lý triệt để Lỗi P0 Broken Access Control (RBAC Controls)
+1. **Phân quyền Giao nhiệm vụ (`POST /api/tasks`)**:
+   - Chặn tuyệt đối tài khoản Công chức thường (`EMPLOYEE`) tự ý giao việc qua API (trả về `403 Forbidden`).
+   - Giới hạn phạm vi giao việc của Trưởng bộ phận (`DEPARTMENT_HEAD`) chỉ trong đơn vị/phòng ban phụ trách.
+   - Chỉ `ADMIN`, `LEADERSHIP` và `DEPARTMENT_HEAD` (trong phòng) mới có quyền tạo và phân công nhiệm vụ.
+2. **Kiểm soát Truy cập Phân hệ Chuyên sâu**:
+   - **Đầu tư công (`/api/public-investment`, `/api/investment`)**: Chỉ `ADMIN`, `LEADERSHIP`, và Cán bộ/Trưởng bộ phận Địa chính - Xây dựng (Dept 3) mới có quyền truy cập và chỉnh sửa. Các công chức khác gọi API đều nhận `403 Forbidden`.
+   - **Tài chính - Ngân sách (`/api/budget`, `/api/budgets`)**: Chỉ `ADMIN`, `LEADERSHIP`, và Cán bộ/Trưởng bộ phận Tài chính - Kế toán (Dept 6) mới có quyền đọc và quản lý thu/chi.
+   - **Đất đai & KH965 (`/api/land-certificates`)**: Chỉ `ADMIN`, `LEADERSHIP`, và Cán bộ/Trưởng bộ phận Địa chính (Dept 3) mới có quyền đọc và xử lý hồ sơ.
+   - **Giao diện & Route Guard**: Đã tích hợp `allowedDepartments` vào [`ProtectedRoute.tsx`](./client/src/components/ProtectedRoute.tsx) và [`App.tsx`](./client/src/App.tsx) để chặn truy cập từ phía client.
+
+### 9.3. Kết quả Kiểm thử Toàn diện
+- **P0 KPI Formula Test Suite (`test_p0_kpi_formula.ts`)**: **10/10 PASS** (Bảo toàn điểm, thay đổi số lượng, thêm/xóa dòng, giới hạn trần 70, khóa kỳ, chặn dữ liệu sai).
+- **RBAC Task Assignment Test Suite (`test_rbac_task_assignment.ts`)**: **5/5 PASS** (Chặn công chức giao việc, giới hạn phạm vi phòng ban).
+- **Full RBAC Security Matrix Test Suite (`test_rbac_full_matrix.ts`)**: **11/11 PASS** (Kiểm tra đầy đủ Role $\times$ Module $\times$ Read/Write).
+- **Full E2E Comprehensive Test Suite (`test_e2e_full.ts`)**: **23/23 PASS**.
+- **Build Verification**:
+  - `npm run build:server` -> **SUCCESS** (Exit code 0).
+  - `npm run build:client` -> **SUCCESS** (Exit code 0).
+  - `npm run build` -> **SUCCESS** (Exit code 0).

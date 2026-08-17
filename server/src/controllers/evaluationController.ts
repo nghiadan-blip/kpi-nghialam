@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
 import { emailService } from '../services/emailService';
+import { calculateKPIScore, KPILineItemInput } from '../services/kpiCalculationEngine';
 
 export function calculateClassification(score: number, isDisciplined?: boolean): string {
   if (isDisciplined) return 'Không hoàn thành nhiệm vụ (Kỷ luật)';
@@ -191,19 +192,8 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       return;
     }
 
-    // 1. Calculate General Criteria Score (Part I: Max 30.0đ — Phụ lục I QĐ 283: 10đ + 10đ + 10đ)
-    const pol = Math.min(10.0, Math.max(0, Number(criteria_politics_self) || 0));
-    const exp = Math.min(10.0, Math.max(0, Number(criteria_expertise_self) || 0));
-    const inn = Math.min(10.0, Math.max(0, Number(criteria_innovation_self) || 0));
-    const generalScoreSelf = Number((pol + exp + inn).toFixed(2));
-
-    // 2. Calculate 3-dimensional Task Score (Part II: 100đ scale -> 70%)
-    let totalAssignedConverted = 0;
-    let totalCompletedConverted = 0;
-    let totalDelays = 0;
-    let totalReworks = 0;
-    const processedItems: any[] = [];
-
+    // 1. Build line items with catalog coefficients & baseline scores
+    const inputItems: KPILineItemInput[] = [];
     for (const it of items) {
       const catalog = await trx('product_catalog').where('id', Number(it.product_catalog_id)).first();
       if (!catalog) {
@@ -212,55 +202,56 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
         return;
       }
 
-      const qty = Math.max(0.1, Number(it.quantity) || 1);
+      const qty = Math.max(0.01, Number(it.quantity) || 1);
       const coeff = Number(catalog.coefficient) || 1.0;
       const unitBaseline = Number(catalog.baseline_score) || 5.0;
-      const convertedQty = Number((qty * coeff).toFixed(2));
 
-      totalAssignedConverted += convertedQty;
-      totalCompletedConverted += convertedQty; // self assumes completed
-
-      const rawPoints = Number((qty * unitBaseline * coeff).toFixed(2));
-
-      processedItems.push({
-        task_id: it.task_id ? Number(it.task_id) : null,
-        product_catalog_id: Number(it.product_catalog_id),
-        quantity: qty,
-        self_points: rawPoints,
-        manager_points: rawPoints,
-        final_points: rawPoints,
-        remarks: it.remarks ? it.remarks.trim() : null,
-      });
-
+      let delays = 0;
+      let reworks = 0;
       if (it.task_id) {
         const task = await trx('tasks').where('id', Number(it.task_id)).first();
         if (task) {
-          totalDelays += Number(task.delay_count) || 0;
-          totalReworks += Number(task.rework_count) || 0;
+          delays = Number(task.delay_count) || 0;
+          reworks = Number(task.rework_count) || 0;
         }
       }
+
+      inputItems.push({
+        task_id: it.task_id ? Number(it.task_id) : null,
+        product_catalog_id: Number(it.product_catalog_id),
+        quantity: qty,
+        baseline_score: unitBaseline,
+        coefficient: coeff,
+        points: it.self_points !== undefined && !isNaN(Number(it.self_points)) ? Number(it.self_points) : undefined,
+        remarks: it.remarks ? it.remarks.trim() : null,
+        delays,
+        reworks,
+      });
     }
 
-    // 3D calculation according to Home Affairs Handbook
-    const qtyRate = totalAssignedConverted > 0 ? Math.min(100, (totalCompletedConverted / totalAssignedConverted) * 100) : 100;
-    const progRate = Math.max(0, 100 - (totalDelays * 25));
-    const qualRate = Math.max(0, 100 - (totalReworks * 25));
-
-    let taskScore100 = (qtyRate + progRate + qualRate) / 3;
-
-    // If Leadership position, combine 6 dimensions (a+b+c+d+e+f)/6
-    const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(user.role);
-    if (isLeadershipRole) {
-      const d = Math.min(100, Math.max(0, Number(leadership_unit_result) || 100));
-      const e = Math.min(100, Math.max(0, Number(leadership_execution) || 100));
-      const f = Math.min(100, Math.max(0, Number(leadership_solidarity) || 100));
-      taskScore100 = (qtyRate + progRate + qualRate + d + e + f) / 6;
+    // 2. Compute KPI score via unified calculation engine
+    let calcResult;
+    try {
+      calcResult = calculateKPIScore({
+        strategy: 'WEIGHTED_DETAIL_SCORE',
+        criteria_politics: criteria_politics_self,
+        criteria_expertise: criteria_expertise_self,
+        criteria_innovation: criteria_innovation_self,
+        items: inputItems,
+        is_leadership_role: ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(user.role),
+        leadership_unit_result,
+        leadership_execution,
+        leadership_solidarity,
+      });
+    } catch (validationErr: any) {
+      await trx.rollback();
+      res.status(400).json({ message: validationErr.message || 'Lỗi dữ liệu tính điểm đánh giá.' });
+      return;
     }
 
-    taskScore100 = Math.min(100, Math.max(0, Number(taskScore100.toFixed(2))));
-
-    // Total Score = General Criteria (max 30) + (Task Score 100 * 70%) = max 100.0
-    const totalSelfScore = Math.min(100.0, Number((generalScoreSelf + (taskScore100 * 0.70)).toFixed(2)));
+    const generalScoreSelf = calcResult.commonCriteriaScore;
+    const taskScoreSelf = calcResult.taskScore;
+    const totalSelfScore = calcResult.totalScore;
 
     // Check existing evaluation for this user & month
     let existing = await trx('evaluations')
@@ -281,21 +272,21 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       employee_id: user.id,
       month,
       status: 'DRAFT',
-      criteria_politics_self: pol,
-      criteria_politics_mgr: pol,
-      criteria_politics_final: pol,
-      criteria_expertise_self: exp,
-      criteria_expertise_mgr: exp,
-      criteria_expertise_final: exp,
-      criteria_innovation_self: inn,
-      criteria_innovation_mgr: inn,
-      criteria_innovation_final: inn,
+      criteria_politics_self: Math.min(10.0, Math.max(0, Number(criteria_politics_self) || 0)),
+      criteria_politics_mgr: Math.min(10.0, Math.max(0, Number(criteria_politics_self) || 0)),
+      criteria_politics_final: Math.min(10.0, Math.max(0, Number(criteria_politics_self) || 0)),
+      criteria_expertise_self: Math.min(10.0, Math.max(0, Number(criteria_expertise_self) || 0)),
+      criteria_expertise_mgr: Math.min(10.0, Math.max(0, Number(criteria_expertise_self) || 0)),
+      criteria_expertise_final: Math.min(10.0, Math.max(0, Number(criteria_expertise_self) || 0)),
+      criteria_innovation_self: Math.min(10.0, Math.max(0, Number(criteria_innovation_self) || 0)),
+      criteria_innovation_mgr: Math.min(10.0, Math.max(0, Number(criteria_innovation_self) || 0)),
+      criteria_innovation_final: Math.min(10.0, Math.max(0, Number(criteria_innovation_self) || 0)),
       general_score_self: generalScoreSelf,
       general_score_mgr: generalScoreSelf,
       general_score_final: generalScoreSelf,
-      task_score_self: taskScore100,
-      task_score_mgr: taskScore100,
-      task_score_final: taskScore100,
+      task_score_self: taskScoreSelf,
+      task_score_mgr: taskScoreSelf,
+      task_score_final: taskScoreSelf,
       leadership_unit_result: Number(leadership_unit_result) || 100,
       leadership_execution: Number(leadership_execution) || 100,
       leadership_solidarity: Number(leadership_solidarity) || 100,
@@ -321,10 +312,16 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       evalId = newId;
     }
 
-    for (const it of processedItems) {
+    for (const line of calcResult.taskLines) {
       await trx('evaluation_details').insert({
-        ...it,
         evaluation_id: evalId,
+        task_id: line.task_id || null,
+        product_catalog_id: line.product_catalog_id,
+        quantity: line.quantity,
+        self_points: line.line_score,
+        manager_points: line.line_score,
+        final_points: line.line_score,
+        remarks: line.remarks || null,
       });
     }
 
@@ -334,7 +331,7 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     await logAudit(
       user.id,
       'SAVE_DRAFT_EVALUATION',
-      `Lưu nháp đánh giá NĐ 335 tháng ${month}: Tổng ${totalSelfScore}đ (Chung: ${generalScoreSelf}đ + Nhiệm vụ: ${(taskScore100 * 0.7).toFixed(1)}đ)`,
+      `Lưu nháp đánh giá NĐ 335 tháng ${month}: Tổng ${totalSelfScore}đ (Chung: ${generalScoreSelf}đ + Nhiệm vụ: ${taskScoreSelf}đ)`,
       clientIp
     );
 
@@ -343,12 +340,12 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       evaluation_id: evalId,
       self_score: totalSelfScore,
       general_score: generalScoreSelf,
-      task_score: taskScore100,
+      task_score: taskScoreSelf,
     });
-  } catch (err) {
+  } catch (err: any) {
     await trx.rollback();
     console.error('Lỗi lưu nháp đánh giá:', err);
-    res.status(500).json({ message: 'Lỗi máy chủ khi lưu nháp phiếu đánh giá.' });
+    res.status(500).json({ message: err.message || 'Lỗi máy chủ khi lưu nháp phiếu đánh giá.' });
   }
 }
 
@@ -454,68 +451,73 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     const employee = await trx('users').where('id', evaluation.employee_id).first();
     const employeeRole = employee ? employee.role : 'EMPLOYEE';
 
-    // Manager General Score (Phụ lục I QĐ 283: 10đ + 10đ + 10đ)
-    const pol = criteria_politics_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_mgr))) : (evaluation.criteria_politics_self ?? 0.0);
-    const exp = criteria_expertise_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_mgr))) : (evaluation.criteria_expertise_self ?? 0.0);
-    const inn = criteria_innovation_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_mgr))) : (evaluation.criteria_innovation_self ?? 0.0);
-    const generalScoreMgr = Number((pol + exp + inn).toFixed(2));
-
     // Manager Task Details
-    if (items && Array.isArray(items)) {
-      for (const it of items) {
-        const existingDetail = await trx('evaluation_details')
-          .where({ id: Number(it.id), evaluation_id: Number(id) })
-          .first();
-        const mgrPts = it.manager_points !== undefined && !isNaN(Number(it.manager_points))
-          ? Number(it.manager_points)
-          : (existingDetail?.manager_points ?? existingDetail?.self_points ?? 0.0);
+    const allDetails = await trx('evaluation_details')
+      .join('product_catalog as pc', 'evaluation_details.product_catalog_id', 'pc.id')
+      .where('evaluation_details.evaluation_id', Number(id))
+      .select('evaluation_details.*', 'pc.baseline_score', 'pc.coefficient');
 
-        await trx('evaluation_details')
-          .where({ id: Number(it.id), evaluation_id: Number(id) })
-          .update({
-            manager_points: mgrPts,
-            final_points: mgrPts,
-            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail?.remarks ?? null),
-          });
-      }
-    }
+    const inputItems: KPILineItemInput[] = [];
 
-    let taskScoreMgr = evaluation.task_score_self ?? 0.0;
-    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
-    let sumSelfPoints = 0;
-    let sumMgrPoints = 0;
     for (const d of allDetails) {
-      sumSelfPoints += Number(d.self_points) || 0;
-      
-      const bodyItem = items && Array.isArray(items) ? items.find(it => Number(it.id) === Number(d.id)) : null;
+      const bodyItem = items && Array.isArray(items) ? items.find((it: any) => Number(it.id) === Number(d.id)) : null;
       const mgrPts = bodyItem !== null && bodyItem !== undefined && bodyItem.manager_points !== undefined 
         ? Number(bodyItem.manager_points) 
-        : Number(d.manager_points);
-      
-      sumMgrPoints += mgrPts;
+        : Number(d.manager_points ?? d.self_points);
+
+      const remarks = bodyItem !== null && bodyItem !== undefined && bodyItem.remarks !== undefined
+        ? (bodyItem.remarks ? bodyItem.remarks.trim() : null)
+        : d.remarks;
+
+      await trx('evaluation_details')
+        .where({ id: d.id, evaluation_id: Number(id) })
+        .update({
+          manager_points: mgrPts,
+          final_points: mgrPts,
+          remarks,
+        });
+
+      inputItems.push({
+        task_id: d.task_id,
+        product_catalog_id: d.product_catalog_id,
+        quantity: d.quantity,
+        baseline_score: Number(d.baseline_score) || 5.0,
+        coefficient: Number(d.coefficient) || 1.0,
+        points: mgrPts,
+        remarks,
+      });
     }
-    
-    const managerRatio = sumSelfPoints > 0 ? (sumMgrPoints / sumSelfPoints) : 1.0;
-    const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
 
     const l_unit = leadership_unit_result_mgr !== undefined ? Number(leadership_unit_result_mgr) : (evaluation.leadership_unit_result ?? 100);
     const l_exec = leadership_execution_mgr !== undefined ? Number(leadership_execution_mgr) : (evaluation.leadership_execution ?? 100);
     const l_sol = leadership_solidarity_mgr !== undefined ? Number(leadership_solidarity_mgr) : (evaluation.leadership_solidarity ?? 100);
 
-    if (isLeadershipRole) {
-      const selfUnit = Number(evaluation.leadership_unit_result) || 100;
-      const selfExec = Number(evaluation.leadership_execution) || 100;
-      const selfSol = Number(evaluation.leadership_solidarity) || 100;
-      const baseSelf = Math.max(0, ((evaluation.task_score_self ?? 0.0) * 6 - selfUnit - selfExec - selfSol) / 3);
-      
-      const baseFinal = baseSelf * managerRatio;
-      taskScoreMgr = Math.min(100.0, Math.max(0, (baseFinal * 3 + l_unit + l_exec + l_sol) / 6));
-    } else {
-      taskScoreMgr = Math.min(100.0, Math.max(0, (evaluation.task_score_self ?? 0.0) * managerRatio));
+    let calcResult;
+    try {
+      calcResult = calculateKPIScore({
+        strategy: 'WEIGHTED_DETAIL_SCORE',
+        criteria_politics: criteria_politics_mgr !== undefined ? criteria_politics_mgr : evaluation.criteria_politics_self,
+        criteria_expertise: criteria_expertise_mgr !== undefined ? criteria_expertise_mgr : evaluation.criteria_expertise_self,
+        criteria_innovation: criteria_innovation_mgr !== undefined ? criteria_innovation_mgr : evaluation.criteria_innovation_self,
+        items: inputItems,
+        is_leadership_role: ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole),
+        leadership_unit_result: l_unit,
+        leadership_execution: l_exec,
+        leadership_solidarity: l_sol,
+      });
+    } catch (validationErr: any) {
+      await trx.rollback();
+      res.status(400).json({ message: validationErr.message || 'Lỗi dữ liệu thẩm định điểm đánh giá.' });
+      return;
     }
-    taskScoreMgr = Number(taskScoreMgr.toFixed(2));
 
-    const totalManagerScore = Math.min(100.0, Number((generalScoreMgr + (taskScoreMgr * 0.70)).toFixed(2)));
+    const pol = criteria_politics_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_mgr))) : (evaluation.criteria_politics_self ?? 0.0);
+    const exp = criteria_expertise_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_mgr))) : (evaluation.criteria_expertise_self ?? 0.0);
+    const inn = criteria_innovation_mgr !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_mgr))) : (evaluation.criteria_innovation_self ?? 0.0);
+
+    const generalScoreMgr = calcResult.commonCriteriaScore;
+    const taskScoreMgr = calcResult.taskScore;
+    const totalManagerScore = calcResult.totalScore;
 
     await trx('evaluations')
       .where('id', Number(id))
@@ -550,14 +552,15 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     );
 
     res.status(200).json({
-      message: 'Trưởng bộ phận thẩm định và chuyển lên Lãnh đạo xã thành công!',
+      message: 'Trưởng bộ phận thẩm định và chuyển lên Lãhp đạo xã thành công!',
       manager_score: totalManagerScore,
       general_score: generalScoreMgr,
+      task_score: taskScoreMgr,
     });
-  } catch (err) {
+  } catch (err: any) {
     await trx.rollback();
     console.error('Lỗi thẩm định phiếu của trưởng phòng:', err);
-    res.status(500).json({ message: 'Lỗi máy chủ khi thẩm định phiếu đánh giá.' });
+    res.status(500).json({ message: err.message || 'Lỗi máy chủ khi thẩm định phiếu đánh giá.' });
   }
 }
 
@@ -608,68 +611,70 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
       return;
     }
 
+    const allDetails = await trx('evaluation_details')
+      .join('product_catalog as pc', 'evaluation_details.product_catalog_id', 'pc.id')
+      .where('evaluation_details.evaluation_id', Number(id))
+      .select('evaluation_details.*', 'pc.baseline_score', 'pc.coefficient');
+
+    const inputItems: KPILineItemInput[] = [];
+
+    for (const d of allDetails) {
+      const bodyItem = items && Array.isArray(items) ? items.find((it: any) => Number(it.id) === Number(d.id)) : null;
+      const finalPts = bodyItem !== null && bodyItem !== undefined && bodyItem.final_points !== undefined 
+        ? Number(bodyItem.final_points) 
+        : Number(d.final_points ?? d.manager_points ?? d.self_points);
+
+      const remarks = bodyItem !== null && bodyItem !== undefined && bodyItem.remarks !== undefined
+        ? (bodyItem.remarks ? bodyItem.remarks.trim() : null)
+        : d.remarks;
+
+      await trx('evaluation_details')
+        .where({ id: d.id, evaluation_id: Number(id) })
+        .update({
+          final_points: finalPts,
+          remarks,
+        });
+
+      inputItems.push({
+        task_id: d.task_id,
+        product_catalog_id: d.product_catalog_id,
+        quantity: d.quantity,
+        baseline_score: Number(d.baseline_score) || 5.0,
+        coefficient: Number(d.coefficient) || 1.0,
+        points: finalPts,
+        remarks,
+      });
+    }
+
+    const employeeRole = evaluation.employee_role || 'EMPLOYEE';
+    const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
+
+    let calcResult;
+    try {
+      calcResult = calculateKPIScore({
+        strategy: 'WEIGHTED_DETAIL_SCORE',
+        criteria_politics: criteria_politics_final !== undefined ? criteria_politics_final : (evaluation.criteria_politics_mgr ?? evaluation.criteria_politics_self),
+        criteria_expertise: criteria_expertise_final !== undefined ? criteria_expertise_final : (evaluation.criteria_expertise_mgr ?? evaluation.criteria_expertise_self),
+        criteria_innovation: criteria_innovation_final !== undefined ? criteria_innovation_final : (evaluation.criteria_innovation_mgr ?? evaluation.criteria_innovation_self),
+        items: inputItems,
+        is_leadership_role: isLeadershipRole,
+        leadership_unit_result: evaluation.leadership_unit_result,
+        leadership_execution: evaluation.leadership_execution,
+        leadership_solidarity: evaluation.leadership_solidarity,
+      });
+    } catch (validationErr: any) {
+      await trx.rollback();
+      res.status(400).json({ message: validationErr.message || 'Lỗi dữ liệu phê duyệt điểm đánh giá.' });
+      return;
+    }
+
     const pol = criteria_politics_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_politics_final))) : (evaluation.criteria_politics_mgr ?? 0.0);
     const exp = criteria_expertise_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_expertise_final))) : (evaluation.criteria_expertise_mgr ?? 0.0);
     const inn = criteria_innovation_final !== undefined ? Math.min(10.0, Math.max(0, Number(criteria_innovation_final))) : (evaluation.criteria_innovation_mgr ?? 0.0);
-    const generalScoreFinal = Number((pol + exp + inn).toFixed(2));
 
-    if (items && Array.isArray(items)) {
-      for (const it of items) {
-        const existingDetail = await trx('evaluation_details')
-          .where({ id: Number(it.id), evaluation_id: Number(id) })
-          .first();
-        const finalPts = it.final_points !== undefined && !isNaN(Number(it.final_points))
-          ? Number(it.final_points)
-          : (existingDetail?.final_points ?? existingDetail?.manager_points ?? existingDetail?.self_points ?? 0.0);
-
-        await trx('evaluation_details')
-          .where({ id: Number(it.id), evaluation_id: Number(id) })
-          .update({
-            final_points: finalPts,
-            remarks: it.remarks !== undefined ? (it.remarks ? it.remarks.trim() : null) : (existingDetail?.remarks ?? null),
-          });
-      }
-    }
-
-    let taskScoreFinal = evaluation.task_score_mgr ?? 0.0;
-    const allDetails = await trx('evaluation_details').where('evaluation_id', Number(id));
-    let sumSelfPoints = 0;
-    let sumFinalPoints = 0;
-    for (const d of allDetails) {
-      sumSelfPoints += Number(d.self_points) || 0;
-      
-      const bodyItem = items && Array.isArray(items) ? items.find(it => Number(it.id) === Number(d.id)) : null;
-      const finalPts = bodyItem !== null && bodyItem !== undefined && bodyItem.final_points !== undefined 
-        ? Number(bodyItem.final_points) 
-        : Number(d.final_points);
-        
-      sumFinalPoints += finalPts;
-    }
-    
-    const finalRatio = sumSelfPoints > 0 ? (sumFinalPoints / sumSelfPoints) : 1.0;
-    const employeeRole = evaluation.employee_role || 'EMPLOYEE';
-    const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(employeeRole);
-    
-    if (isLeadershipRole) {
-      const selfUnit = Number(evaluation.leadership_unit_result) || 100;
-      const selfExec = Number(evaluation.leadership_execution) || 100;
-      const selfSol = Number(evaluation.leadership_solidarity) || 100;
-      const baseSelf = Math.max(0, ((evaluation.task_score_self ?? 0.0) * 6 - selfUnit - selfExec - selfSol) / 3);
-      
-      const baseFinal = baseSelf * finalRatio;
-      
-      const l_unit = Number(evaluation.leadership_unit_result) || 100;
-      const l_exec = Number(evaluation.leadership_execution) || 100;
-      const l_sol = Number(evaluation.leadership_solidarity) || 100;
-      
-      taskScoreFinal = Math.min(100.0, Math.max(0, (baseFinal * 3 + l_unit + l_exec + l_sol) / 6));
-    } else {
-      taskScoreFinal = Math.min(100.0, Math.max(0, (evaluation.task_score_self ?? 0.0) * finalRatio));
-    }
-    taskScoreFinal = Number(taskScoreFinal.toFixed(2));
-
-    let calculatedFinalScore = final_score !== undefined ? Number(final_score) : Number((generalScoreFinal + (taskScoreFinal * 0.70)).toFixed(2));
-    calculatedFinalScore = Math.min(100.0, Math.max(0, calculatedFinalScore));
+    const generalScoreFinal = calcResult.commonCriteriaScore;
+    const taskScoreFinal = calcResult.taskScore;
+    const calculatedFinalScore = calcResult.totalScore;
 
     const isDisciplined = evaluation.is_disciplined || evaluation.employee_is_disciplined;
     const classification = calculateClassification(calculatedFinalScore, isDisciplined);
@@ -768,6 +773,13 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
       message: 'Lãnh đạo UBND xã phê duyệt kết quả đánh giá thành công!',
       final_score: calculatedFinalScore,
       classification,
+      evaluation: {
+        id: Number(id),
+        final_score: calculatedFinalScore,
+        task_score_final: taskScoreFinal,
+        general_score_final: generalScoreFinal,
+        classification,
+      },
     });
   } catch (err) {
     await trx.rollback();
@@ -1271,4 +1283,137 @@ export async function checkPeriodLockForRecord(
   }
 
   return checkPeriodLockForDate(dateVal, reason, userRole);
+}
+
+export async function getEvaluationFormDetail(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const evaluation = await db('evaluations as e')
+      .join('users as u', 'e.employee_id', 'u.id')
+      .where('e.id', Number(id))
+      .select('e.*', 'u.role as employee_role', 'u.fullname as employee_fullname', 'u.is_disciplined as employee_is_disciplined')
+      .first();
+
+    if (!evaluation) {
+      res.status(404).json({ message: 'Không tìm thấy phiếu đánh giá.' });
+      return;
+    }
+
+    const details = await db('evaluation_details as ed')
+      .join('product_catalog as pc', 'ed.product_catalog_id', 'pc.id')
+      .where('ed.evaluation_id', Number(id))
+      .select('ed.*', 'pc.baseline_score', 'pc.coefficient', 'pc.code as catalog_code', 'pc.name as catalog_name');
+
+    const inputItems: KPILineItemInput[] = details.map((d) => ({
+      task_id: d.task_id,
+      product_catalog_id: d.product_catalog_id,
+      quantity: d.quantity,
+      baseline_score: Number(d.baseline_score) || 5.0,
+      coefficient: Number(d.coefficient) || 1.0,
+      points: Number(d.final_points ?? d.manager_points ?? d.self_points ?? 0),
+      remarks: d.remarks,
+    }));
+
+    const calcResult = calculateKPIScore({
+      criteria_politics: evaluation.criteria_politics_final ?? evaluation.criteria_politics_mgr ?? evaluation.criteria_politics_self ?? 10.0,
+      criteria_expertise: evaluation.criteria_expertise_final ?? evaluation.criteria_expertise_mgr ?? evaluation.criteria_expertise_self ?? 10.0,
+      criteria_innovation: evaluation.criteria_innovation_final ?? evaluation.criteria_innovation_mgr ?? evaluation.criteria_innovation_self ?? 10.0,
+      items: inputItems,
+    });
+
+    const [year, month] = evaluation.month.split('-');
+    const rating = evaluation.status === 'APPROVED' ? calculateClassification(calcResult.totalScore, Boolean(evaluation.is_disciplined || evaluation.employee_is_disciplined)) : null;
+
+    res.status(200).json({
+      formId: `EVL-${evaluation.month}-${String(evaluation.id).padStart(3, '0')}`,
+      period: { month: parseInt(month, 10), year: parseInt(year, 10) },
+      calculationStrategy: calcResult.calculationStrategy,
+      calculationVersion: calcResult.calculationVersion,
+      commonCriteriaScore: calcResult.commonCriteriaScore,
+      taskScore: calcResult.taskScore,
+      totalScore: calcResult.totalScore,
+      rating,
+      taskLines: calcResult.taskLines,
+      auditFormula: calcResult.auditFormula,
+    });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message || 'Lỗi lấy chi tiết form đánh giá.' });
+  }
+}
+
+export async function recalculateEvaluationForm(req: AuthRequest, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { items, criteria_politics, criteria_expertise, criteria_innovation, strategy } = req.body;
+
+    const evaluation = await db('evaluations').where('id', Number(id)).first();
+    if (!evaluation) {
+      res.status(404).json({ message: 'Không tìm thấy phiếu đánh giá.' });
+      return;
+    }
+
+    if (await isPeriodLocked(evaluation.month)) {
+      res.status(400).json({ message: `Kỳ đánh giá tháng ${evaluation.month} đã bị khóa, không thể tính toán lại.` });
+      return;
+    }
+
+    const inputItems: KPILineItemInput[] = [];
+    if (items && Array.isArray(items)) {
+      for (const it of items) {
+        const cat = await db('product_catalog').where('id', Number(it.product_catalog_id)).first();
+        inputItems.push({
+          task_id: it.task_id,
+          product_catalog_id: Number(it.product_catalog_id),
+          quantity: Number(it.quantity) || 1,
+          baseline_score: cat ? Number(cat.baseline_score) : (it.baseline_score || 5.0),
+          coefficient: cat ? Number(cat.coefficient) : (it.coefficient || 1.0),
+          points: it.points !== undefined ? Number(it.points) : undefined,
+          remarks: it.remarks,
+        });
+      }
+    } else {
+      const details = await db('evaluation_details as ed')
+        .join('product_catalog as pc', 'ed.product_catalog_id', 'pc.id')
+        .where('ed.evaluation_id', Number(id))
+        .select('ed.*', 'pc.baseline_score', 'pc.coefficient');
+
+      for (const d of details) {
+        inputItems.push({
+          task_id: d.task_id,
+          product_catalog_id: d.product_catalog_id,
+          quantity: d.quantity,
+          baseline_score: Number(d.baseline_score) || 5.0,
+          coefficient: Number(d.coefficient) || 1.0,
+          points: Number(d.final_points ?? d.manager_points ?? d.self_points),
+          remarks: d.remarks,
+        });
+      }
+    }
+
+    const calcResult = calculateKPIScore({
+      strategy,
+      criteria_politics: criteria_politics !== undefined ? Number(criteria_politics) : (evaluation.criteria_politics_self || 10),
+      criteria_expertise: criteria_expertise !== undefined ? Number(criteria_expertise) : (evaluation.criteria_expertise_self || 10),
+      criteria_innovation: criteria_innovation !== undefined ? Number(criteria_innovation) : (evaluation.criteria_innovation_self || 10),
+      items: inputItems,
+    });
+
+    const [year, month] = evaluation.month.split('-');
+    const rating = evaluation.status === 'APPROVED' ? calculateClassification(calcResult.totalScore, Boolean(evaluation.is_disciplined)) : null;
+
+    res.status(200).json({
+      formId: `EVL-${evaluation.month}-${String(evaluation.id).padStart(3, '0')}`,
+      period: { month: parseInt(month, 10), year: parseInt(year, 10) },
+      calculationStrategy: calcResult.calculationStrategy,
+      calculationVersion: calcResult.calculationVersion,
+      commonCriteriaScore: calcResult.commonCriteriaScore,
+      taskScore: calcResult.taskScore,
+      totalScore: calcResult.totalScore,
+      rating,
+      taskLines: calcResult.taskLines,
+      auditFormula: calcResult.auditFormula,
+    });
+  } catch (err: any) {
+    res.status(400).json({ message: err.message || 'Lỗi tính toán lại điểm đánh giá.' });
+  }
 }
