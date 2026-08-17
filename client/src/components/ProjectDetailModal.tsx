@@ -932,9 +932,11 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       </p>
                     </div>
                     <div>
-                      <label className="text-slate-500 font-medium">Thời hạn bảo hành công trình đến ngày:</label>
+                      <label className="text-slate-500 font-medium">Thời hạn bảo hành công trình:</label>
                       <p className="font-semibold text-slate-800 mt-1">
-                        {project.warranty_end_date ? new Date(project.warranty_end_date).toLocaleDateString('vi-VN') : '12 tháng kể từ ngày bàn giao'}
+                        {project.warranty_end_date
+                          ? `Đến ngày: ${new Date(project.warranty_end_date).toLocaleDateString('vi-VN')}`
+                          : 'Theo điều khoản hợp đồng xây lắp & loại công trình'}
                       </p>
                     </div>
                   </div>

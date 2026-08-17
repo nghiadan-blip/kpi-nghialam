@@ -4,6 +4,8 @@ import { AuthRequest, logAudit } from '../middleware/auth';
 import {
   WORKFLOW_16_STEPS,
   SIGNING_CHECKLIST_TEMPLATE,
+  PROGRESS_GAP_WARNING_THRESHOLD,
+  PROGRESS_GAP_DANGER_THRESHOLD,
   canReadProjectsList,
   canReadProjectDetail,
   canCreateProject,
@@ -114,8 +116,12 @@ export async function getProjects(req: AuthRequest, res: Response): Promise<void
         'inv.obstacle_note as inv_obstacle_note'
       );
 
-    // Filter scope
-    if (!['LEADERSHIP', 'ADMIN'].includes(user.role) && user.department_id !== 3) {
+    // Filter scope: Employees can only see their assigned or created projects
+    if (user.role === 'EMPLOYEE') {
+      query = query.where((builder) => {
+        builder.where('pr.project_manager_id', user.id).orWhere('pr.created_by', user.id);
+      });
+    } else if (user.role === 'DEPARTMENT_HEAD' && user.department_id !== 3) {
       query = query.where((builder) => {
         builder.where('pr.project_manager_id', user.id).orWhere('pr.created_by', user.id);
       });
@@ -1076,6 +1082,9 @@ export async function getDashboard(req: AuthRequest, res: Response): Promise<voi
     let totalDisbRate = 0;
     let countWithRate = 0;
 
+    const warningThreshold = Number(req.query.warning_gap || PROGRESS_GAP_WARNING_THRESHOLD);
+    const dangerThreshold = Number(req.query.danger_gap || PROGRESS_GAP_DANGER_THRESHOLD);
+
     for (const p of projects) {
       // Nhóm
       if (p.investment_group === 'A') stats.by_group.A++;
@@ -1121,7 +1130,7 @@ export async function getDashboard(req: AuthRequest, res: Response): Promise<voi
       const progPercent = Number(p.inv_actual_progress_percent || 0);
       const gap = Math.round((disbRate - progPercent) * 100) / 100;
 
-      if (gap > 15) {
+      if (gap > warningThreshold) {
         stats.progress_gaps.push({
           id: p.id,
           project_code: p.project_code,
@@ -1129,8 +1138,8 @@ export async function getDashboard(req: AuthRequest, res: Response): Promise<voi
           disbursement_rate: disbRate,
           progress_percent: progPercent,
           gap,
-          alert_level: gap > 30 ? 'danger' : 'warning',
-          reason: `Tỷ lệ giải ngân (${disbRate}%) cao hơn tiến độ hiện trường (${progPercent}%) ${gap}%`
+          alert_level: gap > dangerThreshold ? 'danger' : 'warning',
+          reason: `Tỷ lệ giải ngân (${disbRate}%) cao hơn tiến độ hiện trường (${progPercent}%) ${gap}% (Vượt ngưỡng cảnh báo ${warningThreshold}%)`
         });
       } else if (progPercent >= 100 && p.acceptance_status === 'chua_nghiem_thu') {
         stats.progress_gaps.push({
