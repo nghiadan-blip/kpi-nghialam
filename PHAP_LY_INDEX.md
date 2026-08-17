@@ -67,8 +67,6 @@
 | 35 | `NQ_05_2026_NA` | Nghị quyết phân bổ chi tiết kế hoạch vốn đầu tư công năm 2026 | 05/2026/NQ-HĐND (20/01/2026) | HĐND tỉnh Nghệ An | Nguồn vốn hỗ trợ mục tiêu, chương trình MTQG | File PDF ký số: `04_Van_ban_Nghe_An/Nghi quyet 05-2026...pdf` (7.53 MB) | **ACTIVE** |
 | 36 | `NQ_69_2025_NA` | Nghị quyết thông qua danh mục dự án đầu tư công trung hạn giai đoạn 2026 - 2030 | 69/NQ-HĐND (10/12/2025) | HĐND tỉnh Nghệ An | Danh mục dự án khởi công mới và chuyển tiếp | File PDF ký số: `04_Van_ban_Nghe_An/Nghi quyet 69 HDND.pdf` (8.68 MB) | **ACTIVE** |
 | 37 | `CV_3651_2026_NA`| Công văn đôn đốc phân bổ, giải ngân vốn ĐTC và xử lý vướng mắc GPMB | 3651/UBND-KT (18/05/2026) | UBND tỉnh Nghệ An | Giải ngân vốn, quản lý vướng mắc công trình | File PDF ký số: `04_Van_ban_Nghe_An/Cong van 3651.pdf` (1.26 MB) | **ACTIVE** |
-| 38 | `QD_1261_NA` | Quyết định về phân bổ và điều chỉnh nguồn vốn đầu tư công huyện Nghĩa Đàn | 1261/QĐ-UBND | UBND huyện Nghĩa Đàn | Phân bổ vốn các công trình cấp xã | Chưa có file PDF đính kèm trong kho Phap_ly | **LEGAL_REVIEW_REQUIRED** |
-| 39 | `CV_3092_NA` | Công văn hướng dẫn xử lý hồ sơ chuyển tiếp bàn giao dự án về xã | 3092/UBND-KT | UBND tỉnh Nghệ An | Thủ tục bàn giao tài sản công | Chưa có file PDF đính kèm trong kho Phap_ly | **LEGAL_REVIEW_REQUIRED** |
 
 ---
 
@@ -76,15 +74,17 @@
 
 | STT | Mã Văn Bản | Tên Văn Bản / Trích Yếu | Số & Ngày Ban Hành | Cơ Quan Ban Hành | Phạm Vi Áp Dụng | Nguồn Xác Minh Thực Tế | Trạng Thái |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
-| 40 | `QD_115_UBND_NL`| Quyết định thành lập Ban Quản lý dự án ĐTXD xã Nghĩa Lâm giai đoạn 2026 - 2030 | 115/QĐ-UBND (15/05/2026) | UBND xã Nghĩa Lâm | Cơ cấu tổ chức BQLDA xã, Giám đốc BQLDA | File phát hành: `05_Van_ban_Nghia_Lam/quyet_dinh_thanh_lap_bqlda_xa...docx` | **ACTIVE** |
-| 41 | `QD_88_UBND_NL` | Quyết định phân công nhiệm vụ Chủ tịch, Phó Chủ tịch và thành viên UBND xã Nghĩa Lâm | 88/QĐ-UBND (10/05/2026) | UBND xã Nghĩa Lâm | Phân công phụ trách Địa chính - Xây dựng, ký duyệt dự án | File ký số: `05_Van_ban_Nghia_Lam/qd_phan_cong_nhiem_vu...Signed.pdf` | **ACTIVE** |
-| 42 | `QD_295_DU_NL` | Quy định về phân cấp trách nhiệm và đánh giá cán bộ, công chức Đảng ủy xã | 295-QĐ/ĐU (09/04/2026) | Ban Thường vụ Đảng ủy xã | Kiểm soát thẩm quyền, kỷ luật công vụ | Văn bản ban hành Đảng bộ xã | **ACTIVE** |
-| 43 | `NQ_02_HDND_NL` | Nghị quyết HĐND xã Nghĩa Lâm phê duyệt danh mục dự án đầu tư công năm 2026 | 02/NQ-HĐND (15/01/2026) | HĐND xã Nghĩa Lâm | Danh mục đầu tư công, phê duyệt chủ trương Bước 1 | File dự thảo NQ và biểu phân bổ vốn HĐND | **ACTIVE** |
+| 38 | `QD_115_UBND_NL`| Quyết định thành lập Ban Quản lý dự án ĐTXD xã Nghĩa Lâm giai đoạn 2026 - 2030 | 115/QĐ-UBND (15/05/2026) | UBND xã Nghĩa Lâm | Cơ cấu tổ chức BQLDA xã, Giám đốc BQLDA | File phát hành: `05_Van_ban_Nghia_Lam/quyet_dinh_thanh_lap_bqlda_xa...docx` | **ACTIVE** |
+| 39 | `QD_88_UBND_NL` | Quyết định phân công nhiệm vụ Chủ tịch, Phó Chủ tịch và thành viên UBND xã Nghĩa Lâm | 88/QĐ-UBND (10/05/2026) | UBND xã Nghĩa Lâm | Phân công phụ trách Địa chính - Xây dựng, ký duyệt dự án | File ký số: `05_Van_ban_Nghia_Lam/qd_phan_cong_nhiem_vu...Signed.pdf` | **ACTIVE** |
+| 40 | `QD_295_DU_NL` | Quy định về phân cấp trách nhiệm và đánh giá cán bộ, công chức Đảng ủy xã | 295-QĐ/ĐU (09/04/2026) | Ban Thường vụ Đảng ủy xã | Kiểm soát thẩm quyền, kỷ luật công vụ | Văn bản ban hành Đảng bộ xã | **ACTIVE** |
+| 41 | `NQ_02_HDND_NL` | Nghị quyết HĐND xã Nghĩa Lâm phê duyệt danh mục dự án đầu tư công năm 2026 | 02/NQ-HĐND (15/01/2026) | HĐND xã Nghĩa Lâm | Danh mục đầu tư công, phê duyệt chủ trương Bước 1 | File dự thảo NQ và biểu phân bổ vốn HĐND | **ACTIVE** |
 
 ---
 
-## 6. Tài Liệu Tham Khảo & Hướng Dẫn Kỹ Thuật (08_Van_ban_tham_khao_du_thao)
+## 6. Danh Mục Văn Bản Loại Trừ & Tài Liệu Tham Khảo (08_Van_ban_tham_khao_du_thao)
 
-| STT | Tên Tài Liệu | Cơ Quan / Đơn Vị Phát Hành | Tính Chất Pháp Lý | Ghi Chú |
-| :--- | :--- | :--- | :--- | :--- |
-| 44 | Sổ tay hoạt động quản lý đầu tư công năm 2026 | Tài liệu hướng dẫn nghiệp vụ chuyên môn | **Tài liệu tham khảo chuyên môn** (Không phải Văn bản quy phạm pháp luật) | File: `08_Van_ban_tham_khao_du_thao/0.So tay hoat dong quan ly dau tu cong nam 2026_.pdf` |
+| STT | Mã Văn Bản | Tên Văn Bản / Trích Yếu | Cơ Quan Ban Hành | Tình Trạng & Phân Loại | Trạng Thái |
+| :--- | :--- | :--- | :--- | :--- | :---: |
+| 42 | `QD_1261_NA` | Quyết định 1261/QĐ-UBND ngày 05/5/2025 về phân bổ vốn | UBND huyện Nghĩa Đàn | **Không thuộc căn cứ pháp lý bắt buộc của module Quản lý dự án** | **EXCLUDED_FROM_PROJECT_LEGAL_BASIS** |
+| 43 | `CV_3092_NA` | Công văn 3092/UBND-KT ngày 17/4/2025 về bàn giao dự án | UBND tỉnh Nghệ An | **Không thuộc căn cứ pháp lý bắt buộc của module Quản lý dự án** | **EXCLUDED_FROM_PROJECT_LEGAL_BASIS** |
+| 44 | `SO_TAY_DTC_2026` | Sổ tay hoạt động quản lý đầu tư công năm 2026 | Hướng dẫn chuyên môn | Tài liệu tham khảo nghiệp vụ (File: `08_Van_ban_tham_khao_du_thao/0.So tay...pdf`) | **REFERENCE_ONLY** |

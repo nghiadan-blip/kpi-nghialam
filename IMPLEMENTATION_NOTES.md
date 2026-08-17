@@ -482,3 +482,34 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
   - Server TypeScript Build: **Exit code 0**
   - Client Vite Build: **Exit code 0**
 - Tuân thủ nghiêm ngặt quy chế: **Giữ toàn bộ commit trên branch `feat/project-legal-compliance-2026`, không merge main, không deploy production.**
+
+---
+
+## 14. Rà Soát Xác Minh Bản Gốc Pháp Lý & Hoàn Tất Điều Kiện Merge Gate (Final Legal Verification & Merge Gate)
+
+- **Nhánh làm việc (Branch)**: `feat/project-legal-compliance-2026`
+- **Mục tiêu**: Thực thi toàn bộ chỉ thị theo `ANTIGRAVITY_FINAL_LEGAL_VERIFICATION_AND_MERGE_GATE.md` và chỉ đạo loại trừ các văn bản không bắt buộc.
+
+### 14.1. Kết Quả Xác Minh Bản Gốc & Chuẩn Hóa Căn Cứ Pháp Lý:
+1. **Nghị định 214/2025/NĐ-CP**:
+   - Xác minh trực tiếp file gốc `Phap_ly/02_Nghi_dinh/214_2025_ND-CP_668157.docx`.
+   - Tên chính thức: *Nghị định quy định chi tiết một số điều và biện pháp thi hành Luật Đấu thầu về lựa chọn nhà thầu* (Ban hành 04/8/2025).
+   - Quy trình lựa chọn nhà thầu qua mạng và chỉ định thầu tại Điều 78, 79, 80; hạn mức chỉ định thầu áp dụng theo Điểm m Khoản 1 Điều 23 Luật Đấu thầu số 22/2023/QH15.
+2. **Quan hệ bãi bỏ giữa NĐ 24/2024 và NĐ 214/2025**:
+   - Khoản 2 Điều 145 NĐ 214/2025/NĐ-CP bãi bỏ toàn bộ NĐ 24/2024/NĐ-CP kể từ ngày 04/8/2025.
+   - NĐ 24/2024/NĐ-CP chuyển sang trạng thái `REPLACED / TRANSITION_ONLY`.
+3. **Cập nhật phạm vi loại trừ**:
+   - Quyết định 1261/QĐ-UBND và Công văn 3092/UBND-KT chính thức được loại trừ khỏi căn cứ bắt buộc (`EXCLUDED_FROM_PROJECT_LEGAL_BASIS`), không còn là rào cản chặn nghiệm thu.
+4. **Văn bản tỉnh Nghệ An & xã Nghĩa Lâm chính thức**:
+   - QĐ 13/2026/QĐ-UBND tỉnh Nghệ An, NQ 05/2026/NQ-HĐND, NQ 69/NQ-HĐND, CV 3651/UBND-KT, QĐ 115/QĐ-UBND xã Nghĩa Lâm, QĐ 88/QĐ-UBND xã Nghĩa Lâm đã được xác minh bản gốc ký số `ACTIVE`.
+5. **Phân loại tài liệu**:
+   - Luật XD 135/2025 (hiệu lực 01/7/2026) là căn cứ chính thức.
+   - NĐ 335/2025 thuộc phân hệ KPI.
+   - Sổ tay ĐTC 2026 là tài liệu tham khảo chuyên môn.
+
+### 14.2. Kết Luận Nghiệm Thu Cuối Cùng (100% PASS):
+- **Kiểm thử tự động**: `test_project_comprehensive_v2.ts` đạt **20/20 PASSED (100%)**.
+- **Đóng gói mã nguồn**: Server TypeScript & Client Vite build thành công (**Exit code 0**).
+- **Kết luận**: **ĐẠT 100% TIÊU CHUẨN NGHIỆM THU KỸ THUẬT & PHÁP LÝ. ĐỦ ĐIỀU KIỆN HOÀN TẤT MODULE TRÊN BRANCH `feat/project-legal-compliance-2026`**.
+- **Kỷ luật repository**: Không merge vào `main`, không deploy production.
+
