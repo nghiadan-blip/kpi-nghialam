@@ -233,6 +233,101 @@ export const LandCertificates: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats Board */}
+      {activeTab === 'cases' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-slate-400" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Tổng số hồ sơ</span>
+            {cases.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-slate-800 mt-1 ml-1.5">{cases.length} hồ sơ</span>
+            )}
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-emerald-500" />
+            <span className="text-[10px] font-bold text-emerald-800 uppercase ml-1.5">Luồng Xanh (Bình thường)</span>
+            {cases.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-emerald-700 mt-1 ml-1.5">
+                {cases.filter(c => c.case_group === 'Xanh').length} hồ sơ
+              </span>
+            )}
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-amber-500" />
+            <span className="text-[10px] font-bold text-amber-800 uppercase ml-1.5">Luồng Vàng (Bổ sung)</span>
+            {cases.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-amber-700 mt-1 ml-1.5">
+                {cases.filter(c => c.case_group === 'Vàng').length} hồ sơ
+              </span>
+            )}
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-rose-500" />
+            <span className="text-[10px] font-bold text-rose-800 uppercase ml-1.5">Luồng Đỏ (Phức tạp / Tranh chấp)</span>
+            {cases.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-rose-700 mt-1 ml-1.5">
+                {cases.filter(c => c.case_group === 'Đỏ').length} hồ sơ
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-slate-400" />
+            <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Tổng số thửa đất xóm</span>
+            {kh965List.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-slate-800 mt-1 ml-1.5">
+                {kh965List.reduce((sum, k) => sum + (k.total_plots || 0), 0)} thửa
+              </span>
+            )}
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-sky-500" />
+            <span className="text-[10px] font-bold text-sky-800 uppercase ml-1.5">Đã rà soát</span>
+            {kh965List.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-sky-700 mt-1 ml-1.5">
+                {kh965List.reduce((sum, k) => sum + (k.reviewed_plots || 0), 0)} thửa
+              </span>
+            )}
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-emerald-500" />
+            <span className="text-[10px] font-bold text-emerald-800 uppercase ml-1.5">Đã phân loại</span>
+            {kh965List.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-emerald-700 mt-1 ml-1.5">
+                {kh965List.reduce((sum, k) => sum + (k.classified_plots || 0), 0)} thửa
+              </span>
+            )}
+          </div>
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute left-0 top-0 h-full w-1.5 bg-amber-500" />
+            <span className="text-[10px] font-bold text-amber-800 uppercase ml-1.5">Thửa phức tạp / bổ sung</span>
+            {kh965List.length === 0 ? (
+              <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+            ) : (
+              <span className="text-xl font-black text-amber-700 mt-1 ml-1.5">
+                {kh965List.reduce((sum, k) => sum + (k.complex_cases || 0) + (k.need_supplement_cases || 0), 0)} thửa
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Tabs Menu */}
       <div className="flex border-b border-slate-200">
         <button

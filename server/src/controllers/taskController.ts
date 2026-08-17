@@ -138,22 +138,32 @@ export async function getTaskStats(req: AuthRequest, res: Response): Promise<voi
     const tasks = await query;
     const now = new Date();
 
-    let total = tasks.length;
+    let total = 0;
     let pending = 0;
     let in_progress = 0;
     let completed = 0;
     let overdue = 0;
+    let cancelled = 0;
+    let unknown = 0;
 
     for (const t of tasks) {
-      if (t.status === 'COMPLETED') {
-        completed++;
-      } else if (new Date(t.deadline) < now) {
-        overdue++;
-        if (t.status === 'PENDING') pending++;
-        if (t.status === 'IN_PROGRESS') in_progress++;
+      const statusUpper = (t.status || '').toUpperCase();
+      if (statusUpper === 'CANCELLED') {
+        cancelled++;
       } else {
-        if (t.status === 'PENDING') pending++;
-        if (t.status === 'IN_PROGRESS') in_progress++;
+        total++;
+        const isOverdue = new Date(t.deadline) < now;
+        if (statusUpper === 'COMPLETED') {
+          completed++;
+        } else if (isOverdue) {
+          overdue++;
+        } else if (statusUpper === 'IN_PROGRESS') {
+          in_progress++;
+        } else if (statusUpper === 'PENDING') {
+          pending++;
+        } else {
+          unknown++;
+        }
       }
     }
 
@@ -164,6 +174,8 @@ export async function getTaskStats(req: AuthRequest, res: Response): Promise<voi
         in_progress,
         completed,
         overdue,
+        cancelled,
+        unknown,
       },
     });
   } catch (err) {

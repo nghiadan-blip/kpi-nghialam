@@ -194,3 +194,49 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 7. **Đóng gói dự án (Vite & TSC build)**:
    - Build thành công toàn bộ ứng dụng (Exit code 0).
    - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
+
+---
+
+## 10. Nhật ký Nâng cấp Logic Dashboard KPI & Điều hành Chuyên đề (Giai đoạn Dashboard)
+
+- **Nhánh làm việc (Branch)**: `fix/dashboard-kpi-period-logic`
+- **Commit SHA**: `ecd3db92053d5cfac4a5867932373bda3c7ec4d1`
+- **Commit message**: `Fix KPI dashboard period and task status aggregation`
+
+### 📂 P0: Logic Tổng Hợp & Đánh Giá Không Đếm Chồng (Kỳ Báo Cáo):
+1. **Phạm vi Kỳ Báo Cáo**:
+   - [`server/src/controllers/reportController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/reportController.ts): Sửa `getDashboardStats` để mọi chỉ số đều được lọc theo đúng tháng/năm (`currentMonth`). Tổng số cán bộ (`totalActiveStaff`) được lấy từ danh sách cán bộ đang hoạt động (`status = 'ACTIVE'`) trừ vai trò `ADMIN`.
+2. **Không Đếm Chồng Cán Bộ**:
+   - Thống kê cán bộ tự chấm, thẩm định, phê duyệt thỏa mãn quan hệ bất đẳng thức nghiêm ngặt:
+     $$classifiedStaff \le approvedStaff \le reviewedStaff \le selfSubmittedStaff \le assignedStaff \le totalActiveStaff$$
+     Trong đó:
+     - `selfSubmittedStaff`: Các cán bộ đã nộp tự đánh giá (`SUBMITTED`, `MANAGER_REVIEWED`, `APPROVED`).
+     - `reviewedStaff`: Các cán bộ đã được Trưởng bộ phận thẩm định (`MANAGER_REVIEWED`, `APPROVED`).
+     - `approvedStaff` & `classifiedStaff`: Cán bộ đã được Lãnh đạo phê duyệt chính thức (`APPROVED`).
+     - `notStartedStaff`: Cán bộ chưa có đánh giá hoặc chỉ đang giữ nháp (`DRAFT`).
+3. **Phân Nhóm Nhiệm Vụ Loại Trừ Lẫn Nhau**:
+   - [`server/src/controllers/reportController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/reportController.ts), [`server/src/controllers/taskController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/taskController.ts), và [`server/src/controllers/executiveDashboardController.ts`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/server/src/controllers/executiveDashboardController.ts): Đồng bộ logic đếm trạng thái nhiệm vụ. Loại trừ nhiệm vụ `CANCELLED` trước khi tính. Các trạng thái còn lại được tính loại trừ lẫn nhau:
+     - `completed`: Trạng thái là `COMPLETED`.
+     - `overdue`: Trạng thái không phải `COMPLETED` và quá hạn deadline.
+     - `in_progress`: Trạng thái `IN_PROGRESS` và chưa quá deadline.
+     - `pending`: Trạng thái `PENDING` và chưa quá deadline.
+     - `unknown`: Trạng thái không hợp lệ khác.
+     - Công thức bảo toàn: `activeTaskTotal = completed + overdue + in_progress + pending + unknown`.
+
+### 📂 P1: Chuẩn Hóa dataStatus & Validation Kỳ:
+1. **dataStatus Metadata**:
+   - Backend tự phân tích và trả về các trạng thái `tasksStatus` và `evaluationsStatus` thuộc `['NO_DATA', 'NOT_APPLICABLE', 'PENDING', 'AVAILABLE']`.
+   - [`client/src/pages/Dashboard.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/Dashboard.tsx): Hiển thị nhãn trực quan: `Chưa cập nhật dữ liệu` cho `NO_DATA`, `Không phát sinh` cho `NOT_APPLICABLE`, `0/N (Chưa thực hiện)` nhấp nháy cho `PENDING`.
+2. **Validate Tháng/Năm ở Cả Hai Đầu**:
+   - Backend: Kiểm tra định dạng `YYYY-MM` và phạm vi tháng `1 - 12`, năm `2020 - 2050`, trả về HTTP 400 và lỗi tiếng Việt nếu không đúng.
+   - Frontend: Ràng buộc người dùng khi chọn input tháng và xóa sạch state cũ (`setData(null)`) trước khi fetch dữ liệu kỳ mới để tránh lưu dữ liệu cũ.
+3. **Hiển Thị Tỷ Lệ 2 Chữ Số Thập Phân**:
+   - Định dạng tỷ lệ tiến độ hoàn thành dưới dạng `25/58 (43,10%)` bằng dấu phẩy kiểu Việt Nam.
+
+### 📂 P2: Dashboard Chuyên Đề:
+1. **Bảng Điều Hành Ngân Sách, Đầu Tư Công, Đất Đai, Văn Phòng**:
+   - Tích hợp bảng thống kê nhanh (Stats Board) có tính toán động tại đầu trang các phân hệ tương ứng: [`Budget.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/Budget.tsx), [`PublicInvestment.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/PublicInvestment.tsx), [`LandCertificates.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/LandCertificates.tsx), và [`OfficeManagement.tsx`](file:///d:/Dropbox/Văn%20bản/UBND%20xa%20Nghia%20Lam/CBCC/cbcc-app/client/src/pages/OfficeManagement.tsx).
+   - Tự động hiển thị `Chưa cập nhật dữ liệu (NO_DATA)` thay thế các con số 0 gây hiểu nhầm khi chưa có bản ghi phát sinh.
+2. **Tiến Độ Đánh Giá 3 Bước**:
+   - Thêm widget trực quan `Trạng Thái Đánh Giá & Thẩm Định Theo Kỳ` ngay trên Dashboard để theo dõi tỷ lệ phần trăm và số lượng cán bộ tại từng bước trong quy trình.
+

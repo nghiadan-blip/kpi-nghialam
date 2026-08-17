@@ -34,6 +34,7 @@ export const Dashboard: React.FC = () => {
 
   const fetchDashboard = async () => {
     setLoading(true);
+    setData(null); // Clear old stats to prevent keeping old numbers
     try {
       const res = await reportsApi.getDashboardStats(selectedMonth);
       setData(res);
@@ -95,6 +96,13 @@ export const Dashboard: React.FC = () => {
     totalEvaluations: data?.summary?.totalEvaluations ?? data?.totalEvaluations ?? 0,
     approvedEvaluationsCount: data?.summary?.approvedEvaluationsCount ?? data?.approvedEvaluationsCount ?? 0,
     evalCompletionRate: data?.summary?.evalCompletionRate ?? data?.evalCompletionRate ?? 0,
+    totalActiveStaff: data?.summary?.totalActiveStaff ?? 0,
+    assignedStaff: data?.summary?.assignedStaff ?? 0,
+    selfSubmittedStaff: data?.summary?.selfSubmittedStaff ?? 0,
+    reviewedStaff: data?.summary?.reviewedStaff ?? 0,
+    approvedStaff: data?.summary?.approvedStaff ?? 0,
+    classifiedStaff: data?.summary?.classifiedStaff ?? 0,
+    notStartedStaff: data?.summary?.notStartedStaff ?? 0,
   };
 
   const classifications = data?.classifications || {
@@ -376,7 +384,18 @@ export const Dashboard: React.FC = () => {
               <input
                 type="month"
                 value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const parts = val.split('-');
+                  if (parts.length === 2) {
+                    const y = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10);
+                    if (!isNaN(y) && !isNaN(m) && m >= 1 && m <= 12 && y >= 2020 && y <= 2050) {
+                      setSelectedMonth(val);
+                    }
+                  }
+                }}
                 className="px-3 py-1.5 border border-slate-300 rounded-lg text-xs bg-white font-bold text-slate-800 focus:ring-2 focus:ring-sky-500"
               />
               <button
@@ -417,20 +436,39 @@ export const Dashboard: React.FC = () => {
                   <CheckSquare className="w-5 h-5" />
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline space-x-2">
-                <span className="text-3xl font-black text-sky-700">{summary.completedTasks}</span>
-                <span className="text-xs text-slate-500">/ {summary.totalTasks} việc</span>
-              </div>
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Tỷ lệ hoàn thành:</span>
-                <span className="font-bold text-sky-700">{summary.taskCompletionRate}%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
-                <div
-                  className="bg-sky-600 h-1.5 rounded-full transition-all duration-500"
-                  style={{ width: `${summary.taskCompletionRate}%` }}
-                />
-              </div>
+              {data?.summary?.tasksStatus === 'NO_DATA' ? (
+                <div className="mt-4 text-xs font-bold text-slate-400">Chưa cập nhật dữ liệu</div>
+              ) : data?.summary?.tasksStatus === 'NOT_APPLICABLE' ? (
+                <div className="mt-4 text-xs font-bold text-slate-400">Không phát sinh</div>
+              ) : data?.summary?.tasksStatus === 'PENDING' ? (
+                <>
+                  <div className="mt-3 flex items-baseline space-x-2">
+                    <span className="text-3xl font-black text-slate-400">0</span>
+                    <span className="text-xs text-slate-500">/ {summary.totalTasks} việc</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <span className="text-amber-600 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded animate-pulse">Chưa thực hiện</span>
+                    <span className="font-bold text-slate-400">0,00%</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-baseline space-x-2">
+                    <span className="text-3xl font-black text-sky-700">{summary.completedTasks}</span>
+                    <span className="text-xs text-slate-500">/ {summary.totalTasks} việc</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Tỷ lệ hoàn thành:</span>
+                    <span className="font-bold text-sky-700">{Number(summary.taskCompletionRate).toFixed(2).replace('.', ',')}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                    <div
+                      className="bg-sky-600 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${summary.taskCompletionRate}%` }}
+                    />
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Metric 3: Overdue Tasks */}
@@ -468,19 +506,110 @@ export const Dashboard: React.FC = () => {
                   <Award className="w-5 h-5" />
                 </div>
               </div>
-              <div className="mt-3 flex items-baseline space-x-2">
-                <span className="text-3xl font-black text-amber-600">{summary.approvedEvaluationsCount}</span>
-                <span className="text-xs text-slate-500">/ {summary.totalUsers} cán bộ</span>
+              {data?.summary?.evaluationsStatus === 'NO_DATA' ? (
+                <div className="mt-4 text-xs font-bold text-slate-400">Chưa cập nhật dữ liệu</div>
+              ) : data?.summary?.evaluationsStatus === 'NOT_APPLICABLE' ? (
+                <div className="mt-4 text-xs font-bold text-slate-400">Không phát sinh</div>
+              ) : data?.summary?.evaluationsStatus === 'PENDING' ? (
+                <>
+                  <div className="mt-3 flex items-baseline space-x-2">
+                    <span className="text-3xl font-black text-slate-400">0</span>
+                    <span className="text-xs text-slate-500">/ {summary.totalUsers} cán bộ</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <span className="text-amber-600 font-bold bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded animate-pulse">Chưa thực hiện</span>
+                    <span className="font-bold text-slate-400">0,00%</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-baseline space-x-2">
+                    <span className="text-3xl font-black text-amber-600">{summary.approvedEvaluationsCount}</span>
+                    <span className="text-xs text-slate-500">/ {summary.totalUsers} cán bộ</span>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Tỷ lệ phê duyệt:</span>
+                    <span className="font-bold text-amber-600">{Number(summary.evalCompletionRate).toFixed(2).replace('.', ',')}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                    <div
+                      className="bg-amber-500 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${summary.evalCompletionRate}%` }}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Evaluation Step Progress Checklist */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">
+                  Trạng Thái Đánh Giá & Thẩm Định Theo Kỳ (Tháng {selectedMonth})
+                </h3>
+                <p className="text-xs text-slate-500">Quy trình đánh giá 3 bước liên thông theo Nghị định 335</p>
               </div>
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="text-slate-600 font-medium">Tỷ lệ phê duyệt:</span>
-                <span className="font-bold text-amber-600">{summary.evalCompletionRate}%</span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Step 1: Active Staff */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tổng CBCC Hoạt Động</div>
+                <div className="mt-1 flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-black text-slate-800">{summary.totalActiveStaff ?? 0}</span>
+                  <span className="text-xs text-slate-500">cán bộ</span>
+                </div>
+                <div className="text-[10px] text-slate-400 mt-1">Phạm vi kỳ báo cáo</div>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1.5 overflow-hidden">
-                <div
-                  className="bg-amber-500 h-1.5 rounded-full transition-all duration-500"
-                  style={{ width: `${summary.evalCompletionRate}%` }}
-                />
+
+              {/* Step 2: Assigned Staff */}
+              <div className="bg-sky-50/50 p-4 rounded-xl border border-sky-100">
+                <div className="text-[10px] font-bold text-sky-800 uppercase tracking-wider">Có Việc / Có Phiếu</div>
+                <div className="mt-1 flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-black text-sky-700">{summary.assignedStaff ?? 0}</span>
+                  <span className="text-xs text-sky-600">/ {summary.totalActiveStaff ?? 0}</span>
+                </div>
+                <div className="text-[10px] text-sky-600 font-semibold mt-1">
+                  {summary.totalActiveStaff > 0 ? Number((summary.assignedStaff / summary.totalActiveStaff) * 100).toFixed(2).replace('.', ',') : '0,00'}%
+                </div>
+              </div>
+
+              {/* Step 3: Self Submitted */}
+              <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-100">
+                <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Bước 1: Đã Tự Chấm</div>
+                <div className="mt-1 flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-black text-amber-700">{summary.selfSubmittedStaff ?? 0}</span>
+                  <span className="text-xs text-amber-600">/ {summary.totalActiveStaff ?? 0}</span>
+                </div>
+                <div className="text-[10px] text-amber-600 font-semibold mt-1">
+                  {summary.totalActiveStaff > 0 ? Number((summary.selfSubmittedStaff / summary.totalActiveStaff) * 100).toFixed(2).replace('.', ',') : '0,00'}%
+                </div>
+              </div>
+
+              {/* Step 4: Reviewed */}
+              <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                <div className="text-[10px] font-bold text-indigo-800 uppercase tracking-wider">Bước 2: Đã Thẩm Định</div>
+                <div className="mt-1 flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-black text-indigo-700">{summary.reviewedStaff ?? 0}</span>
+                  <span className="text-xs text-indigo-600">/ {summary.totalActiveStaff ?? 0}</span>
+                </div>
+                <div className="text-[10px] text-indigo-600 font-semibold mt-1">
+                  {summary.totalActiveStaff > 0 ? Number((summary.reviewedStaff / summary.totalActiveStaff) * 100).toFixed(2).replace('.', ',') : '0,00'}%
+                </div>
+              </div>
+
+              {/* Step 5: Approved */}
+              <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Bước 3: Đã Phê Duyệt</div>
+                <div className="mt-1 flex items-baseline space-x-1.5">
+                  <span className="text-2xl font-black text-emerald-700">{summary.approvedStaff ?? 0}</span>
+                  <span className="text-xs text-emerald-600">/ {summary.totalActiveStaff ?? 0}</span>
+                </div>
+                <div className="text-[10px] text-emerald-600 font-semibold mt-1">
+                  {summary.totalActiveStaff > 0 ? Number((summary.approvedStaff / summary.totalActiveStaff) * 100).toFixed(2).replace('.', ',') : '0,00'}%
+                </div>
               </div>
             </div>
           </div>
@@ -573,11 +702,11 @@ export const Dashboard: React.FC = () => {
                         <span className="text-slate-800 truncate max-w-[220px] font-semibold">{d.name}</span>
                         {hasTasks ? (
                           <span className="text-slate-700 font-bold">
-                            {d.completed}/{d.total} ({d.rate}%)
+                            {d.completed}/{d.total} ({Number(d.rate).toFixed(2).replace('.', ',')}%)
                           </span>
                         ) : (
                           <span className="text-slate-400 font-medium italic">
-                            Chưa có nhiệm vụ (0/0)
+                            Không phát sinh
                           </span>
                         )}
                       </div>

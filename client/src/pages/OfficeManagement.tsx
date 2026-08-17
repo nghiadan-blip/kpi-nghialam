@@ -184,6 +184,55 @@ export const OfficeManagement: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats Board */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-slate-400" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Tổng số đề xuất</span>
+          {requests.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-slate-800 mt-1 ml-1.5">{requests.length} đề xuất</span>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-amber-500" />
+          <span className="text-[10px] font-bold text-amber-800 uppercase ml-1.5">Đề xuất chờ duyệt</span>
+          {requests.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-amber-700 mt-1 ml-1.5">
+              {requests.filter(r => r.status === 'submitted').length} đề xuất
+            </span>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-emerald-500" />
+          <span className="text-[10px] font-bold text-emerald-800 uppercase ml-1.5">Đã phê duyệt</span>
+          {requests.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-emerald-700 mt-1 ml-1.5">
+              {requests.filter(r => r.status === 'approved').length} đề xuất
+            </span>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-sky-500" />
+          <span className="text-[10px] font-bold text-sky-800 uppercase ml-1.5">Chi phí đã duyệt</span>
+          {requests.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-sky-700 mt-1 ml-1.5">
+              {formatVND(requests.reduce((sum, r) => sum + (r.approved_cost || 0), 0))}
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Filters Area */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col md:flex-row md:items-center gap-4 text-xs font-bold text-slate-600">
         <div className="w-full md:w-64">

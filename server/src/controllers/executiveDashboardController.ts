@@ -56,11 +56,34 @@ export async function getExecutiveDashboard(req: AuthRequest, res: Response): Pr
 
     // 1. Tasks Stats
     const tasks = await db('tasks').select('status', 'deadline');
-    let totalTasks = tasks.length;
-    let completedTasks = tasks.filter(t => t.status === 'COMPLETED').length;
-    let overdueTasks = tasks.filter(t => t.status !== 'COMPLETED' && new Date(t.deadline) < now).length;
-    let pendingTasks = tasks.filter(t => t.status === 'PENDING').length;
-    let inProgressTasks = tasks.filter(t => t.status === 'IN_PROGRESS').length;
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let overdueTasks = 0;
+    let pendingTasks = 0;
+    let inProgressTasks = 0;
+    let cancelledTasks = 0;
+    let unknownTasks = 0;
+
+    for (const t of tasks) {
+      const statusUpper = (t.status || '').toUpperCase();
+      if (statusUpper === 'CANCELLED') {
+        cancelledTasks++;
+      } else {
+        totalTasks++;
+        const isOverdue = new Date(t.deadline) < now;
+        if (statusUpper === 'COMPLETED') {
+          completedTasks++;
+        } else if (isOverdue) {
+          overdueTasks++;
+        } else if (statusUpper === 'IN_PROGRESS') {
+          inProgressTasks++;
+        } else if (statusUpper === 'PENDING') {
+          pendingTasks++;
+        } else {
+          unknownTasks++;
+        }
+      }
+    }
 
     // 2. Budget Stats
     const revenues = await db('budget_revenue_items').where('year', currentYear);

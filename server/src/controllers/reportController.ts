@@ -19,48 +19,54 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
 
     const currentMonth = req.query.month ? String(req.query.month) : new Date().toISOString().slice(0, 7);
 
-    // 1. General Metrics
-    const userRows = await db('users').where('status', 'ACTIVE').select('id');
-    const deptRows = await db('departments').select('id');
-
-    const totalUsers = userRows.length;
-    const totalDepartments = deptRows.length;
-
-    // 2. Task Metrics
-    const now = new Date();
-    const tasks = await db('tasks as t')
-      .leftJoin('users as u', 't.assigned_to', 'u.id')
-      .select('t.id', 't.status', 't.deadline', 'u.department_id');
-
-    let totalTasks = tasks.length;
-    let completedTasks = 0;
-    let inProgressTasks = 0;
-    let pendingTasks = 0;
-    let overdueTasks = 0;
-
-    for (const t of tasks) {
-      if (t.status === 'COMPLETED') {
-        completedTasks++;
-      } else if (new Date(t.deadline) < now) {
-        overdueTasks++;
-        if (t.status === 'IN_PROGRESS') inProgressTasks++;
-        if (t.status === 'PENDING') pendingTasks++;
-      } else {
-        if (t.status === 'IN_PROGRESS') inProgressTasks++;
-        if (t.status === 'PENDING') pendingTasks++;
-      }
+    // Month & Year Validation
+    if (!/^\d{4}-\d{2}$/.test(currentMonth)) {
+      res.status(400).json({ message: 'Kỳ đánh giá (Tháng/Năm) không đúng định dạng YYYY-MM.' });
+      return;
+    }
+    const parts = currentMonth.split('-');
+    const year = parseInt(parts[0], 10);
+    const monthVal = parseInt(parts[1], 10);
+    if (isNaN(year) || isNaN(monthVal) || monthVal < 1 || monthVal > 12 || year < 2020 || year > 2050) {
+      res.status(400).json({ message: 'Kỳ đánh giá (Tháng/Năm) không hợp lệ (Tháng từ 1-12, Năm từ 2020-2050).' });
+      return;
     }
 
-    const taskCompletionRate = totalTasks > 0 ? Number(((completedTasks / totalTasks) * 100).toFixed(1)) : 0;
+    // 1. General Metrics
+    const activeUsers = await db('users').where('status', 'ACTIVE').whereNot('role', 'ADMIN').select('id');
+    const totalActiveStaff = activeUsers.length;
+    const totalDepartments = (await db('departments').select('id')).length;
 
-    // 3. Evaluation Metrics for current month
+    // 2. Evaluation Metrics for current month
     const evaluations = await db('evaluations as e')
       .join('users as u', 'e.employee_id', 'u.id')
       .where('e.month', currentMonth)
-      .select('e.id', 'e.status', 'e.final_score', 'e.self_score', 'u.fullname');
+      .where('u.status', 'ACTIVE')
+      .whereNot('u.role', 'ADMIN')
+      .select('e.id', 'e.status', 'e.final_score', 'e.self_score', 'e.employee_id');
 
     const totalEvaluations = evaluations.length;
     const approvedEvaluations = evaluations.filter((e) => e.status === 'APPROVED');
+    const approvedStaff = approvedEvaluations.length;
+    const classifiedStaff = approvedStaff;
+
+    const draftEvaluations = evaluations.filter((e) => e.status === 'DRAFT');
+    const submittedEvaluations = evaluations.filter((e) => e.status === 'SUBMITTED');
+    const reviewedEvaluations = evaluations.filter((e) => e.status === 'MANAGER_REVIEWED');
+
+    const reviewedStaff = reviewedEvaluations.length + approvedStaff;
+    const selfSubmittedStaff = submittedEvaluations.length + reviewedStaff;
+    const notStartedStaff = totalActiveStaff - selfSubmittedStaff;
+
+    // Get user IDs with tasks in this month
+    const taskUserIds = await db('tasks')
+      .where('deadline', 'like', `${currentMonth}%`)
+      .distinct('assigned_to')
+      .pluck('assigned_to');
+    
+    const evalUserIds = evaluations.map(e => e.employee_id);
+    const combinedUserIds = Array.from(new Set([...taskUserIds, ...evalUserIds])).filter(id => id !== null);
+    const assignedStaff = activeUsers.filter(u => combinedUserIds.includes(u.id)).length;
 
     let countA = 0;
     let countB = 0;
@@ -75,10 +81,49 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
       else countD++;
     }
 
-    const evalCompletionRate =
-      totalUsers > 0 ? Number(((approvedEvaluations.length / totalUsers) * 100).toFixed(1)) : 0;
+    const evalCompletionRate = totalActiveStaff > 0 ? Number(((approvedStaff / totalActiveStaff) * 100).toFixed(1)) : 0;
 
-    // 4. Department Progress Breakdown
+    // 3. Task Metrics
+    const tasks = await db('tasks as t')
+      .leftJoin('users as u', 't.assigned_to', 'u.id')
+      .where('t.deadline', 'like', `${currentMonth}%`)
+      .select('t.id', 't.status', 't.deadline', 'u.department_id');
+
+    let totalTasks = 0;
+    let completedTasks = 0;
+    let inProgressTasks = 0;
+    let pendingTasks = 0;
+    let overdueTasks = 0;
+    let cancelledTasks = 0;
+    let unknownTasks = 0;
+
+    const now = new Date();
+
+    for (const t of tasks) {
+      const statusUpper = (t.status || '').toUpperCase();
+      if (statusUpper === 'CANCELLED') {
+        cancelledTasks++;
+      } else {
+        totalTasks++;
+        const isOverdue = new Date(t.deadline) < now;
+        
+        if (statusUpper === 'COMPLETED') {
+          completedTasks++;
+        } else if (isOverdue) {
+          overdueTasks++;
+        } else if (statusUpper === 'IN_PROGRESS') {
+          inProgressTasks++;
+        } else if (statusUpper === 'PENDING') {
+          pendingTasks++;
+        } else {
+          unknownTasks++;
+        }
+      }
+    }
+
+    const taskCompletionRate = totalTasks > 0 ? Number(((completedTasks / totalTasks) * 100).toFixed(1)) : 0;
+
+    // 4. Department Progress Breakdown (filtered by month)
     const departments = await db('departments').select('id', 'name');
     const departmentProgress = [];
 
@@ -98,11 +143,13 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
       });
     }
 
-    // 5. Urgent Tasks (Top 5 overdue or close to deadline)
+    // 5. Urgent Tasks (Top 5 overdue or close to deadline for current month)
     const urgentTasks = await db('tasks as t')
       .leftJoin('users as u', 't.assigned_to', 'u.id')
       .leftJoin('departments as d', 'u.department_id', 'd.id')
+      .where('t.deadline', 'like', `${currentMonth}%`)
       .whereNot('t.status', 'COMPLETED')
+      .whereNot('t.status', 'CANCELLED')
       .select(
         't.id',
         't.title',
@@ -135,27 +182,45 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
       .orderBy('e.final_score', 'desc')
       .limit(5);
 
+    // Compute data statuses for P1
+    const tasksStatus = totalTasks === 0 ? 'NO_DATA' : (completedTasks === 0 ? 'PENDING' : 'AVAILABLE');
+    const evaluationsStatus = totalActiveStaff === 0 ? 'NO_DATA' : (approvedStaff === 0 ? 'PENDING' : 'AVAILABLE');
+
     res.status(200).json({
       month: currentMonth,
       summary: {
-        totalUsers,
+        totalUsers: totalActiveStaff,
         totalDepartments,
         totalTasks,
         completedTasks,
         inProgressTasks,
         pendingTasks,
         overdueTasks,
+        cancelledTasks,
+        unknownTasks,
         taskCompletionRate,
-        totalEvaluations,
-        approvedEvaluationsCount: approvedEvaluations.length,
+        approvedEvaluationsCount: approvedStaff,
         evalCompletionRate,
+
+        // P0 breakdown metrics
+        totalActiveStaff,
+        assignedStaff,
+        selfSubmittedStaff,
+        reviewedStaff,
+        approvedStaff,
+        classifiedStaff,
+        notStartedStaff,
+
+        // P1 Status
+        tasksStatus,
+        evaluationsStatus,
       },
       classifications: {
         countA,
         countB,
         countC,
         countD,
-        totalApproved: approvedEvaluations.length,
+        totalApproved: approvedStaff,
       },
       departmentProgress,
       urgentTasks: processedUrgent,
@@ -170,6 +235,19 @@ export async function getDashboardStats(req: AuthRequest, res: Response): Promis
 export async function exportEvaluationsExcel(req: AuthRequest, res: Response): Promise<void> {
   try {
     const month = req.query.month ? String(req.query.month) : new Date().toISOString().slice(0, 7);
+
+    // Month & Year Validation
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ message: 'Kỳ đánh giá (Tháng/Năm) không đúng định dạng YYYY-MM.' });
+      return;
+    }
+    const parts = month.split('-');
+    const year = parseInt(parts[0], 10);
+    const monthVal = parseInt(parts[1], 10);
+    if (isNaN(year) || isNaN(monthVal) || monthVal < 1 || monthVal > 12 || year < 2020 || year > 2050) {
+      res.status(400).json({ message: 'Kỳ đánh giá (Tháng/Năm) không hợp lệ (Tháng từ 1-12, Năm từ 2020-2050).' });
+      return;
+    }
 
     const evaluations = await db('evaluations as e')
       .join('users as u', 'e.employee_id', 'u.id')

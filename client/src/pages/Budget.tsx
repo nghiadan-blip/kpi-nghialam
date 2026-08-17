@@ -235,25 +235,33 @@ export const Budget: React.FC = () => {
               <TrendingUp className="w-4 h-4 text-emerald-500" />
               <span>Thu Ngân Sách Xã ({year})</span>
             </h3>
-            <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-extrabold">
-              Đạt {stats.revenue.percent}% chỉ tiêu
-            </span>
+            {revenues.length > 0 && (
+              <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-extrabold">
+                Đạt {stats.revenue.percent}% chỉ tiêu
+              </span>
+            )}
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-2">
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Kế hoạch thu</p>
-              <p className="text-sm font-extrabold text-slate-700">{formatVND(stats.revenue.planned)}</p>
+          {revenues.length === 0 ? (
+            <div className="mt-6 text-xs text-slate-400 font-bold italic text-center py-2">
+              Chưa cập nhật dữ liệu (NO_DATA)
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Thực tế đã thu</p>
-              <p className="text-sm font-extrabold text-emerald-600">{formatVND(stats.revenue.collected)}</p>
+          ) : (
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Kế hoạch thu</p>
+                <p className="text-sm font-extrabold text-slate-700">{formatVND(stats.revenue.planned)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Thực tế đã thu</p>
+                <p className="text-sm font-extrabold text-emerald-600">{formatVND(stats.revenue.collected)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Còn phải thu</p>
+                <p className="text-sm font-extrabold text-rose-500">{formatVND(stats.revenue.remaining)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Còn phải thu</p>
-              <p className="text-sm font-extrabold text-rose-500">{formatVND(stats.revenue.remaining)}</p>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Expenditure Stats Card */}
@@ -264,29 +272,37 @@ export const Budget: React.FC = () => {
               <TrendingDown className="w-4 h-4 text-blue-500" />
               <span>Chi Ngân Sách Xã ({year})</span>
             </h3>
-            <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-extrabold">
-              Đã giải ngân {stats.expenditure.percent}%
-            </span>
+            {expenditures.length > 0 && (
+              <span className="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-extrabold">
+                Đã giải ngân {stats.expenditure.percent}%
+              </span>
+            )}
           </div>
 
-          <div className="mt-4 grid grid-cols-4 gap-2">
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Dự toán chi</p>
-              <p className="text-xs font-bold text-slate-700">{formatVND(stats.expenditure.estimated)}</p>
+          {expenditures.length === 0 ? (
+            <div className="mt-6 text-xs text-slate-400 font-bold italic text-center py-2">
+              Chưa cập nhật dữ liệu (NO_DATA)
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Phê duyệt</p>
-              <p className="text-xs font-bold text-slate-700">{formatVND(stats.expenditure.approved)}</p>
+          ) : (
+            <div className="mt-4 grid grid-cols-4 gap-2">
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Dự toán chi</p>
+                <p className="text-xs font-bold text-slate-700">{formatVND(stats.expenditure.estimated)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Phê duyệt</p>
+                <p className="text-xs font-bold text-slate-700">{formatVND(stats.expenditure.approved)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Đã thực chi</p>
+                <p className="text-xs font-bold text-blue-600">{formatVND(stats.expenditure.paid)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-slate-400 font-medium uppercase">Chưa giải ngân</p>
+                <p className="text-xs font-bold text-amber-600">{formatVND(stats.expenditure.remaining)}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Đã thực chi</p>
-              <p className="text-xs font-bold text-blue-600">{formatVND(stats.expenditure.paid)}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-slate-400 font-medium uppercase">Chưa giải ngân</p>
-              <p className="text-xs font-bold text-amber-600">{formatVND(stats.expenditure.remaining)}</p>
-            </div>
-          </div>
+          )}
         </div>
       </div>
 

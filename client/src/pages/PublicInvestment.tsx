@@ -196,6 +196,57 @@ export const PublicInvestment: React.FC = () => {
         </div>
       </div>
 
+      {/* Stats Board */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-slate-400" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Tổng số công trình</span>
+          {projects.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-slate-800 mt-1 ml-1.5">{projects.length} công trình</span>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-sky-500" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Kế hoạch vốn</span>
+          {projects.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-sky-700 mt-1 ml-1.5">
+              {formatVND(projects.reduce((sum, p) => sum + (p.planned_capital || 0), 0))}
+            </span>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-emerald-500" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Đã giải ngân</span>
+          {projects.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-emerald-700 mt-1 ml-1.5">
+              {formatVND(projects.reduce((sum, p) => sum + (p.disbursed_amount || 0), 0))}
+            </span>
+          )}
+        </div>
+
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute left-0 top-0 h-full w-1.5 bg-amber-500" />
+          <span className="text-[10px] font-bold text-slate-500 uppercase ml-1.5">Tỷ lệ giải ngân TB</span>
+          {projects.length === 0 ? (
+            <span className="text-xs font-bold text-slate-400 mt-2 ml-1.5">Chưa cập nhật (NO_DATA)</span>
+          ) : (
+            <span className="text-xl font-black text-amber-700 mt-1 ml-1.5">
+              {Number(
+                (projects.reduce((sum, p) => sum + (p.disbursement_rate || 0), 0) / projects.length) || 0
+              ).toFixed(2).replace('.', ',')}%
+            </span>
+          )}
+        </div>
+      </div>
+
       {/* Filters Area */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-3xs flex flex-col md:flex-row md:items-center gap-4 text-xs font-bold text-slate-600">
         <div className="flex-1">
