@@ -3,11 +3,30 @@ import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
 import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
+function canAccessBudget(user: any): boolean {
+  if (!user) return false;
+  if (['ADMIN', 'LEADERSHIP'].includes(user.role)) return true;
+  if (user.department_id === 6) return true; // Bộ phận Tài chính - Kế toán
+  return false;
+}
+
+function canModifyBudget(user: any): boolean {
+  if (!user) return false;
+  if (['ADMIN', 'LEADERSHIP'].includes(user.role)) return true;
+  if (user.department_id === 6) return true; // Cán bộ / Trưởng bộ phận Tài chính - Kế toán
+  return false;
+}
+
 export async function getBudgets(req: AuthRequest, res: Response): Promise<void> {
   try {
     const user = req.user;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canAccessBudget(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền truy cập dữ liệu Tài chính - Ngân sách xã.' });
       return;
     }
 
@@ -93,8 +112,8 @@ export async function createRevenue(req: AuthRequest, res: Response): Promise<vo
       return;
     }
 
-    if (user.role !== 'ADMIN' && user.role !== 'LEADERSHIP' && user.role !== 'DEPARTMENT_HEAD') {
-      res.status(403).json({ message: 'Bạn không có quyền thực hiện thao tác này.' });
+    if (!canModifyBudget(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền tạo khoản thu ngân sách xã.' });
       return;
     }
 
@@ -173,6 +192,11 @@ export async function updateRevenue(req: AuthRequest, res: Response): Promise<vo
     const { id } = req.params;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canModifyBudget(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền cập nhật khoản thu ngân sách xã.' });
       return;
     }
 
@@ -304,6 +328,11 @@ export async function createExpenditure(req: AuthRequest, res: Response): Promis
       return;
     }
 
+    if (!canModifyBudget(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền tạo đề xuất chi ngân sách xã.' });
+      return;
+    }
+
     const {
       year,
       category,
@@ -376,6 +405,11 @@ export async function updateExpenditure(req: AuthRequest, res: Response): Promis
     const { id } = req.params;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canModifyBudget(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền cập nhật đề xuất chi ngân sách xã.' });
       return;
     }
 
@@ -497,6 +531,17 @@ export async function deleteExpenditure(req: AuthRequest, res: Response): Promis
 
 export async function exportBudgetExcel(req: AuthRequest, res: Response): Promise<void> {
   try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canAccessBudget(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền xuất dữ liệu Tài chính - Ngân sách xã.' });
+      return;
+    }
+
     const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
 
     const revenues = await db('budget_revenue_items as r')

@@ -61,6 +61,18 @@ export async function seed(knex: Knex): Promise<void> {
   }
 
   // Clear existing records in reverse dependency order
+  await knex('project_payment_disbursements').del();
+  await knex('project_obstacles').del();
+  await knex('project_work_items').del();
+  await knex('project_settlement_records').del();
+  await knex('project_acceptance_records').del();
+  await knex('project_contracts').del();
+  await knex('project_procurement_packages').del();
+  await knex('project_funding_plans').del();
+  await knex('project_documents').del();
+  await knex('project_workflow_steps').del();
+  await knex('project_milestones').del();
+  await knex('projects').del();
   await knex('office_requests').del();
   await knex('kh965_progress').del();
   await knex('land_certificate_cases').del();
@@ -91,7 +103,19 @@ export async function seed(knex: Knex): Promise<void> {
       'public_investment_projects',
       'land_certificate_cases',
       'kh965_progress',
-      'office_requests'
+      'office_requests',
+      'projects',
+      'project_milestones',
+      'project_workflow_steps',
+      'project_documents',
+      'project_funding_plans',
+      'project_procurement_packages',
+      'project_contracts',
+      'project_acceptance_records',
+      'project_settlement_records',
+      'project_work_items',
+      'project_obstacles',
+      'project_payment_disbursements'
     ];
     for (const tbl of tablesToReset) {
       await knex.raw(`DELETE FROM sqlite_sequence WHERE name = '${tbl}'`);
@@ -491,7 +515,7 @@ export async function seed(knex: Knex): Promise<void> {
       allocated_capital: 500000000,
       disbursed_amount: 50000000,
       disbursement_rate: 10.0,
-      contractor: 'Chưa lựa chọn nhà thầu phụ trách phần cải tạo',
+      contractor: null,
       start_date: '2026-08-01',
       end_date: '2027-03-31',
       actual_progress_percent: 5.0,
@@ -682,4 +706,354 @@ export async function seed(knex: Knex): Promise<void> {
     }
   ];
   await knex('office_requests').insert(officeRequests);
+
+  // 10. Insert Projects (Vòng đời dự án liên kết ĐTC)
+  const projects = [
+    {
+      id: 1,
+      investment_project_id: 1,
+      project_code: 'DA-2026-01',
+      project_name: 'Xây dựng đường bê tông liên thôn xóm 3 và xóm 4 Nghĩa Lâm',
+      investment_group: 'C',
+      approval_decision_no: '88/QĐ-UBND',
+      approval_date: '2026-01-15',
+      approving_authority: 'UBND huyện Nghĩa Đàn',
+      design_approval_no: 'TK-12/2026/SXD',
+      bidding_method: 'Chỉ định thầu rút gọn',
+      contractor_selection_date: '2026-02-05',
+      contract_no: '01/2026/HĐ-XL',
+      contract_value: 3450000000,
+      start_date: '2026-02-10',
+      planned_end_date: '2026-11-30',
+      actual_end_date: null,
+      acceptance_status: 'chua_nghiem_thu',
+      acceptance_date: null,
+      settlement_status: 'chua_quyet_toan',
+      settlement_value: 0,
+      settlement_date: null,
+      handover_date: null,
+      project_manager_id: 6, // Vũ Minh Tuấn
+      supervisor_unit: 'Ban Giám sát đầu tư của cộng đồng xã Nghĩa Lâm',
+      created_by: 2,
+      updated_by: 6,
+      version: 1
+    },
+    {
+      id: 2,
+      investment_project_id: 2,
+      project_code: 'DA-2026-02',
+      project_name: 'Cải tạo, nâng cấp Nhà văn hóa đa năng xã Nghĩa Lâm',
+      investment_group: 'C',
+      approval_decision_no: '112/QĐ-UBND',
+      approval_date: '2026-02-20',
+      approving_authority: 'HĐND & UBND xã Nghĩa Lâm',
+      design_approval_no: 'TK-04/2026/UBND',
+      bidding_method: 'Đấu thầu rộng rãi qua mạng',
+      contractor_selection_date: '2026-03-25',
+      contract_no: '04/2026/HĐ-XD',
+      contract_value: 1780000000,
+      start_date: '2026-04-01',
+      planned_end_date: '2026-12-15',
+      actual_end_date: null,
+      acceptance_status: 'chua_nghiem_thu',
+      acceptance_date: null,
+      settlement_status: 'chua_quyet_toan',
+      settlement_value: 0,
+      settlement_date: null,
+      handover_date: null,
+      project_manager_id: 6, // Vũ Minh Tuấn
+      supervisor_unit: 'Công ty TNHH Tư vấn Giám sát Miền Trung',
+      created_by: 2,
+      updated_by: 6,
+      version: 1
+    },
+    {
+      id: 3,
+      investment_project_id: 3,
+      project_code: 'DA-2026-03',
+      project_name: 'Xây mới Trạm Y tế xã Nghĩa Lâm đạt chuẩn Quốc gia',
+      investment_group: 'B',
+      approval_decision_no: '456/QĐ-UBND',
+      approval_date: '2026-03-10',
+      approving_authority: 'UBND tỉnh Nghệ An',
+      design_approval_no: 'TK-28/2026/SYT',
+      bidding_method: 'Đấu thầu rộng rãi qua mạng',
+      contractor_selection_date: '2026-05-10',
+      contract_no: '12/2026/HĐ-YT',
+      contract_value: 5850000000,
+      start_date: '2026-05-15',
+      planned_end_date: '2027-04-30',
+      actual_end_date: null,
+      acceptance_status: 'chua_nghiem_thu',
+      acceptance_date: null,
+      settlement_status: 'chua_quyet_toan',
+      settlement_value: 0,
+      settlement_date: null,
+      handover_date: null,
+      project_manager_id: 5, // Lê Hoàng Anh
+      supervisor_unit: 'Sở Y tế tỉnh Nghệ An & Ban QLDA huyện',
+      created_by: 2,
+      updated_by: 5,
+      version: 1
+    }
+  ];
+  await knex('projects').insert(projects);
+
+  // 11. Insert Project Milestones (Mốc tiến độ chi tiết)
+  const projectMilestones = [
+    {
+      id: 1,
+      project_id: 1,
+      milestone_name: 'Phê duyệt chủ trương & dự án đầu tư',
+      milestone_type: 'approval',
+      planned_date: '2026-01-15',
+      actual_date: '2026-01-15',
+      status: 'completed',
+      note: 'Hoàn thành thẩm định và ban hành QĐ 88/QĐ-UBND'
+    },
+    {
+      id: 2,
+      project_id: 1,
+      milestone_name: 'Lựa chọn nhà thầu & ký hợp đồng xây lắp',
+      milestone_type: 'contract',
+      planned_date: '2026-02-05',
+      actual_date: '2026-02-05',
+      status: 'completed',
+      note: 'Ký kết HĐ 01/2026/HĐ-XL với Công ty 37'
+    },
+    {
+      id: 3,
+      project_id: 1,
+      milestone_name: 'Khởi công và thi công nền đường',
+      milestone_type: 'construction_start',
+      planned_date: '2026-02-10',
+      actual_date: '2026-02-10',
+      status: 'completed',
+      note: 'Đã hoàn thành lu lèn nền đường'
+    },
+    {
+      id: 4,
+      project_id: 1,
+      milestone_name: 'Đổ bê tông mặt đường liên thôn xóm 3 - 4',
+      milestone_type: 'structure',
+      planned_date: '2026-07-30',
+      actual_date: '2026-08-05',
+      status: 'completed',
+      note: 'Chậm 5 ngày do ảnh hưởng mưa bão'
+    },
+    {
+      id: 5,
+      project_id: 1,
+      milestone_name: 'Nghiệm thu kỹ thuật và hoàn thành xây lắp',
+      milestone_type: 'acceptance',
+      planned_date: '2026-11-15',
+      actual_date: null,
+      status: 'in_progress',
+      note: 'Đang hoàn thiện lề đường và cọc tiêu biển báo'
+    },
+    {
+      id: 6,
+      project_id: 2,
+      milestone_name: 'Lựa chọn nhà thầu qua mạng',
+      milestone_type: 'bidding',
+      planned_date: '2026-03-25',
+      actual_date: '2026-03-25',
+      status: 'completed',
+      note: 'Mở thầu thành công'
+    },
+    {
+      id: 7,
+      project_id: 2,
+      milestone_name: 'Thi công cải tạo phần mái và hội trường',
+      milestone_type: 'structure',
+      planned_date: '2026-08-15',
+      actual_date: null,
+      status: 'delayed',
+      note: 'Vướng mắc nguồn vốn ngân sách xã đối ứng'
+    }
+  ];
+  await knex('project_milestones').insert(projectMilestones);
+
+  // 12. Insert 16 Workflow Steps for Projects
+  const workflowSteps: any[] = [];
+  const stepTitles = [
+    { num: 1, code: 'STEP_01', name: 'Đưa dự án vào kế hoạch đầu tư công', auth: 'HĐND xã', type: 'COLLECTIVE', title: 'TM. HĐND - CHỦ TỊCH' },
+    { num: 2, code: 'STEP_02', name: 'Lập và thẩm định Báo cáo đề xuất chủ trương đầu tư', auth: 'Hội đồng thẩm định UBND xã', type: 'INDIVIDUAL', title: 'Chủ tịch Hội đồng thẩm định' },
+    { num: 3, code: 'STEP_03', name: 'Quyết định chủ trương đầu tư', auth: 'UBND xã', type: 'COLLECTIVE', title: 'TM. UBND - CHỦ TỊCH' },
+    { num: 4, code: 'STEP_04', name: 'Lựa chọn đơn vị tư vấn khảo sát, lập BCKTKT', auth: 'Chủ đầu tư', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 5, code: 'STEP_05', name: 'Phê duyệt nhiệm vụ khảo sát xây dựng', auth: 'Chủ đầu tư', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 6, code: 'STEP_06', name: 'Phê duyệt phương án kỹ thuật khảo sát', auth: 'Chủ đầu tư', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 7, code: 'STEP_07', name: 'Thực hiện khảo sát và lập Báo cáo kinh tế - kỹ thuật', auth: 'Đơn vị tư vấn', type: 'AUTHORIZED', title: 'Đại diện Tư vấn' },
+    { num: 8, code: 'STEP_08', name: 'Thẩm định Báo cáo kinh tế - kỹ thuật, thiết kế và dự toán', auth: 'Phòng Kinh tế - Hạ tầng', type: 'INDIVIDUAL', title: 'Cơ quan thẩm định' },
+    { num: 9, code: 'STEP_09', name: 'Phê duyệt dự án / Báo cáo kinh tế - kỹ thuật', auth: 'Chủ tịch UBND xã', type: 'INDIVIDUAL', title: 'CHỦ TỊCH' },
+    { num: 10, code: 'STEP_10', name: 'Phê duyệt kế hoạch lựa chọn nhà thầu', auth: 'Chủ tịch UBND xã', type: 'INDIVIDUAL', title: 'CHỦ TỊCH' },
+    { num: 11, code: 'STEP_11', name: 'Lựa chọn nhà thầu, phê duyệt kết quả và ký hợp đồng', auth: 'Chủ đầu tư & Nhà thầu', type: 'INDIVIDUAL', title: 'Chủ tịch UBND xã' },
+    { num: 12, code: 'STEP_12', name: 'Bố trí kế hoạch vốn hằng năm và giải ngân', auth: 'Kế toán xã / KBNN', type: 'AUTHORIZED', title: 'Chủ tài khoản & Kế toán' },
+    { num: 13, code: 'STEP_13', name: 'Thi công và quản lý chất lượng', auth: 'Nhà thầu & Tư vấn GS', type: 'AUTHORIZED', title: 'Chỉ huy trưởng công trường' },
+    { num: 14, code: 'STEP_14', name: 'Nghiệm thu hoàn thành và bàn giao đưa vào sử dụng', auth: 'Chủ đầu tư & Các bên', type: 'AUTHORIZED', title: 'Hội đồng nghiệm thu cơ sở' },
+    { num: 15, code: 'STEP_15', name: 'Lập, thẩm tra và phê duyệt quyết toán', auth: 'Chủ tịch UBND xã', type: 'INDIVIDUAL', title: 'CHỦ TỊCH' },
+    { num: 16, code: 'STEP_16', name: 'Bàn giao quản lý, khai thác, bảo hành, bảo trì và kết thúc', auth: 'Đơn vị tiếp nhận', type: 'INDIVIDUAL', title: 'Đại diện Bên giao & Bên nhận' }
+  ];
+
+  for (let pId = 1; pId <= 3; pId++) {
+    for (const s of stepTitles) {
+      let status = 'NOT_STARTED';
+      if (pId === 1) {
+        if (s.num <= 12) status = 'COMPLETED';
+        else if (s.num === 13) status = 'IN_PROGRESS';
+      } else if (pId === 2) {
+        if (s.num <= 10) status = 'COMPLETED';
+        else if (s.num === 11) status = 'IN_PROGRESS';
+      } else {
+        if (s.num <= 4) status = 'COMPLETED';
+        else if (s.num === 5) status = 'IN_PROGRESS';
+      }
+
+      workflowSteps.push({
+        project_id: pId,
+        step_number: s.num,
+        step_code: s.code,
+        step_name: s.name,
+        authority_body: s.auth,
+        signatory_type: s.type,
+        signatory_title: s.title,
+        status,
+        checklist_data: JSON.stringify([
+          { id: 'CHK_01', question: 'Công trình đã có trong Nghị quyết phê duyệt kế hoạch ĐTC của HĐND xã chưa?', status: 'Đạt' },
+          { id: 'CHK_02', question: 'Văn bản thuộc thẩm quyền tập thể hay cá nhân; thể thức ký đúng quy định chưa?', status: 'Đạt' }
+        ]),
+        decision_number: status === 'COMPLETED' ? `${10 + s.num}/QĐ-UBND` : null,
+        decision_date: status === 'COMPLETED' ? '2026-02-15' : null,
+        is_blocked: false,
+        legal_review_required: false
+      });
+    }
+  }
+  await knex('project_workflow_steps').insert(workflowSteps);
+
+  // 13. Insert Documents for Project 1
+  const projectDocs = [
+    {
+      project_id: 1,
+      document_code: '15/NQ-HĐND',
+      document_name: 'Nghị quyết thông qua danh mục đầu tư công năm 2026 xã Nghĩa Lâm',
+      document_type: 'resolution',
+      issuing_authority: 'HĐND xã Nghĩa Lâm',
+      issuing_date: '2026-01-05',
+      file_url: '/uploads/docs/nq_15_hdnd.pdf',
+      file_size: 245000,
+      file_type: 'application/pdf',
+      version: 1,
+      is_mandatory: true,
+      verification_status: 'verified',
+      uploaded_by: 6
+    },
+    {
+      project_id: 1,
+      document_code: '88/QĐ-UBND',
+      document_name: 'Quyết định phê duyệt Báo cáo kinh tế - kỹ thuật xây dựng đường giao thông xóm 3-4',
+      document_type: 'project_approval_decision',
+      issuing_authority: 'UBND xã Nghĩa Lâm',
+      issuing_date: '2026-01-15',
+      file_url: '/uploads/docs/qd_88_phe_duyet.pdf',
+      file_size: 512000,
+      file_type: 'application/pdf',
+      version: 1,
+      is_mandatory: true,
+      verification_status: 'verified',
+      uploaded_by: 2
+    },
+    {
+      project_id: 1,
+      document_code: '01/2026/HĐ-XL',
+      document_name: 'Hợp đồng thi công xây dựng công trình giao thông nông thôn',
+      document_type: 'contract',
+      issuing_authority: 'UBND xã Nghĩa Lâm & Công ty 37',
+      issuing_date: '2026-02-05',
+      file_url: '/uploads/docs/hd_01_2026.pdf',
+      file_size: 890000,
+      file_type: 'application/pdf',
+      version: 1,
+      is_mandatory: true,
+      verification_status: 'verified',
+      uploaded_by: 6
+    }
+  ];
+  await knex('project_documents').insert(projectDocs);
+
+  // 14. Insert Project Obstacles
+  const obstacles = [
+    {
+      project_id: 2,
+      obstacle_type: 'WEATHER',
+      title: 'Mưa bão tháng 7 làm chậm tiến độ lợp mái và trát ngoài Nhà văn hóa',
+      content: 'Thời tiết mưa lũ kéo dài liên tục 12 ngày trong tháng 7 gây ngập úng sân và ẩm ướt kết cấu.',
+      root_cause: 'Thiên tai thời tiết bất thường khu vực miền núi Tây Nghệ An.',
+      resolution_measure: 'Tăng ca thi công ngày nắng, bố trí bạt che chắn và bổ sung thêm 1 tổ thợ hoàn thiện.',
+      responsible_user_id: 6,
+      deadline: '2026-08-30',
+      status: 'IN_PROGRESS',
+      evidence_url: '/uploads/docs/nhat_ky_thoi_tiet_t7.pdf',
+      created_by: 6
+    },
+    {
+      project_id: 3,
+      obstacle_type: 'LEGAL_PROCEDURE',
+      title: 'Hồ sơ thiết kế bản vẽ thi công đang thẩm định tại Sở Y tế',
+      content: 'Do có thay đổi quy chuẩn phòng cháy chữa cháy mới nên cần thẩm duyệt lại thiết kế.',
+      root_cause: 'Quy chuẩn PCCC mới có hiệu lực yêu cầu bổ sung hệ thống hút khói.',
+      resolution_measure: 'Đơn vị tư vấn đã chỉnh sửa nộp lại ngày 10/08, theo dõi sát tiến độ trả kết quả.',
+      responsible_user_id: 6,
+      deadline: '2026-08-25',
+      status: 'OPEN',
+      evidence_url: '/uploads/docs/giay_hen_so_y_te.pdf',
+      created_by: 6
+    }
+  ];
+  await knex('project_obstacles').insert(obstacles);
+
+  // 15. Insert Project Payment Disbursements
+  const disbursements = [
+    {
+      project_id: 1,
+      voucher_no: 'UNC-2026/02-01',
+      payment_date: '2026-02-20',
+      amount: 400000000,
+      funding_source: 'Vốn chương trình MTQG xây dựng NTM',
+      payment_type: 'ADVANCE',
+      completed_volume_amount: 0,
+      treasury_control_status: 'APPROVED',
+      voucher_url: '/uploads/vouchers/unc_tam_ung_01.pdf',
+      justification_note: 'Tạm ứng hợp đồng đợt 1 theo quy định (30% giá trị hợp đồng).',
+      created_by: 6
+    },
+    {
+      project_id: 1,
+      voucher_no: 'UNC-2026/05-02',
+      payment_date: '2026-05-15',
+      amount: 580000000,
+      funding_source: 'Vốn chương trình MTQG xây dựng NTM',
+      payment_type: 'VOLUME_PAYMENT',
+      completed_volume_amount: 650000000,
+      treasury_control_status: 'APPROVED',
+      voucher_url: '/uploads/vouchers/unc_thanh_toan_02.pdf',
+      justification_note: 'Thanh toán khối lượng hoàn thành đợt 1 (Đoạn Km0+00 đến Km1+200).',
+      created_by: 6
+    },
+    {
+      project_id: 2,
+      voucher_no: 'UNC-2026/04-01',
+      payment_date: '2026-04-28',
+      amount: 250000000,
+      funding_source: 'Vốn ngân sách xã đầu tư công trung hạn',
+      payment_type: 'ADVANCE',
+      completed_volume_amount: 0,
+      treasury_control_status: 'APPROVED',
+      voucher_url: '/uploads/vouchers/unc_tam_ung_nvh.pdf',
+      justification_note: 'Tạm ứng hợp đồng thi công nâng cấp Nhà văn hóa xã.',
+      created_by: 6
+    }
+  ];
+  await knex('project_payment_disbursements').insert(disbursements);
 }
+

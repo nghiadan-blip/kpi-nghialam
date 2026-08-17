@@ -3,11 +3,30 @@ import db from '../config/db';
 import { AuthRequest, logAudit } from '../middleware/auth';
 import { checkPeriodLockForRecord, checkPeriodLockForDate } from './evaluationController';
 
+function canAccessLand(user: any): boolean {
+  if (!user) return false;
+  if (['ADMIN', 'LEADERSHIP'].includes(user.role)) return true;
+  if (user.department_id === 3) return true; // Bộ phận Địa chính - Xây dựng
+  return false;
+}
+
+function canModifyLand(user: any): boolean {
+  if (!user) return false;
+  if (['ADMIN', 'LEADERSHIP'].includes(user.role)) return true;
+  if (user.department_id === 3) return true; // Cán bộ / Trưởng bộ phận Địa chính
+  return false;
+}
+
 export async function getCases(req: AuthRequest, res: Response): Promise<void> {
   try {
     const user = req.user;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canAccessLand(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền truy cập dữ liệu Quản lý Đất đai xã.' });
       return;
     }
 
@@ -53,6 +72,11 @@ export async function createCase(req: AuthRequest, res: Response): Promise<void>
     const user = req.user;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canModifyLand(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền tạo hồ sơ cấp đất đai xã.' });
       return;
     }
 
@@ -120,6 +144,11 @@ export async function updateCase(req: AuthRequest, res: Response): Promise<void>
     const { id } = req.params;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canModifyLand(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền cập nhật hồ sơ đất đai xã.' });
       return;
     }
 
@@ -234,6 +263,11 @@ export async function getKH965Progress(req: AuthRequest, res: Response): Promise
       return;
     }
 
+    if (!canAccessLand(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền xem tiến độ Kế hoạch 965.' });
+      return;
+    }
+
     const progress = await db('kh965_progress as k')
       .leftJoin('users as u', 'k.responsible_user_id', 'u.id')
       .select('k.*', 'u.fullname as responsible_user_name')
@@ -251,6 +285,11 @@ export async function updateKH965Progress(req: AuthRequest, res: Response): Prom
     const user = req.user;
     if (!user) {
       res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canModifyLand(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền cập nhật tiến độ Kế hoạch 965.' });
       return;
     }
 
@@ -321,6 +360,17 @@ export async function updateKH965Progress(req: AuthRequest, res: Response): Prom
 
 export async function exportLandExcel(req: AuthRequest, res: Response): Promise<void> {
   try {
+    const user = req.user;
+    if (!user) {
+      res.status(401).json({ message: 'Chưa xác thực danh tính.' });
+      return;
+    }
+
+    if (!canAccessLand(user)) {
+      res.status(403).json({ message: 'Bạn không có quyền xuất dữ liệu Đất đai xã.' });
+      return;
+    }
+
     const cases = await db('land_certificate_cases as c')
       .leftJoin('users as u', 'c.responsible_user_id', 'u.id')
       .select('c.*', 'u.fullname as responsible_name')

@@ -12,6 +12,8 @@ import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
+router.get('/', authenticate, getCases);
+router.post('/', authenticate, createCase);
 router.get('/cases', authenticate, getCases);
 router.post('/cases', authenticate, createCase);
 router.put('/cases/:id', authenticate, updateCase);

@@ -281,50 +281,22 @@ export const EvaluationFormModal: React.FC<Props> = ({
     }
   }
 
-  const qtyRate = 100.0;
-  const progRate = Math.max(0, 100.0 - (totalDelays * 25));
-  const qualRate = Math.max(0, 100.0 - (totalReworks * 25));
-
-  let selfTaskScore100 = (qtyRate + progRate + qualRate) / 3;
-  const isLeadershipRole = ['LEADERSHIP', 'DEPARTMENT_HEAD'].includes(evaluation?.employee_role || user?.role || '');
-  
-  if (isLeadershipRole) {
-    selfTaskScore100 = (qtyRate + progRate + qualRate + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
-  }
-  selfTaskScore100 = Number(selfTaskScore100.toFixed(2));
-
-  // Tính tỷ lệ điểm của Trưởng phòng hoặc Lãnh đạo điều chỉnh
+  // Tính tổng điểm Phần II theo chiến lược WEIGHTED_DETAIL_SCORE hiện hành
   let sumSelfPoints = 0;
   let sumCurrentPoints = 0;
   for (const it of items) {
     sumSelfPoints += Number(it.self_points) || 0;
     if (isLeadership) {
-      sumCurrentPoints += Number(it.final_points) || 0;
+      sumCurrentPoints += Number(it.final_points !== undefined ? it.final_points : (it.manager_points ?? it.self_points)) || 0;
     } else if (isManager) {
-      sumCurrentPoints += Number(it.manager_points) || 0;
+      sumCurrentPoints += Number(it.manager_points !== undefined ? it.manager_points : it.self_points) || 0;
     } else {
       sumCurrentPoints += Number(it.self_points) || 0;
     }
   }
 
-  const pointsRatio = sumSelfPoints > 0 ? (sumCurrentPoints / sumSelfPoints) : 1.0;
-  let currentTaskScore100 = selfTaskScore100;
-
-  if (isManager || isLeadership) {
-    if (isLeadershipRole) {
-      const selfUnit = Number(evaluation?.leadership_unit_result) || 100;
-      const selfExec = Number(evaluation?.leadership_execution) || 100;
-      const selfSol = Number(evaluation?.leadership_solidarity) || 100;
-      const baseSelf = Math.max(0, (selfTaskScore100 * 6 - selfUnit - selfExec - selfSol) / 3);
-      const baseFinal = baseSelf * pointsRatio;
-      
-      currentTaskScore100 = (baseFinal * 3 + leadershipUnitResult + leadershipExecution + leadershipSolidarity) / 6;
-    } else {
-      currentTaskScore100 = selfTaskScore100 * pointsRatio;
-    }
-  }
-  currentTaskScore100 = Math.min(100.0, Math.max(0, Number(currentTaskScore100.toFixed(2))));
-  const subtotalTaskScore70 = Number((currentTaskScore100 * 0.70).toFixed(2));
+  const penaltyMultiplier = Math.max(0, 1.0 - (totalDelays * 0.05 + totalReworks * 0.05));
+  const subtotalTaskScore70 = Math.min(70.0, Math.max(0, Number((sumCurrentPoints * penaltyMultiplier).toFixed(2))));
 
   // Tổng điểm (Max 100.0đ)
   const calculatedTotalScore = Math.min(100.0, Number((subtotalGeneralScore + subtotalTaskScore70).toFixed(2)));

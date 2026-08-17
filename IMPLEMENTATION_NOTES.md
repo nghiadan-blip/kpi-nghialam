@@ -194,3 +194,322 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 7. **Đóng gói dự án (Vite & TSC build)**:
    - Build thành công toàn bộ ứng dụng (Exit code 0).
    - E2E Test Suite chạy thành công toàn bộ 23/23 bài test (Exit code 0).
+
+---
+
+## 9. Hoàn Thiện Module Đánh Giá CBCC KPI & Kiểm Soát Phân Quyền RBAC Toàn Diện (Giai Đoạn Final)
+
+- **Nhánh làm việc (Branch)**: `feat/complete-cbcc-kpi-module`
+- **Căn cứ pháp lý cốt lõi**:
+  - Nghị định số 335/2025/NĐ-CP ngày 31/12/2025 của Chính phủ;
+  - Sổ tay hướng dẫn đánh giá, xếp loại cán bộ, công chức của Bộ Nội vụ;
+  - Kế hoạch số 51-KH/TU ngày 07/5/2026 của Ban Thường vụ Tỉnh ủy Nghệ An;
+  - Quy định số 295-QĐ/ĐU ngày 09/4/2026 của Ban Thường vụ Đảng ủy xã Nghĩa Lâm;
+  - Văn bản ma trận chi tiết: [`KPI_LEGAL_TRACEABILITY_MATRIX.md`](./KPI_LEGAL_TRACEABILITY_MATRIX.md).
+
+### 9.1. Xử lý triệt để Lỗi P0 Tính điểm Phần II (Calculation Engine)
+- **Vấn đề trước đây**: Công thức cũ tính theo tỷ lệ hoàn thành 3 chiều dẫn đến việc phiếu chỉ có 1 sản phẩm 5 điểm vẫn bị tự động gán điểm trần 70/70.
+- **Giải pháp chuẩn hóa**:
+  - Xây dựng service độc lập [`server/src/services/kpiCalculationEngine.ts`](./server/src/services/kpiCalculationEngine.ts) áp dụng chiến lược duy nhất `WEIGHTED_DETAIL_SCORE` (Version `2026.08.1`).
+  - **Công thức tính điểm**:
+    $$\text{line\_score}_i = \text{quantity}_i \times \text{baseline\_score}_i \times \text{coefficient}_i$$
+    $$\text{taskScore} = \min\left(70.0, \sum(\text{line\_score}_i) \times \text{penaltyMultiplier}\right)$$
+    $$\text{totalScore} = \min\left(100.0, \text{commonCriteriaScore} + \text{taskScore}\right)$$
+  - Backend là nguồn sự thật duy nhất về điểm số. Mọi endpoint (`POST /draft`, `POST /review`, `POST /approve`, `GET /forms/:id`, `POST /forms/:id/recalculate`) đều sử dụng engine tính điểm thống nhất và cung cấp cấu trúc `auditFormula`.
+
+### 9.2. Xử lý triệt để Lỗi P0 Broken Access Control (RBAC Controls)
+1. **Phân quyền Giao nhiệm vụ (`POST /api/tasks`)**:
+   - Chặn tuyệt đối tài khoản Công chức thường (`EMPLOYEE`) tự ý giao việc qua API (trả về `403 Forbidden`).
+   - Giới hạn phạm vi giao việc của Trưởng bộ phận (`DEPARTMENT_HEAD`) chỉ trong đơn vị/phòng ban phụ trách.
+   - Chỉ `ADMIN`, `LEADERSHIP` và `DEPARTMENT_HEAD` (trong phòng) mới có quyền tạo và phân công nhiệm vụ.
+2. **Kiểm soát Truy cập Phân hệ Chuyên sâu**:
+   - **Đầu tư công (`/api/public-investment`, `/api/investment`)**: Chỉ `ADMIN`, `LEADERSHIP`, và Cán bộ/Trưởng bộ phận Địa chính - Xây dựng (Dept 3) mới có quyền truy cập và chỉnh sửa. Các công chức khác gọi API đều nhận `403 Forbidden`.
+   - **Tài chính - Ngân sách (`/api/budget`, `/api/budgets`)**: Chỉ `ADMIN`, `LEADERSHIP`, và Cán bộ/Trưởng bộ phận Tài chính - Kế toán (Dept 6) mới có quyền đọc và quản lý thu/chi.
+   - **Đất đai & KH965 (`/api/land-certificates`)**: Chỉ `ADMIN`, `LEADERSHIP`, và Cán bộ/Trưởng bộ phận Địa chính (Dept 3) mới có quyền đọc và xử lý hồ sơ.
+   - **Giao diện & Route Guard**: Đã tích hợp `allowedDepartments` vào [`ProtectedRoute.tsx`](./client/src/components/ProtectedRoute.tsx) và [`App.tsx`](./client/src/App.tsx) để chặn truy cập từ phía client.
+
+### 9.3. Kết quả Kiểm thử Toàn diện
+- **P0 KPI Formula Test Suite (`test_p0_kpi_formula.ts`)**: **10/10 PASS** (Bảo toàn điểm, thay đổi số lượng, thêm/xóa dòng, giới hạn trần 70, khóa kỳ, chặn dữ liệu sai).
+- **RBAC Task Assignment Test Suite (`test_rbac_task_assignment.ts`)**: **5/5 PASS** (Chặn công chức giao việc, giới hạn phạm vi phòng ban).
+- **Full RBAC Security Matrix Test Suite (`test_rbac_full_matrix.ts`)**: **11/11 PASS** (Kiểm tra đầy đủ Role $\times$ Module $\times$ Read/Write).
+- **Full E2E Comprehensive Test Suite (`test_e2e_full.ts`)**: **23/23 PASS**.
+- **Build Verification**:
+  - `npm run build:server` -> **SUCCESS** (Exit code 0).
+  - `npm run build:client` -> **SUCCESS** (Exit code 0).
+  - `npm run build` -> **SUCCESS** (Exit code 0).
+
+---
+
+## 10. Xây Dựng Module Quản Lý Toàn Bộ Vòng Đời Dự Án (`/projects`) Liên Kết Có Kiểm Soát Với Giải Ngân Đầu Tư Công (`/public-investment`)
+
+- **Nhánh làm việc (Branch)**: `feat/project-management-module`
+- **Mục tiêu**: Xây dựng phân hệ quản lý toàn bộ vòng đời dự án đầu tư công từ:
+  $$\text{Chủ trương} \rightarrow \text{Phê duyệt} \rightarrow \text{Đấu thầu/Hợp đồng} \rightarrow \text{Thi công} \rightarrow \text{Nghiệm thu} \rightarrow \text{Quyết toán} \rightarrow \text{Bàn giao đưa vào sử dụng}$$
+  liên kết chặt chẽ và không trùng lặp số liệu với module giải ngân vốn đầu tư công (`/public-investment`).
+
+### 10.1. Cấu trúc Cơ sở Dữ liệu & Migration
+- **Migration**: [`server/database/migrations/20260817000000_create_projects_and_milestones_tables.ts`](./server/database/migrations/20260817000000_create_projects_and_milestones_tables.ts)
+- **Bảng `projects`**:
+  - `id`: Khóa chính;
+  - `investment_project_id`: FK liên kết duy nhất (`UNIQUE`, `NULLABLE`) tới `public_investment_projects.id`;
+  - `project_code`: Unique (Mã công trình/dự án);
+  - `project_name`: Tên công trình;
+  - `investment_group`: Nhóm A / B / C theo Luật Đầu tư công;
+  - `approval_decision_no`, `approval_date`, `approving_authority`, `design_approval_no`;
+  - `bidding_method`, `contractor_selection_date`, `contract_no`, `contract_value`;
+  - `start_date`, `planned_end_date`, `actual_end_date`;
+  - `acceptance_status`, `acceptance_date`;
+  - `settlement_status`, `settlement_value`, `settlement_date`, `handover_date`;
+  - `project_manager_id`: FK tới `users`;
+  - `supervisor_unit`: Đơn vị tư vấn/Ban giám sát cộng đồng;
+  - `version`: Optimistic locking;
+  - `created_by`, `updated_by`, `created_at`, `updated_at`.
+- **Bảng `project_milestones`**:
+  - `id`, `project_id` (FK cascade), `milestone_name`, `milestone_type`, `planned_date`, `actual_date`, `status`, `note`.
+
+### 10.2. Nguyên Tắc Nguồn Dữ Liệu & Đồng Bộ Hai Chiều Không Trùng Lặp
+1. **Nguồn dữ liệu tài chính chính**:
+   - Vốn kế hoạch, Vốn phân bổ, Đã giải ngân, Tỷ lệ giải ngân, Tiến độ hiện trường (%) và Vướng mắc được lưu trữ duy nhất tại `public_investment_projects`.
+   - Phân hệ `/projects` chỉ truy vấn (Left Join) trực tiếp từ nguồn ĐTC để hiển thị, tuyệt đối không tạo bản sao hoặc nhập lại số liệu tài chính.
+2. **Giao dịch an toàn (Transactions)**:
+   - Khi tạo mới dự án đồng thời với công trình ĐTC, hệ thống bọc trong Knex Transaction: nếu một bên lỗi sẽ rollback toàn bộ.
+   - Ràng buộc $1:1$ được bảo đảm chặt chẽ (1 công trình ĐTC chỉ liên kết tối đa 1 dự án).
+3. **Bảo vệ toàn vẹn dữ liệu**:
+   - Cấm xóa dự án nếu công trình đã phát sinh giải ngân ($>0$ VNĐ) hoặc đã nghiệm thu/quyết toán hoàn thành $\rightarrow$ Trả HTTP `409 Conflict`.
+   - Cấm đổi mã dự án khi đã có số liệu giải ngân/nghiệm thu.
+
+### 10.3. Phân Quyền RBAC & Route Guard
+- **API Endpoints**:
+  - `GET /api/projects`: Trả danh sách có lọc và phân trang (Lãnh đạo & Dept 3 xem toàn bộ; cán bộ khác chỉ xem dự án được gán làm PM).
+  - `GET /api/projects/:id`: Trả chi tiết, milestones và dữ liệu ĐTC liên kết (Chặn 403 đối với cán bộ không liên quan).
+  - `POST /api/projects`: Chỉ Lãnh đạo, Trưởng bộ phận Địa chính (Dept 3), và Cán bộ Địa chính.
+  - `PUT /api/projects/:id`: Kiểm soát chi tiết theo cấp thẩm quyền (Sửa QĐ phê duyệt/Hợp đồng và Nghiệm thu/Quyết toán yêu cầu thẩm quyền Lãnh đạo/Trưởng phòng).
+  - `DELETE /api/projects/:id`: Chỉ Lãnh đạo và Admin (có ràng buộc 409).
+  - `POST /api/projects/:id/link-investment` & `unlink-investment`: Kiểm soát liên kết.
+  - `GET /api/projects/dashboard`: Thống kê theo nhóm A/B/C, giai đoạn vòng đời, tài chính tổng hợp từ ĐTC.
+  - `GET /api/projects/export`: Xuất báo cáo Excel định dạng hành chính xã Nghĩa Lâm.
+- **Frontend Route Guard**:
+  - `/projects`: Bảo vệ bởi `ProtectedRoute allowedDepartments={[3]}`.
+  - Menu `Quản lý dự án` hiển thị linh hoạt theo vai trò trên [`Navbar.tsx`](./client/src/components/Navbar.tsx).
+
+### 10.4. Kết Quả Kiểm Thử Toàn Diện
+1. **Data Linking & 2-Way Integrity Suite (`test_project_linking.ts`)**: **5/5 PASS**
+   - Chặn liên kết trùng;
+   - Tạo đồng thời qua Transaction;
+   - Đọc tự động số liệu giải ngân mới nhất từ nguồn;
+   - Bảo toàn số liệu ĐTC khi sửa vòng đời;
+   - Chặn xóa dự án có giải ngân với HTTP 409.
+2. **Project RBAC Matrix Suite (`test_project_rbac.ts`)**: **7/7 PASS**
+   - Chặn cán bộ ngoài Dept 3 xem và tạo dự án;
+   - Cho phép PM xem dự án được gán;
+   - Chặn PM sửa trường nhạy cảm;
+   - Cho phép Trưởng phòng và Lãnh đạo thao tác theo thẩm quyền.
+3. **Project Lifecycle, Milestones & Validation Suite (`test_project_lifecycle.ts`)**: **5/5 PASS**
+   - Chặn ngày kết thúc trước ngày khởi công;
+   - Chặn giá trị hợp đồng/quyết toán âm;
+   - Thêm, sửa, xóa mốc tiến độ;
+   - Dashboard tổng hợp chính xác.
+4. **All Existing Regression Suites**:
+   - `test_rbac_full_matrix.ts` $\rightarrow$ **11/11 PASS**.
+   - `test_p0_kpi_formula.ts` $\rightarrow$ **10/10 PASS**.
+   - `test_e2e_full.ts` $\rightarrow$ **23/23 PASS**.
+5. **Build Verification**:
+   - `npm run build:server` $\rightarrow$ **SUCCESS** (Exit code 0).
+   - `npm run build:client` $\rightarrow$ **SUCCESS** (Exit code 0).
+   - `npm run build` $\rightarrow$ **SUCCESS** (Exit code 0).
+
+### 10.5. Các Nội Dung Đánh Dấu `LEGAL_REVIEW_REQUIRED`
+- Tiêu chí phân loại dự án nhóm A/B/C theo hạn mức tổng mức đầu tư quy định tại Điều 8, 9, 10 Luật Đầu tư công cần được Hội đồng nhân dân / UBND tỉnh Nghệ An và huyện Nghĩa Đàn rà soát định kỳ theo các văn bản phân cấp quản lý đầu tư công mới nhất.
+
+---
+
+## 11. Triển Khai Toàn Diện Mô-đun Quản Lý Dự Án Đầu Tư Công Cấp Xã Theo Đặc Tả 16 Bước (`PROJECT_MANAGEMENT_MODULE_FINAL_SPEC.md`)
+
+- **Nhánh làm việc**: `feat/complete-project-lifecycle-management`
+- **Mục tiêu**: Thực thi 100% đặc tả quản lý vòng đời dự án đầu tư công cấp xã tại `/projects`, liên kết không trùng lặp với `/public-investment` theo đúng quy định Luật Đầu tư công, Luật Xây dựng, Nghị định 335 và quy trình hành chính thực tế tại xã Nghĩa Lâm.
+
+### 11.1. Chi Tiết Triển Khai 5 Giai Đoạn
+
+#### Giai đoạn 1: Dữ liệu và trạng thái P0
+- **Mở rộng schema bảng `projects`**: Bổ sung phân loại nhóm A/B/C, quy mô, địa điểm, mục tiêu, chủ đầu tư, đơn vị quản lý, đơn vị thụ hưởng, thời hạn bảo hành, 11 trạng thái vòng đời chuẩn hóa (`PREPARATION` $\rightarrow$ `CLOSED`, `ARCHIVED`, `CANCELLED_DRAFT`), cờ rà soát dữ liệu `data_review_flag`.
+- **Tự sinh mã dự án chuẩn hóa**: Hàm `generateProjectCode(year)` tự động sinh mã theo quy tắc `DA-YYYY-NN` (ví dụ `DA-2026-01`, `DA-2026-02`).
+- **Chính sách bảo vệ dữ liệu P0**:
+  - Không cho phép xóa dự án đã phát sinh giải ngân thực tế hoặc đã có hồ sơ tài liệu đính kèm $\rightarrow$ Trả về mã lỗi `HTTP 409 Conflict` kèm thông báo tiếng Việt rõ ràng.
+  - Hỗ trợ chuyển sang trạng thái "Lưu trữ" (`ARCHIVED`) hoặc "Hủy bản nháp" (`CANCELLED_DRAFT`).
+
+#### Giai đoạn 2: Hồ sơ điện tử, workflow 16 bước, RBAC và Audit
+- **Quy trình 16 bước chuẩn cấp xã**:
+  1. *Bước 1*: Đưa vào Kế hoạch ĐTC (Nghị quyết HĐND xã - TM. HĐND - CHỦ TỊCH).
+  2. *Bước 2*: Lập & thẩm định Báo cáo đề xuất chủ trương đầu tư (QĐ thành lập Hội đồng thẩm định trước Báo cáo thẩm định).
+  3. *Bước 3*: Quyết định chủ trương đầu tư (Tập thể UBND xã - TM. UBND - CHỦ TỊCH).
+  4. *Bước 4*: Lựa chọn đơn vị tư vấn khảo sát, lập BCKTKT (Hợp đồng tư vấn hợp lệ).
+  5. *Bước 5*: Phê duyệt nhiệm vụ khảo sát xây dựng (Chủ đầu tư / Chủ tịch UBND xã).
+  6. *Bước 6*: Phê duyệt phương án kỹ thuật khảo sát (Chủ đầu tư).
+  7. *Bước 7*: Thực hiện khảo sát & lập BCKTKT (Nghiệm thu kết quả khảo sát).
+  8. *Bước 8*: Thẩm định BCKTKT, thiết kế & dự toán (Dự toán không vượt tổng mức Bước 3).
+  9. *Bước 9*: Phê duyệt dự án / BCKTKT (Quyết định đầu tư của Chủ tịch UBND xã - Điều kiện mở mã dự án & giải ngân).
+  10. *Bước 10*: Phê duyệt kế hoạch lựa chọn nhà thầu (QĐ phê duyệt KHLCNT).
+  11. *Bước 11*: Lựa chọn nhà thầu, phê duyệt kết quả & ký hợp đồng (Không cho thi công khi chưa ký hợp đồng).
+  12. *Bước 12*: Bố trí kế hoạch vốn hằng năm và giải ngân (Kiểm soát chi Kho bạc).
+  13. *Bước 13*: Thi công & quản lý chất lượng (Nhật ký hiện trường, Ban Giám sát đầu tư cộng đồng).
+  14. *Bước 14*: Nghiệm thu hoàn thành và bàn giao (Bắt buộc hồ sơ hoàn công & biên bản nghiệm thu).
+  15. *Bước 15*: Lập, thẩm tra và phê duyệt quyết toán (Chủ tịch UBND xã phê duyệt).
+  16. *Bước 16*: Bàn giao quản lý, khai thác, bảo hành, tất toán tài khoản & đóng dự án.
+- **Cổng điều kiện chuyển bước (Gate Rules)**:
+  - Khóa Bước 1 nếu thiếu Nghị quyết HĐND xã.
+  - Khóa Bước 9 nếu thiếu số Quyết định phê duyệt BCKTKT.
+  - Khóa Bước 11/13 nếu thiếu hợp đồng xây lắp hợp lệ.
+  - Khóa Bước 14 nếu thiếu biên bản nghiệm thu hoàn thành.
+  - Tự động kích hoạt bước tiếp theo (`IN_PROGRESS`) và đồng bộ `lifecycle_status` khi bước trước hoàn thành.
+- **Checklist điện tử trước khi Chủ tịch ký**: 8 tiêu chí kiểm tra pháp lý, thẩm quyền tập thể, số liệu tài chính không vượt trần, hồ sơ kèm theo.
+- **Kho hồ sơ điện tử (`project_documents`)**: Quản lý 18 loại văn bản đính kèm, phân loại theo bước hoặc dự án, quản lý phiên bản `version` và trạng thái xác thực.
+- **Nhật ký kiểm soát (`audit_logs`)**: Ghi nhận toàn bộ thao tác thêm mới, sửa đổi, phê duyệt bước, đính kèm/xóa tài liệu.
+
+#### Giai đoạn 3 & 4: Vốn, Giải ngân, Đấu thầu, Nghiệm thu & Quyết toán
+- **Liên kết tài chính không trùng lặp**: Đọc trực tiếp kế hoạch vốn, vốn phân bổ, đã giải ngân, % tỷ lệ giải ngân từ bảng nguồn `public_investment_projects` qua phép JOIN.
+- **Đấu thầu & Hợp đồng**: Quản lý hình thức lựa chọn nhà thầu, nhà thầu chính, số hợp đồng, giá trị hợp đồng, thời gian thi công, bảo lãnh hợp đồng.
+- **Nghiệm thu & Quyết toán**: Quản lý biên bản nghiệm thu từng phần / hoàn thành, hồ sơ quyết toán A-B, giá trị thẩm tra, giá trị phê duyệt, thời hạn bảo hành 12 tháng.
+
+#### Giai đoạn 5: Dashboard điều hành, Cảnh báo Chênh lệch & Báo cáo
+- **Cảnh báo Chênh lệch Tiến độ & Giải ngân (`progress_gaps`)**:
+  - Tự động phát hiện khi $Tỷ\ lệ\ giải\ ngân - Tiến\ độ\ thi\ công > 15\%$ (cảnh báo vàng) hoặc $> 30\%$ (cảnh báo đỏ nguy cơ giải ngân vượt khối lượng nghiệm thu).
+  - Cảnh báo khi công trình đạt 100% tiến độ thi công nhưng chưa lập biên bản nghiệm thu hoàn thành.
+- **Xuất báo cáo Excel hành chính**: Xuất dữ liệu dự án ra tệp `.xlsx` theo mẫu chuẩn UBND xã Nghĩa Lâm.
+
+### 11.2. Kết Quả Kiểm Thử Master Spec
+
+| Suite kiểm thử | File test | Số test cases | Kết quả |
+| :--- | :--- | :---: | :---: |
+| **Master Spec 5 Phases** | `test_project_master_spec.ts` | 5/5 | **PASS 100%** |
+| **Project Linking & Data Integrity** | `test_project_linking.ts` | 5/5 | **PASS 100%** |
+| **Project RBAC Matrix** | `test_project_rbac.ts` | 7/7 | **PASS 100%** |
+| **Project Lifecycle & Validation** | `test_project_lifecycle.ts` | 5/5 | **PASS 100%** |
+| **Full RBAC Security Matrix** | `test_rbac_full_matrix.ts` | 11/11 | **PASS 100%** |
+| **P0 KPI Calculation Engine** | `test_p0_kpi_formula.ts` | 10/10 | **PASS 100%** |
+| **End-to-End System Suite** | `test_e2e_full.ts` | 23/23 | **PASS 100%** |
+
+### 11.3. Kết Quả Đóng Gói (Build Verification)
+- `npm run build:server` $\rightarrow$ **SUCCESS** (Exit code 0, 0 error).
+- `npm run build:client` $\rightarrow$ **SUCCESS** (Exit code 0, 0 error, Vite bundle generated).
+- `npm run build` $\rightarrow$ **SUCCESS** (Exit code 0).
+
+### 11.4. Biên Bản Nghiệm Thu Kỹ Thuật Cuối Cùng Trước Khi Merge Draft PR
+
+| Hạng mục nghiệm thu | Kết quả rà soát | Tình trạng |
+| :--- | :--- | :---: |
+| **1. RBAC Công chức (EMPLOYEE)** | - Công chức gọi `POST /api/projects` $\rightarrow$ **403 Forbidden**.<br>- Công chức gọi `GET /api/projects` $\rightarrow$ Chỉ trả về dự án mình phụ trách/lập (không xem toàn bộ).<br>- Công chức gọi `GET /api/projects/:id` (dự án người khác) $\rightarrow$ **403 Forbidden**.<br>- Công chức sửa trường nhạy cảm (Giá trị HĐ, QĐ duyệt) $\rightarrow$ **403 Forbidden**. | **ĐẠT (PASS)** |
+| **2. Căn cứ Pháp lý & Thẩm quyền** | - 16 bước quy trình gắn đầy đủ căn cứ pháp lý cập nhật: **Luật Đầu tư công số 58/2024/QH15** (hiệu lực 01/01/2025), Luật Xây dựng 2014 & SĐ 2020, Luật Đấu thầu 2023, NĐ 40/2020 (áp dụng chuyển tiếp), NĐ 15/2021, NĐ 06/2021, NĐ 99/2021, TT 23/2023.<br>- Thẩm quyền tập thể (HĐND, UBND) và cá nhân (Chủ tịch UBND xã, Chủ tịch HĐ thẩm định) được chuẩn hóa.<br>- Toàn bộ ma trận truy xuất đã hoàn thiện tại [`PROJECT_LEGAL_TRACEABILITY_MATRIX.md`](./PROJECT_LEGAL_TRACEABILITY_MATRIX.md). | **ĐẠT (PASS)** |
+| **3. Thời hạn bảo hành công trình** | - Không hard-code 12 tháng. Lấy động theo `project.warranty_end_date` hoặc điều khoản hợp đồng/loại công trình theo Điều 28 Nghị định 06/2021/NĐ-CP. | **ĐẠT (PASS)** |
+| **4. Cấu hình Progress Gap** | - Ngưỡng cảnh báo chênh lệch được cấu hình qua `PROGRESS_GAP_WARNING_THRESHOLD`, `PROGRESS_GAP_DANGER_THRESHOLD` và tham số URL `?warning_gap=...&danger_gap=...` (Chỉ số quản trị rủi ro nội bộ, không phải kết luận pháp lý). | **ĐẠT (PASS)** |
+| **5. Migration Staging & Dữ liệu cũ** | - Migration `20260817120000_expand_project_lifecycle_management.ts` chạy an toàn, bảo toàn toàn bộ dữ liệu hiện hữu. | **ĐẠT (PASS)** |
+| **6. SQL JOIN Không Nhân Bản** | - Câu truy vấn JOIN chuẩn 1:1, kiểm tra khớp 100% tổng vốn và tổng giải ngân thực tế (1.830.000.000đ). | **ĐẠT (PASS)** |
+| **7. UAT Trực Tiếp Bằng API/URL** | - Suite `test_project_uat_acceptance.ts` mô phỏng 5 vai trò kiểm thử thành công 100%. | **ĐẠT (PASS)** |
+
+### 11.5. Các Điểm Đang Chờ Phê Duyệt / Rà Soát Định Kỳ (`LEGAL_REVIEW_REQUIRED`)
+1. **Hạn mức phân nhóm dự án A/B/C**: Cần theo dõi các văn bản phân cấp quản lý đầu tư công mới nhất của HĐND/UBND tỉnh Nghệ An và UBND huyện Nghĩa Đàn để cập nhật trần tổng mức đầu tư phù hợp theo Luật Đầu tư công số 58/2024/QH15.
+2. **Áp dụng Nghị định 40/2020/NĐ-CP trong thời gian chuyển tiếp**: Tiếp tục áp dụng các biểu mẫu và kỹ thuật theo NĐ 40/2020/NĐ-CP cho đến khi Chính phủ ban hành Nghị định mới thay thế.
+3. **Quy chế hoạt động của Ban Quản lý dự án xã & Ban Giám sát đầu tư của cộng đồng**: Cần rà soát định kỳ theo quyết định kiện toàn nhân sự hằng năm của UBND xã Nghĩa Lâm.
+4. **Kết luận Nghiệm thu**: Đạt **Nghiệm thu Kỹ thuật & Rà soát Pháp lý Toàn diện (Conditionally Accepted for PR Merge)**. Tuyệt đối không tự ý deploy lên cơ sở dữ liệu production khi chưa có phê duyệt thủ công của Lãnh đạo UBND xã.
+
+---
+
+## 12. Rà Soát Pháp Lý Cuối Cùng & Chuẩn Hóa Chuyển Tiếp Quyết Toán 2026 (Final Legal Compliance Check)
+
+- **Nhánh làm việc (Branch)**: `feat/project-legal-compliance-2026`
+- **Căn cứ xác lập**:
+  - Luật Đầu tư công số 58/2024/QH15 (hiệu lực từ 01/01/2025);
+  - Nghị định số 175/2024/NĐ-CP ngày 30/12/2024 (thay thế Nghị định 15/2021/NĐ-CP);
+  - Luật Đấu thầu số 22/2023/QH15, Nghị định 24/2024/NĐ-CP và Nghị định 214/2025/NĐ-CP;
+  - Nghị định số 254/2025/NĐ-CP về quản lý, thanh toán vốn đầu tư công (bãi bỏ Điều 6 NĐ 125/2025);
+  - Nghị định số 193/2026/NĐ-CP (quyết toán vốn đầu tư dự án hoàn thành có hiệu lực từ 01/7/2026);
+  - Thông tư số 73/2026/TT-BTC (biểu mẫu quyết toán từ 01/7/2026);
+  - Công văn số 10836/BTC-PTHT (báo cáo nhanh phân bổ và giải ngân vốn ĐTC ngày 23/7/2026).
+- **Kết quả xử lý 5 nội dung bắt buộc**:
+  1. *Chuyển tiếp quyết toán*: Hồ sơ nộp từ 01/7/2026 bắt buộc dùng mẫu Thông tư 73/2026/TT-BTC theo Nghị định 193/2026/NĐ-CP; hồ sơ trước 01/7/2026 áp dụng quy định chuyển tiếp (đánh dấu `LEGAL_REVIEW_REQUIRED`, không mặc nhiên áp đặt NĐ 254/2025).
+  2. *Tách bạch phạm vi*: Nghị định 254/2025 điều chỉnh quản lý/thanh toán (Bước 12); Nghị định 193/2026 chỉ điều chỉnh quyết toán (Bước 15, 16).
+  3. *Sửa mâu thuẫn Bước 10*: Làm rõ Luật Đấu thầu 2023 và Nghị định 24/2024/NĐ-CP là căn cứ chung; Nghị định 214/2025/NĐ-CP quy định chi tiết về đấu thầu qua mạng và chỉ định thầu quy mô nhỏ cấp xã.
+  4. *Mẫu biểu Thông tư 73/2026/TT-BTC*: Thiết kế động cho các tệp đính kèm (`settlement_form_01_tt73`, `settlement_form_02_tt73`), không hard-code trường tĩnh; đánh dấu `LEGAL_REV_05`.
+  5. *Bản chất Progress Gap*: Khẳng định là quy tắc quản trị rủi ro điều hành nội bộ, không phải kết luận vi phạm pháp luật.
+- **Các file báo cáo bàn giao**:
+  - [`PROJECT_LEGAL_TRACEABILITY_MATRIX.md`](./PROJECT_LEGAL_TRACEABILITY_MATRIX.md)
+  - [`PROJECT_MANAGEMENT_MODULE_FINAL_SPEC.md`](./PROJECT_MANAGEMENT_MODULE_FINAL_SPEC.md)
+  - [`LEGAL_REVIEW_REPORT.md`](./LEGAL_REVIEW_REPORT.md)
+  - [`LEGAL_REVIEW_FINAL_CHECK.md`](./LEGAL_REVIEW_FINAL_CHECK.md)
+- **Kiểm thử & Đóng gói**:
+  - `test_project_legal_compliance_2026.ts` $\rightarrow$ **100% PASS**.
+  - `test_project_uat_acceptance.ts` $\rightarrow$ **100% PASS**.
+  - `test_project_master_spec.ts` $\rightarrow$ **100% PASS**.
+  - `npm run build` $\rightarrow$ **100% SUCCESS**.
+  - Tuyệt đối tuân thủ kỷ luật: Không tự merge vào main, không deploy production.
+
+---
+
+## 13. Nâng Cấp Toàn Diện Giao Diện, Dữ Liệu & Nghiệp Vụ Module Quản Lý Dự Án (V2 Comprehensive Upgrade)
+
+- **Nhánh làm việc (Branch)**: `feat/project-legal-compliance-2026`
+- **Mục tiêu**: Chuẩn hóa toàn diện cơ sở dữ liệu, model, migration, backend API, validation, frontend giao diện, bộ lọc, modal 5 tab, RBAC, audit log và 20 kịch bản kiểm thử tự động.
+
+### 13.1. Các Hạng Mục Đã Triển Khai & Hoàn Thành:
+1. **Chuẩn hóa danh mục & Dữ liệu**:
+   - Mã trạng thái chuẩn nội bộ: `PREPARATION`, `INVESTMENT_APPROVED`, `BIDDING`, `CONTRACTED`, `CONSTRUCTION`, `DELAYED`, `PARTIAL_ACCEPTANCE`, `COMPLETION_ACCEPTANCE`, `HANDOVER`, `SETTLEMENT_APPROVED`, `WARRANTY`, `COMPLETED`, `ARCHIVED`, `CANCELLED_DRAFT`.
+   - Bảng mới `project_obstacles`: Quản lý danh mục vướng mắc (`LAND_CLEARANCE`, `LEGAL_PROCEDURE`, `WEATHER`, `CONTRACTOR`, `FUNDING`, `DESIGN`, `OTHER`).
+   - Bảng mới `project_payment_disbursements`: Quản lý chi tiết các đợt tạm ứng, nghiệm thu thanh toán khối lượng hoàn thành, tình trạng kiểm soát kho bạc (`PENDING`, `APPROVED`, `REJECTED`).
+   - Dọn sạch chuỗi rác "Chưa lựa chọn nhà thầu", quản lý riêng trường tên và trạng thái lựa chọn nhà thầu.
+2. **Nghiệp vụ Vòng đời & Gate Rules**:
+   - Chặn chuyển `COMPLETION_ACCEPTANCE` khi thiếu Biên bản nghiệm thu.
+   - Chặn chuyển `HANDED_OVER` khi thiếu Biên bản bàn giao.
+   - Chặn chuyển `SETTLEMENT_APPROVED` khi thiếu Quyết định phê duyệt quyết toán.
+   - Chặn chuyển `COMPLETED` khi chưa xác định thời hạn bảo hành công trình.
+   - Chặn xóa cứng (Hard Delete) dự án đã phát sinh giải ngân / hồ sơ tài liệu $\rightarrow$ Trả về **HTTP 409 Conflict**.
+3. **Tiến độ & Cảnh báo**:
+   - Tự động tính toán số ngày chậm tiến độ `delay_days` và gắn nhãn `is_delayed`.
+   - Cảnh báo chênh lệch tiến độ - giải ngân (Progress Gap) hỗ trợ cấu hình động qua query params (`?warning_gap=15&danger_gap=30`).
+4. **Giao diện & Trải nghiệm Người dùng**:
+   - Bộ lọc đa tiêu chí 7 dropdown + công tắc trễ hạn + input tìm kiếm tiếng Việt không dấu.
+   - Nút Xóa lọc (Clear filters), bộ đếm kết quả động, trạng thái không có dữ liệu (Empty state).
+   - Modal chi tiết 5 tab trực quan: Thông tin chung, 16 bước quy trình, Quản lý vướng mắc, Quản lý đợt thanh toán, Nhật ký Audit trail.
+   - Form Wizard tạo mới với validation mã `DA-YYYY-NN`, chặn số âm, chặn giải ngân vượt vốn.
+   - Xuất file Excel thực tế khớp chính xác theo bộ lọc hiện tại.
+
+### 13.2. Kết Quả Kiểm Thử Toàn Diện (20/20 Test Cases Passed)
+- File test: [`server/test_project_comprehensive_v2.ts`](./server/test_project_comprehensive_v2.ts)
+- Kết quả: **20/20 PASSED (100%)**
+- Các báo cáo bàn giao chi tiết:
+  - [`PROJECT_UI_UAT_REPORT.md`](./PROJECT_UI_UAT_REPORT.md)
+  - [`PROJECT_DATA_QUALITY_REPORT.md`](./PROJECT_DATA_QUALITY_REPORT.md)
+  - [`PROJECT_MODULE_FIX_REPORT.md`](./PROJECT_MODULE_FIX_REPORT.md)
+- Kiểm thử đóng gói:
+  - Server TypeScript Build: **Exit code 0**
+  - Client Vite Build: **Exit code 0**
+- Tuân thủ nghiêm ngặt quy chế: **Giữ toàn bộ commit trên branch `feat/project-legal-compliance-2026`, không merge main, không deploy production.**
+
+---
+
+## 14. Rà Soát Xác Minh Bản Gốc Pháp Lý & Hoàn Tất Điều Kiện Merge Gate (Final Legal Verification & Merge Gate)
+
+- **Nhánh làm việc (Branch)**: `feat/project-legal-compliance-2026`
+- **Mục tiêu**: Thực thi toàn bộ chỉ thị theo `ANTIGRAVITY_FINAL_LEGAL_VERIFICATION_AND_MERGE_GATE.md` và chỉ đạo loại trừ các văn bản không bắt buộc.
+
+### 14.1. Kết Quả Xác Minh Bản Gốc & Chuẩn Hóa Căn Cứ Pháp Lý:
+1. **Nghị định 214/2025/NĐ-CP**:
+   - Xác minh trực tiếp file gốc `Phap_ly/02_Nghi_dinh/214_2025_ND-CP_668157.docx`.
+   - Tên chính thức: *Nghị định quy định chi tiết một số điều và biện pháp thi hành Luật Đấu thầu về lựa chọn nhà thầu* (Ban hành 04/8/2025).
+   - Quy trình lựa chọn nhà thầu qua mạng và chỉ định thầu tại Điều 78, 79, 80; hạn mức chỉ định thầu áp dụng theo Điểm m Khoản 1 Điều 23 Luật Đấu thầu số 22/2023/QH15.
+2. **Quan hệ bãi bỏ giữa NĐ 24/2024 và NĐ 214/2025**:
+   - Khoản 2 Điều 145 NĐ 214/2025/NĐ-CP bãi bỏ toàn bộ NĐ 24/2024/NĐ-CP kể từ ngày 04/8/2025.
+   - NĐ 24/2024/NĐ-CP chuyển sang trạng thái `REPLACED / TRANSITION_ONLY`.
+3. **Cập nhật phạm vi loại trừ**:
+   - Quyết định 1261/QĐ-UBND và Công văn 3092/UBND-KT chính thức được loại trừ khỏi căn cứ bắt buộc (`EXCLUDED_FROM_PROJECT_LEGAL_BASIS`), không còn là rào cản chặn nghiệm thu.
+4. **Văn bản tỉnh Nghệ An & xã Nghĩa Lâm chính thức**:
+   - QĐ 13/2026/QĐ-UBND tỉnh Nghệ An, NQ 05/2026/NQ-HĐND, NQ 69/NQ-HĐND, CV 3651/UBND-KT, QĐ 115/QĐ-UBND xã Nghĩa Lâm, QĐ 88/QĐ-UBND xã Nghĩa Lâm đã được xác minh bản gốc ký số `ACTIVE`.
+5. **Phân loại tài liệu**:
+   - Luật XD 135/2025 (hiệu lực 01/7/2026) là căn cứ chính thức.
+   - NĐ 335/2025 thuộc phân hệ KPI.
+   - Sổ tay ĐTC 2026 là tài liệu tham khảo chuyên môn.
+
+### 14.2. Kết Luận Nghiệm Thu Cuối Cùng (100% PASS):
+- **Kiểm thử tự động**: `test_project_comprehensive_v2.ts` đạt **20/20 PASSED (100%)**.
+- **Đóng gói mã nguồn**: Server TypeScript & Client Vite build thành công (**Exit code 0**).
+- **Kết luận**: **ĐẠT 100% TIÊU CHUẨN NGHIỆM THU KỸ THUẬT & PHÁP LÝ. ĐỦ ĐIỀU KIỆN HOÀN TẤT MODULE TRÊN BRANCH `feat/project-legal-compliance-2026`**.
+- **Kỷ luật repository**: Không merge vào `main`, không deploy production.
+

@@ -16,6 +16,8 @@ import {
   getEvaluationPeriods,
   lockEvaluationPeriod,
   unlockEvaluationPeriod,
+  getEvaluationFormDetail,
+  recalculateEvaluationForm,
 } from '../controllers/evaluationController';
 import { authenticate } from '../middleware/auth';
 
@@ -27,6 +29,8 @@ router.post('/periods/lock', authenticate, lockEvaluationPeriod);
 router.post('/periods/unlock', authenticate, unlockEvaluationPeriod);
 router.get('/quota-stats', authenticate, getQuotaStats);
 router.get('/appeals', authenticate, getAppeals);
+router.get('/forms/:id', authenticate, getEvaluationFormDetail);
+router.post('/forms/:id/recalculate', authenticate, recalculateEvaluationForm);
 router.get('/:id', authenticate, getEvaluationById);
 
 // Employee evaluation routes

@@ -7,9 +7,10 @@ import { ShieldAlert } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: (UserRole | string)[];
+  allowedDepartments?: number[];
 }
 
-export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles }) => {
+export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowedRoles, allowedDepartments }) => {
   const { user, loading, isAuthenticated, hasRole } = useAuth();
   const location = useLocation();
 
@@ -26,7 +27,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (allowedRoles && allowedRoles.length > 0 && !hasRole(allowedRoles)) {
+  const roleDenied = allowedRoles && allowedRoles.length > 0 && !hasRole(allowedRoles);
+  const deptDenied =
+    allowedDepartments &&
+    allowedDepartments.length > 0 &&
+    !['ADMIN', 'LEADERSHIP'].includes(user.role) &&
+    (!user.department_id || !allowedDepartments.includes(user.department_id));
+
+  if (roleDenied || deptDenied) {
     return (
       <div className="p-8 max-w-2xl mx-auto my-12 bg-white rounded-xl shadow-sm border border-red-200 text-center">
         <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">

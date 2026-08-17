@@ -394,3 +394,284 @@ export interface OfficeRequest {
   updated_at?: string;
 }
 
+export interface Project {
+  id: number;
+  investment_project_id?: number | null;
+  project_code: string;
+  project_name: string;
+  investment_group: 'A' | 'B' | 'C' | 'Chưa phân loại' | string;
+  project_type?: string | null;
+  location?: string | null;
+  scale?: string | null;
+  objective?: string | null;
+  investor_name?: string | null;
+  management_unit?: string | null;
+  beneficiary_unit?: string | null;
+  warranty_end_date?: string | null;
+  lifecycle_status: 'PREPARATION' | 'INVESTMENT_APPROVED' | 'PROCUREMENT' | 'CONTRACT_SIGNED' | 'CONSTRUCTION' | 'PARTIAL_ACCEPTANCE' | 'COMPLETION_ACCEPTANCE' | 'HANDOVER' | 'SETTLEMENT' | 'WARRANTY' | 'CLOSED' | 'ARCHIVED' | 'CANCELLED_DRAFT' | string;
+  data_review_flag?: string | null;
+  approval_decision_no?: string | null;
+  approval_date?: string | null;
+  approving_authority?: string | null;
+  design_approval_no?: string | null;
+  bidding_method?: string | null;
+  contractor_selection_date?: string | null;
+  contract_no?: string | null;
+  contract_value: number;
+  contractor_name?: string | null;
+  contract_signed_date?: string | null;
+  start_date?: string | null;
+  planned_end_date?: string | null;
+  actual_end_date?: string | null;
+  acceptance_status: 'chua_nghiem_thu' | 'nghiem_thu_tung_phan' | 'nghiem_thu_hoan_thanh' | 'khong_dat' | string;
+  acceptance_date?: string | null;
+  settlement_status: 'chua_quyet_toan' | 'dang_quyet_toan' | 'da_quyet_toan' | 'quyet_toan_xong' | string;
+  settlement_value: number;
+  settlement_date?: string | null;
+  handover_date?: string | null;
+  project_manager_id?: number | null;
+  project_manager_name?: string | null;
+  project_manager_position?: string | null;
+  supervisor_unit?: string | null;
+  created_by?: number | null;
+  creator_name?: string | null;
+  updated_by?: number | null;
+  version: number;
+  created_at?: string;
+  updated_at?: string;
+
+  // Joined fields from linked public_investment_projects
+  inv_project_code?: string | null;
+  inv_project_name?: string | null;
+  inv_investor_name?: string | null;
+  inv_funding_source?: string | null;
+  inv_planned_capital?: number | null;
+  inv_allocated_capital?: number | null;
+  inv_disbursed_amount?: number | null;
+  inv_disbursement_rate?: number | null;
+  inv_actual_progress_percent?: number | null;
+  inv_status?: string | null;
+  inv_contractor?: string | null;
+  inv_obstacle_type?: string | null;
+  inv_obstacle_note?: string | null;
+}
+
+export interface ProjectWorkflowStep {
+  id: number;
+  project_id: number;
+  step_number: number;
+  step_code: string;
+  step_name: string;
+  authority_body: string;
+  signatory_type: 'COLLECTIVE' | 'INDIVIDUAL' | 'AUTHORIZED' | string;
+  signatory_title: string;
+  status: 'NOT_STARTED' | 'IN_PROGRESS' | 'WAITING_REVIEW' | 'APPROVED' | 'REJECTED' | 'BLOCKED' | 'COMPLETED' | string;
+  checklist_data?: string | null;
+  decision_number?: string | null;
+  decision_date?: string | null;
+  started_date?: string | null;
+  completed_date?: string | null;
+  evidence_url?: string | null;
+  notes?: string | null;
+  is_blocked: boolean;
+  block_reason?: string | null;
+  legal_review_required: boolean;
+  reviewed_by?: number | null;
+  approved_by?: number | null;
+  reviewer_name?: string | null;
+  approver_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectDocument {
+  id: number;
+  project_id: number;
+  workflow_step_id?: number | null;
+  document_code?: string | null;
+  document_name: string;
+  document_type: string;
+  issuing_authority?: string | null;
+  issuing_date?: string | null;
+  file_url: string;
+  file_size?: number;
+  file_type?: string;
+  version: number;
+  is_mandatory: boolean;
+  verification_status: 'pending' | 'verified' | 'rejected' | 'LEGAL_REVIEW_REQUIRED' | string;
+  uploaded_by?: number | null;
+  uploader_name?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectFundingPlan {
+  id: number;
+  project_id: number;
+  budget_year: number;
+  funding_source: string;
+  planned_amount: number;
+  allocated_amount: number;
+  adjusted_amount: number;
+  cancelled_amount: number;
+  decision_ref?: string | null;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectProcurementPackage {
+  id: number;
+  project_id: number;
+  package_code: string;
+  package_name: string;
+  procurement_plan_ref?: string | null;
+  bidding_method: string;
+  package_estimate_value: number;
+  winning_bid_value: number;
+  contractor_name?: string | null;
+  selection_date?: string | null;
+  status: 'planned' | 'bidding' | 'selected' | 'contracted' | 'cancelled' | string;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectContract {
+  id: number;
+  project_id: number;
+  package_id?: number | null;
+  contract_no: string;
+  contract_name: string;
+  contractor_name: string;
+  signed_date?: string | null;
+  contract_value: number;
+  start_date?: string | null;
+  end_date?: string | null;
+  performance_guarantee_value: number;
+  performance_guarantee_expiry?: string | null;
+  advance_amount: number;
+  status: 'draft' | 'active' | 'completed' | 'liquidated' | 'terminated' | string;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectAcceptanceRecord {
+  id: number;
+  project_id: number;
+  acceptance_type: 'stage' | 'partial' | 'completion' | 'internal' | string;
+  acceptance_date: string;
+  acceptance_value: number;
+  conclusion: 'pass' | 'conditional_pass' | 'fail' | string;
+  remediation_deadline?: string | null;
+  remediation_result?: string | null;
+  signatories_list?: string | null;
+  minutes_number?: string | null;
+  evidence_url?: string | null;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectSettlementRecord {
+  id: number;
+  project_id: number;
+  submission_date?: string | null;
+  appraising_body?: string | null;
+  proposed_value: number;
+  approved_value: number;
+  difference_value: number;
+  decision_number?: string | null;
+  decision_date?: string | null;
+  asset_handover_status: string;
+  bank_account_settled: boolean;
+  note?: string | null;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectWorkItem {
+  id: number;
+  project_id: number;
+  parent_id?: number | null;
+  item_code: string;
+  item_name: string;
+  responsible_unit?: string | null;
+  planned_start_date?: string | null;
+  planned_end_date?: string | null;
+  actual_start_date?: string | null;
+  actual_end_date?: string | null;
+  progress_percent: number;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | string;
+  obstacle_note?: string | null;
+  created_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectMilestone {
+  id: number;
+  project_id: number;
+  milestone_name: string;
+  milestone_type: 'approval' | 'bidding' | 'contract' | 'construction_start' | 'foundation' | 'structure' | 'completion' | 'acceptance' | 'settlement' | 'handover' | 'other' | string;
+  planned_date: string;
+  actual_date?: string | null;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed' | 'cancelled' | string;
+  note?: string | null;
+  created_by?: number | null;
+  updated_by?: number | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ProjectDashboardStats {
+  total_projects: number;
+  by_group: { A: number; B: number; C: number; other: number };
+  by_lifecycle: {
+    preparing: number;
+    investment_approved: number;
+    procurement: number;
+    contracting: number;
+    executing: number;
+    acceptance_pending: number;
+    settling: number;
+    warranty: number;
+    completed: number;
+    archived: number;
+  };
+  financials: {
+    total_planned_capital: number;
+    total_allocated_capital: number;
+    total_disbursed_amount: number;
+    average_disbursement_rate: number;
+    total_contract_value: number;
+    total_settlement_value: number;
+  };
+  obstacles_summary: Record<string, number>;
+  progress_gaps: Array<{
+    id: number;
+    project_code: string;
+    project_name: string;
+    disbursement_rate: number;
+    progress_percent: number;
+    gap: number;
+    alert_level: 'warning' | 'danger';
+    reason: string;
+  }>;
+  priority_projects: Array<{
+    id: number;
+    project_code: string;
+    project_name: string;
+    reason: string;
+    disbursement_rate: number;
+    progress: number;
+  }>;
+}
+
+
+

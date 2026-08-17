@@ -13,6 +13,7 @@ import { NotFound } from './pages/NotFound';
 import { AIChatWidget } from './components/AIChatWidget';
 import { Budget } from './pages/Budget';
 import { PublicInvestment } from './pages/PublicInvestment';
+import { Projects } from './pages/Projects';
 import { LandCertificates } from './pages/LandCertificates';
 import { OfficeManagement } from './pages/OfficeManagement';
 
@@ -53,7 +54,7 @@ export const App: React.FC = () => {
               <Route
                 path="/budget"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedDepartments={[6]}>
                     <Budget />
                   </ProtectedRoute>
                 }
@@ -61,15 +62,23 @@ export const App: React.FC = () => {
               <Route
                 path="/public-investment"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedDepartments={[3]}>
                     <PublicInvestment />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute allowedDepartments={[3]}>
+                    <Projects />
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="/land-certificates"
                 element={
-                  <ProtectedRoute>
+                  <ProtectedRoute allowedDepartments={[3]}>
                     <LandCertificates />
                   </ProtectedRoute>
                 }
