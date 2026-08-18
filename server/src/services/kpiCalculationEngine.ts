@@ -81,6 +81,22 @@ export interface KPICalculationResult {
   };
 }
 
+export const KPI_CONSTANTS = {
+  MAX_GENERAL_SCORE: 30.0,
+  MAX_POLITICS_SCORE: 10.0,
+  MAX_EXPERTISE_SCORE: 10.0,
+  MAX_INNOVATION_SCORE: 10.0,
+  MAX_TASK_SCORE: 70.0,
+  MAX_TOTAL_SCORE: 100.0,
+  EXCELLENT_THRESHOLD: 90.0,
+  GOOD_THRESHOLD: 70.0,
+  SATISFACTORY_THRESHOLD: 50.0,
+  DEFAULT_BASELINE_SCORE: 5.0,
+  DEFAULT_COEFFICIENT: 1.0,
+  DELAY_PENALTY_RATE: 0.25,
+  REWORK_PENALTY_RATE: 0.25,
+};
+
 export function validateNumericField(val: any, fieldName: string, min = 0, max = 100): number {
   if (val === undefined || val === null) return 0;
   const num = Number(val);
@@ -98,9 +114,9 @@ export function validateNumericField(val: any, fieldName: string, min = 0, max =
 
 export function calculateClassification(score: number, isDisciplined?: boolean): string {
   if (isDisciplined) return 'Không hoàn thành nhiệm vụ (Kỷ luật)';
-  if (score >= 90) return 'Hoàn thành xuất sắc nhiệm vụ';
-  if (score >= 70) return 'Hoàn thành tốt nhiệm vụ';
-  if (score >= 50) return 'Hoàn thành nhiệm vụ';
+  if (score >= KPI_CONSTANTS.EXCELLENT_THRESHOLD) return 'Hoàn thành xuất sắc nhiệm vụ';
+  if (score >= KPI_CONSTANTS.GOOD_THRESHOLD) return 'Hoàn thành tốt nhiệm vụ';
+  if (score >= KPI_CONSTANTS.SATISFACTORY_THRESHOLD) return 'Hoàn thành nhiệm vụ';
   return 'Không hoàn thành nhiệm vụ';
 }
 
@@ -109,9 +125,9 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
   const strategy: CalculationStrategy = input.strategy || 'ND335_OFFICIAL_ABC';
 
   // 1. Validate General Criteria (Part I: Max 30.0 points)
-  const pol = validateNumericField(input.criteria_politics, 'Tiêu chí chính trị, tư tưởng', 0, 10);
-  const exp = validateNumericField(input.criteria_expertise, 'Tiêu chí chuyên môn, nghiệp vụ', 0, 10);
-  const inn = validateNumericField(input.criteria_innovation, 'Tiêu chí đổi mới, sáng tạo', 0, 10);
+  const pol = validateNumericField(input.criteria_politics, 'Tiêu chí chính trị, tư tưởng', 0, KPI_CONSTANTS.MAX_POLITICS_SCORE);
+  const exp = validateNumericField(input.criteria_expertise, 'Tiêu chí chuyên môn, nghiệp vụ', 0, KPI_CONSTANTS.MAX_EXPERTISE_SCORE);
+  const inn = validateNumericField(input.criteria_innovation, 'Tiêu chí đổi mới, sáng tạo', 0, KPI_CONSTANTS.MAX_INNOVATION_SCORE);
   const commonCriteriaScore = Number((pol + exp + inn).toFixed(2));
 
   // 2. Validate Items (Part II)
@@ -139,20 +155,20 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
     assignedConvertedTotal += convertedAssigned;
     completedConvertedTotal += convertedAccepted;
 
-    // Quality calculation (25% deduction per unexempted rework)
+    // Quality calculation (deduction per unexempted rework)
     const reworks = it.is_exempted_rework ? 0 : (Number(it.reworks) || 0);
-    const qualityRatio = Math.max(0.0, 1.0 - (reworks * 0.25));
+    const qualityRatio = Math.max(0.0, 1.0 - (reworks * KPI_CONSTANTS.REWORK_PENALTY_RATE));
     qualityConvertedTotal += convertedAccepted * qualityRatio;
 
-    // Progress calculation (25% deduction per unexempted delay)
+    // Progress calculation (deduction per unexempted delay)
     const delays = it.is_exempted_delay ? 0 : (Number(it.delays) || 0);
-    const progressRatio = Math.max(0.0, 1.0 - (delays * 0.25));
+    const progressRatio = Math.max(0.0, 1.0 - (delays * KPI_CONSTANTS.DELAY_PENALTY_RATE));
     onTimeConvertedTotal += convertedAccepted * progressRatio;
 
     // Direct line points if manually specified or computed from baseline
     let lineScore = 0;
     if (it.points !== undefined && it.points !== null) {
-      lineScore = validateNumericField(it.points, 'Điểm dòng chi tiết', 0, 100);
+      lineScore = validateNumericField(it.points, 'Điểm dòng chi tiết', 0, KPI_CONSTANTS.MAX_TOTAL_SCORE);
     } else {
       lineScore = Number((acceptedQty * baseline * coeff * qualityRatio * progressRatio).toFixed(2));
     }
@@ -209,24 +225,24 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
 
   let taskScore = 0.0;
 
-  // If specific item points are provided, we preserve exact item points summation (capped at 70.0)
+  // If specific item points are provided, we preserve exact item points summation (capped at MAX_TASK_SCORE)
   // while checking that empty/zero denominator returns 0 / insufficient data
   if (isZeroDenominator && sumDirectLineScores === 0) {
     taskScore = 0.0;
   } else if (sumDirectLineScores > 0) {
     const rawTaskScore = sumDirectLineScores * penaltyMultiplier;
-    taskScore = Math.min(70.0, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
+    taskScore = Math.min(KPI_CONSTANTS.MAX_TASK_SCORE, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
   } else {
-    const rawTaskScore = taskOverallRatio * 70.0 * penaltyMultiplier;
-    taskScore = Math.min(70.0, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
+    const rawTaskScore = taskOverallRatio * KPI_CONSTANTS.MAX_TASK_SCORE * penaltyMultiplier;
+    taskScore = Math.min(KPI_CONSTANTS.MAX_TASK_SCORE, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
   }
 
-  const totalScore = Math.min(100.0, Math.max(0.0, Number((commonCriteriaScore + taskScore).toFixed(2))));
+  const totalScore = Math.min(KPI_CONSTANTS.MAX_TOTAL_SCORE, Math.max(0.0, Number((commonCriteriaScore + taskScore).toFixed(2))));
   const rating = calculateClassification(totalScore);
 
   const formulaSummary = isLeadership
-    ? `TaskScore = min(70, 70 * (a + b + c + d + đ + e) / 6) = min(70, 70 * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}% + ${(d_unit_result*100).toFixed(1)}% + ${(dd_execution*100).toFixed(1)}% + ${(e_solidarity*100).toFixed(1)}%) / 6)`
-    : `TaskScore = min(70, sum(line_points)) = min(70, ${sumDirectLineScores.toFixed(2)} * ${penaltyMultiplier})`;
+    ? `TaskScore = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, ${KPI_CONSTANTS.MAX_TASK_SCORE} * (a + b + c + d + đ + e) / 6) = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, ${KPI_CONSTANTS.MAX_TASK_SCORE} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}% + ${(d_unit_result*100).toFixed(1)}% + ${(dd_execution*100).toFixed(1)}% + ${(e_solidarity*100).toFixed(1)}%) / 6)`
+    : `TaskScore = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, sum(line_points)) = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, ${sumDirectLineScores.toFixed(2)} * ${penaltyMultiplier})`;
 
   return {
     calculationStrategy: strategy,
@@ -246,7 +262,7 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
       task_overall_ratio: taskOverallRatio,
     },
     auditFormula: {
-      taskSectionMax: 70,
+      taskSectionMax: KPI_CONSTANTS.MAX_TASK_SCORE,
       penaltyMultiplier,
       formula: formulaSummary,
       componentsSummary: `a=${(a_quantity_ratio*100).toFixed(1)}%, b=${(b_quality_ratio*100).toFixed(1)}%, c=${(c_progress_ratio*100).toFixed(1)}%`,
