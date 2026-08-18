@@ -208,16 +208,18 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
 
       let delays = 0;
       let reworks = 0;
-      if (it.task_id) {
+      let validatedTaskId: number | null = null;
+      if (it.task_id && !isNaN(Number(it.task_id)) && Number(it.task_id) > 0) {
         const task = await trx('tasks').where('id', Number(it.task_id)).first();
         if (task) {
+          validatedTaskId = task.id;
           delays = Number(task.delay_count) || 0;
           reworks = Number(task.rework_count) || 0;
         }
       }
 
       inputItems.push({
-        task_id: it.task_id ? Number(it.task_id) : null,
+        task_id: validatedTaskId,
         product_catalog_id: Number(it.product_catalog_id),
         quantity: qty,
         baseline_score: unitBaseline,
@@ -313,9 +315,17 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     }
 
     for (const line of calcResult.taskLines) {
+      let finalTaskId: number | null = null;
+      if (line.task_id && Number(line.task_id) > 0) {
+        const checkTask = await trx('tasks').where('id', Number(line.task_id)).first();
+        if (checkTask) {
+          finalTaskId = checkTask.id;
+        }
+      }
+
       await trx('evaluation_details').insert({
         evaluation_id: evalId,
-        task_id: line.task_id || null,
+        task_id: finalTaskId,
         product_catalog_id: line.product_catalog_id,
         quantity: line.quantity,
         self_points: line.line_score,
@@ -345,7 +355,17 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
   } catch (err: any) {
     await trx.rollback();
     console.error('Lỗi lưu nháp đánh giá:', err);
-    res.status(500).json({ message: err.message || 'Lỗi máy chủ khi lưu nháp phiếu đánh giá.' });
+    let errorMsg = 'Lỗi máy chủ khi lưu nháp phiếu đánh giá.';
+    if (err.message) {
+      if (err.message.includes('FOREIGN KEY constraint failed')) {
+        errorMsg = 'Lỗi ràng buộc dữ liệu: Nhiệm vụ hoặc sản phẩm danh mục không tồn tại trong hệ thống.';
+      } else if (err.message.includes('UNIQUE constraint failed')) {
+        errorMsg = `Phiếu tự đánh giá của cán bộ trong tháng ${req.body?.month || ''} đã tồn tại trong hệ thống.`;
+      } else {
+        errorMsg = err.message;
+      }
+    }
+    res.status(500).json({ message: errorMsg });
   }
 }
 
