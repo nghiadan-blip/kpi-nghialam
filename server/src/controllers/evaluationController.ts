@@ -233,7 +233,7 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     let calcResult;
     try {
       calcResult = calculateKPIScore({
-        strategy: 'WEIGHTED_DETAIL_SCORE',
+        strategy: 'ND335_OFFICIAL_ABC',
         criteria_politics: criteria_politics_self,
         criteria_expertise: criteria_expertise_self,
         criteria_innovation: criteria_innovation_self,
@@ -495,7 +495,7 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     let calcResult;
     try {
       calcResult = calculateKPIScore({
-        strategy: 'WEIGHTED_DETAIL_SCORE',
+        strategy: 'ND335_OFFICIAL_ABC',
         criteria_politics: criteria_politics_mgr !== undefined ? criteria_politics_mgr : evaluation.criteria_politics_self,
         criteria_expertise: criteria_expertise_mgr !== undefined ? criteria_expertise_mgr : evaluation.criteria_expertise_self,
         criteria_innovation: criteria_innovation_mgr !== undefined ? criteria_innovation_mgr : evaluation.criteria_innovation_self,
@@ -652,7 +652,7 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
     let calcResult;
     try {
       calcResult = calculateKPIScore({
-        strategy: 'WEIGHTED_DETAIL_SCORE',
+        strategy: 'ND335_OFFICIAL_ABC',
         criteria_politics: criteria_politics_final !== undefined ? criteria_politics_final : (evaluation.criteria_politics_mgr ?? evaluation.criteria_politics_self),
         criteria_expertise: criteria_expertise_final !== undefined ? criteria_expertise_final : (evaluation.criteria_expertise_mgr ?? evaluation.criteria_expertise_self),
         criteria_innovation: criteria_innovation_final !== undefined ? criteria_innovation_final : (evaluation.criteria_innovation_mgr ?? evaluation.criteria_innovation_self),
@@ -1315,6 +1315,7 @@ export async function getEvaluationFormDetail(req: AuthRequest, res: Response): 
     }));
 
     const calcResult = calculateKPIScore({
+      strategy: 'ND335_OFFICIAL_ABC',
       criteria_politics: evaluation.criteria_politics_final ?? evaluation.criteria_politics_mgr ?? evaluation.criteria_politics_self ?? 10.0,
       criteria_expertise: evaluation.criteria_expertise_final ?? evaluation.criteria_expertise_mgr ?? evaluation.criteria_expertise_self ?? 10.0,
       criteria_innovation: evaluation.criteria_innovation_final ?? evaluation.criteria_innovation_mgr ?? evaluation.criteria_innovation_self ?? 10.0,

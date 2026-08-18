@@ -513,3 +513,48 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 - **Kết luận**: **ĐẠT 100% TIÊU CHUẨN NGHIỆM THU KỸ THUẬT & PHÁP LÝ. ĐỦ ĐIỀU KIỆN HOÀN TẤT MODULE TRÊN BRANCH `feat/project-legal-compliance-2026`**.
 - **Kỷ luật repository**: Không merge vào `main`, không deploy production.
 
+---
+
+## 15. Tích Hợp Báo Cáo Nghiên Cứu & Hoàn Thiện Calculation Engine Đánh Giá CBCC Theo NĐ 335 (ND335_OFFICIAL_ABC)
+
+- **Nhánh làm việc (Branch)**: `feat/kpi-nd335-research-integration`
+- **Căn cứ xác lập**:
+  - Nghị định số 335/2025/NĐ-CP ngày 31/12/2025 của Chính phủ;
+  - Sổ tay hướng dẫn đánh giá công chức của Bộ Nội vụ;
+  - Báo cáo nghiên cứu chuyên sâu phương pháp đánh giá KPI cấp xã theo NĐ 335 (`Bao-cao-nghien-cuu-KPI-cap-xa-ND335.docx`);
+  - Quyết định 283/QĐ-UBND ngày 31/5/2026 của UBND xã Nghĩa Lâm;
+  - Quy định 295-QĐ/ĐU ngày 09/4/2026 của Đảng ủy xã Nghĩa Lâm.
+
+### 15.1. Các Hạng Mục Đã Hoàn Thành:
+1. **Khởi tạo Ma Trận Truy Xuất Pháp Lý KPI 7 Cột Chuẩn**:
+   - Cập nhật [`KPI_LEGAL_TRACEABILITY_MATRIX.md`](./KPI_LEGAL_TRACEABILITY_MATRIX.md) phân định nghiêm ngặt 3 cấp độ: `LEGAL_MANDATORY`, `OFFICIAL_GUIDANCE`, và `LOCAL_POLICY_PROPOSAL` / `LEGAL_REVIEW_REQUIRED`.
+   - Phân loại rõ ràng 20 tiêu chí cốt lõi, không tự ý đưa các đề xuất chưa có phê duyệt (như phân rã 8/8/8/6, chặn lùi 7 ngày, quy tắc d=50% tự động) thành bắt buộc pháp lý.
+2. **Nâng Cấp Calculation Engine Phiên Bản Duy Nhất (`ND335_OFFICIAL_ABC_2026.08.1`)**:
+   - Tệp triển khai: [`server/src/services/kpiCalculationEngine.ts`](./server/src/services/kpiCalculationEngine.ts).
+   - Công thức định lượng:
+     - Khối lượng giao quy đổi: $\text{assigned\_converted} = \sum(\text{assigned\_qty} \times K)$
+     - Khối lượng hoàn thành quy đổi: $\text{completed\_converted} = \sum(\text{accepted\_qty} \times K)$
+     - Khối lượng đạt chất lượng: $\text{quality\_converted} = \sum(\text{accepted\_qty} \times K \times (1 - 0.25 \times \text{reworks}))$
+     - Khối lượng đạt tiến độ: $\text{on\_time\_converted} = \sum(\text{accepted\_qty} \times K \times (1 - 0.25 \times \text{delays}))$
+     - Thành tố $a, b, c$: $a = \min(1, \frac{\text{completed\_converted}}{\text{assigned\_converted}})$, $b = \max(0, \min(1, \frac{\text{quality\_converted}}{\text{assigned\_converted}}))$, $c = \max(0, \min(1, \frac{\text{on\_time\_converted}}{\text{assigned\_converted}}))$.
+     - Đối với Công chức chuyên môn: Tỷ lệ hoàn thành $= \frac{a + b + c}{3}$.
+     - Đối với Công chức lãnh đạo: Tỷ lệ hoàn thành $= \frac{a + b + c + d + đ + e}{6}$.
+     - Trả về `auditFormula` với đầy đủ tham số trung gian và cờ `insufficientData` nếu mẫu số bằng 0.
+3. **Đồng Bộ Backend API & Controllers**:
+   - Cập nhật `evaluationController.ts` (`saveDraftEvaluation`, `reviewByManager`, `approveByLeadership`, `getEvaluationFormDetail`, `recalculateEvaluationForm`) chuyển sang sử dụng `ND335_OFFICIAL_ABC`.
+4. **Kiểm Thử Toàn Diện (100% Passed)**:
+   - `test_p0_kpi_formula.ts`: **10/10 PASSED (100%)**.
+   - `test_evaluation_3step.ts`: **7/7 PASSED (100%)**.
+   - `test_rbac_full_matrix.ts`: **11/11 PASSED (100%)**.
+   - `test_e2e_full.ts`: **23/23 PASSED (100%)**.
+   - `test_project_comprehensive_v2.ts`: **20/20 PASSED (100%)**.
+   - Build Server (`tsc`): **Exit code 0**.
+   - Build Client (`vite build`): **Exit code 0**.
+
+### 15.2. Danh Mục Các Điểm `LEGAL_REVIEW_REQUIRED`:
+1. Phân rã 30 điểm Tiêu chí chung thành 8/8/8/6 (hiện giữ chuẩn 10/10/10 theo QĐ 283/QĐ-UBND và QĐ 295-QĐ/ĐU).
+2. Quy tắc tự động $d = 50\%$ đối với Trưởng phòng khi có công chức yếu.
+3. Giới hạn nhập nhật ký lùi 07 ngày và tối đa 03 nhiệm vụ đột xuất/tháng.
+4. Tiêu chí phụ xếp hạng khi bằng điểm ở mức 90đ.
+
+

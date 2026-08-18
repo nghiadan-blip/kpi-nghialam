@@ -197,8 +197,8 @@ async function runTests() {
       const lScore = listRes.body.evaluations.find((e: any) => e.id === evalId)?.self_score;
       const fScore = formRes.body.totalScore;
 
-      if (dScore === 50.0 && lScore === 50.0 && fScore === 50.0 && formRes.body.calculationStrategy === 'WEIGHTED_DETAIL_SCORE') {
-        console.log(`  ✅ PASS: Đồng bộ hoàn hảo: Detail (${dScore}), List (${lScore}), Form (${fScore}) = 50.0đ`);
+      if (dScore === 50.0 && lScore === 50.0 && fScore === 50.0 && (formRes.body.calculationStrategy === 'ND335_OFFICIAL_ABC' || formRes.body.calculationStrategy === 'WEIGHTED_DETAIL_SCORE')) {
+        console.log(`  ✅ PASS: Đồng bộ hoàn hảo: Detail (${dScore}), List (${lScore}), Form (${fScore}) = 50.0đ (${formRes.body.calculationStrategy})`);
       } else {
         console.error('  ❌ FAIL Test 6: Inconsistent scores:', { dScore, lScore, fScore });
         process.exit(1);

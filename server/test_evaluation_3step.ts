@@ -1,5 +1,6 @@
 import http from 'http';
 import app from './src/app';
+import db from './src/config/db';
 
 const PORT = 5098;
 
@@ -29,6 +30,7 @@ function request(options: http.RequestOptions, body?: any): Promise<{ status: nu
 }
 
 async function runTests() {
+  await db.seed.run();
   const server = app.listen(PORT, () => {
     console.log(`🧪 3-Step Evaluation Test Server running on http://localhost:${PORT}`);
   });
