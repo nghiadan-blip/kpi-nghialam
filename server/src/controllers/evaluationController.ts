@@ -195,10 +195,16 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     // 1. Build line items with catalog coefficients & baseline scores
     const inputItems: KPILineItemInput[] = [];
     for (const it of items) {
+      if (!it.product_catalog_id || isNaN(Number(it.product_catalog_id))) {
+        await trx.rollback();
+        res.status(400).json({ message: 'Không thể lưu phiếu vì mã danh mục sản phẩm không hợp lệ. Vui lòng tải lại danh mục và thực hiện lại.' });
+        return;
+      }
+
       const catalog = await trx('product_catalog').where('id', Number(it.product_catalog_id)).first();
       if (!catalog) {
         await trx.rollback();
-        res.status(400).json({ message: `Sản phẩm danh mục ID ${it.product_catalog_id} không tồn tại.` });
+        res.status(400).json({ message: `Không thể lưu phiếu vì sản phẩm/tiêu chí ID ${it.product_catalog_id} không còn tồn tại trong danh mục. Vui lòng tải lại danh mục và thực hiện lại.` });
         return;
       }
 
@@ -209,12 +215,19 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
       let delays = 0;
       let reworks = 0;
       let validatedTaskId: number | null = null;
-      if (it.task_id && !isNaN(Number(it.task_id)) && Number(it.task_id) > 0) {
-        const task = await trx('tasks').where('id', Number(it.task_id)).first();
-        if (task) {
-          validatedTaskId = task.id;
-          delays = Number(task.delay_count) || 0;
-          reworks = Number(task.rework_count) || 0;
+      if (it.task_id !== undefined && it.task_id !== null && it.task_id !== '' && it.task_id !== 'null') {
+        const parsedTaskId = Number(it.task_id);
+        if (!isNaN(parsedTaskId) && parsedTaskId > 0) {
+          const task = await trx('tasks').where('id', parsedTaskId).first();
+          if (task) {
+            validatedTaskId = task.id;
+            delays = Number(task.delay_count) || 0;
+            reworks = Number(task.rework_count) || 0;
+          } else {
+            await trx.rollback();
+            res.status(400).json({ message: `Không thể lưu phiếu vì nhiệm vụ liên kết (ID: ${it.task_id}) không còn tồn tại trên hệ thống. Vui lòng tải lại và thực hiện lại.` });
+            return;
+          }
         }
       }
 

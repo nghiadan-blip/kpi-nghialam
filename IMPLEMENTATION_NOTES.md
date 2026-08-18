@@ -557,4 +557,63 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 3. Giới hạn nhập nhật ký lùi 07 ngày và tối đa 03 nhiệm vụ đột xuất/tháng.
 4. Tiêu chí phụ xếp hạng khi bằng điểm ở mức 90đ.
 
+---
+
+## 16. Xử Lý P0 — Khắc Phục Triệt Để Lỗi Khóa Ngoại (Foreign Key Constraint) & Bảo Toàn Dữ Liệu Phiếu KPI Bền Vững
+
+- **Nhánh làm việc (Branch)**: `feat/kpi-nd335-research-integration`
+- **Mục tiêu**: Xử lý triệt để lỗi `SQLITE_CONSTRAINT: FOREIGN KEY constraint failed` khi tạo/nộp phiếu KPI; đảm bảo tính bền vững dữ liệu trên cơ sở dữ liệu SQLite thực, không phụ thuộc bộ nhớ phiên hay state frontend tạm thời.
+
+### 16.1. Nguyên Nhân Gốc Rễ Đã Xác Định (Root Cause Analysis):
+1. **Lỗi Khóa Ngoại (`evaluation_details.task_id`)**:
+   - Cột `evaluation_details.task_id` có ràng buộc khóa ngoại `REFERENCES tasks(id) ON DELETE SET NULL`.
+   - Khi công chức tạo phiếu tự đánh giá với các sản phẩm danh mục độc lập (không gán nhiệm vụ) hoặc gửi `task_id` rác/chuỗi rỗng, backend trước đây chưa kiểm tra sự tồn tại của `task_id` trong bảng `tasks` trước khi insert, kích hoạt lỗi `SQLITE_CONSTRAINT: FOREIGN KEY constraint failed`.
+2. **Dữ liệu mẫu bị rỗng sau khi làm mới môi trường (Database Seed Incompleteness)**:
+   - Tệp seed ban đầu (`server/database/seeds/01_initial_seed.ts`) chưa cấu hình bản ghi mẫu cho các bảng `tasks`, `evaluation_periods`, `evaluations`, và `evaluation_details`. Do đó, sau khi seed hoặc reset DB, danh sách phiếu của các tài khoản demo trở thành rỗng.
+3. **Đường dẫn cơ sở dữ liệu (SQLite Path Ambiguity)**:
+   - Trước đây `knexfile.ts` sử dụng `process.cwd()`, gây ra nguy cơ trỏ tới đường dẫn tương đối khác nhau khi thực thi từ thư mục gốc `cbcc-app` so với thư mục con `cbcc-app/server`.
+
+### 16.2. Giải Pháp Kỹ Thuật Đã Thực Hiện:
+1. **Kiểm Tra & Validate Khóa Ngoại Nghiêm Ngặt (`server/src/controllers/evaluationController.ts`)**:
+   - Xác thực `product_catalog_id`: Nếu không hợp lệ hoặc không tồn tại trong bảng `product_catalog`, rollback toàn bộ transaction và trả về lỗi HTTP 400 tiếng Việt rõ ràng:
+     `"Không thể lưu phiếu vì sản phẩm/tiêu chí ID ... không còn tồn tại trong danh mục. Vui lòng tải lại danh mục và thực hiện lại."`
+   - Xác thực `task_id`: Nếu được truyền vào, hệ thống truy vấn kiểm tra trong bảng `tasks`. Nếu `task_id` không tồn tại, rollback transaction và trả về HTTP 400 tiếng Việt:
+     `"Không thể lưu phiếu vì nhiệm vụ liên kết (ID: ...) không còn tồn tại trên hệ thống. Vui lòng tải lại và thực hiện lại."` Nếu `task_id` để trống/null, hệ thống tự động gán `null` (hợp lệ theo schema).
+   - Đóng gói toàn bộ quá trình tạo/sửa phiếu và nạp chi tiết trong **cùng một Database Transaction (`knex.transaction`)**. Bất kỳ lỗi nào phát sinh đều rollback 100%, không để lại bản ghi rác/mồ côi.
+   - Bắt toàn bộ lỗi SQLite constraint và chuẩn hóa thông báo tiếng Việt thân thiện, không để lộ mã lỗi SQL thô ra giao diện người dùng.
+2. **Chuẩn Hóa Dữ Liệu Seed Bền Vững (`server/database/seeds/01_initial_seed.ts`)**:
+   - Bổ sung 5 nhiệm vụ thực tế cho công chức xã (`tasks`).
+   - Bổ sung 2 kỳ đánh giá: Tháng 2026-07 (`LOCKED`) và Tháng 2026-08 (`ACTIVE`).
+   - Nạp sẵn hồ sơ đã duyệt tháng 2026-07 (`APPROVED - 95đ`) và hồ sơ nháp tháng 2026-08 (`DRAFT - 53đ`) cho Vũ Minh Tuấn (`congchuc_dc`).
+3. **Cố Định Đường Dẫn Cơ Sở Dữ Liệu Tuyệt Đối (`server/knexfile.ts`)**:
+   - Chuẩn hóa `dbPath` bằng đường dẫn tuyệt đối xác định theo vị trí mã nguồn:
+     `path.resolve(serverRootDir, 'database', 'cbcc.sqlite')` đảm bảo server, migration và test suites đều truy cập chung một database SQLite duy nhất.
+4. **Chuẩn Hóa Frontend Client Payload (`client/src/components/EvaluationFormModal.tsx`)**:
+   - Ép kiểu rõ ràng `product_catalog_id: Number(...)` và `task_id: (it.task_id && Number(it.task_id) > 0) ? Number(it.task_id) : null`.
+   - Không sinh ID giả phía client; chỉ hiển thị thông báo thành công sau khi API thực sự commit và trả về ID hợp lệ.
+
+### 16.3. Báo Cáo Kiểm Thử Toàn Diện (100% Passed):
+- **Test Suite Chuyên Biệt**: [`server/test_evaluation_persistence_and_fk_safety.ts`](./server/test_evaluation_persistence_and_fk_safety.ts):
+  1. *Test 1.1*: Bắt lỗi `product_catalog_id` giả $\rightarrow$ **HTTP 400 tiếng Việt (PASS)**.
+  2. *Test 1.2*: Bắt lỗi `task_id` không tồn tại $\rightarrow$ **HTTP 400 tiếng Việt (PASS)**.
+  3. *Test 2*: Transaction Rollback khi gặp lỗi (không tạo bản ghi dở dang) $\rightarrow$ **PASS**.
+  4. *Test 3*: Tạo phiếu hợp lệ tháng 2026-08 lưu SQLite thành công $\rightarrow$ **PASS**.
+  5. *Test 4*: Idempotency (bấm Lưu nhiều lần không tạo bản ghi trùng lặp) $\rightarrow$ **PASS**.
+  6. *Test 5*: Đăng xuất và đăng nhập lại dữ liệu vẫn tồn tại nguyên vẹn $\rightarrow$ **PASS**.
+  7. *Test 6*: Nộp phiếu tự đánh giá (`DRAFT` $\rightarrow$ `SUBMITTED`) $\rightarrow$ **PASS**.
+  8. *Test 7*: Trưởng bộ phận thấy phiếu thuộc bộ phận và thẩm định thành công (`MANAGER_REVIEWED`) $\rightarrow$ **PASS**.
+  9. *Test 8*: Chủ tịch UBND xã thấy phiếu chờ duyệt và phê duyệt chính thức (`APPROVED`) $\rightarrow$ **PASS**.
+  10. *Test 9*: Admin thấy toàn bộ hồ sơ đã duyệt và kiểm tra 9 bản ghi Audit Log xuyên suốt quy trình $\rightarrow$ **PASS**.
+  11. *Test 10*: Form Detail, Dashboard Quota Stats và Excel lấy dữ liệu thật từ SQLite $\rightarrow$ **PASS**.
+- **Test E2E Persistence**: `test_e2e_user_flow_persistence.ts` $\rightarrow$ **100% PASS**.
+- **Test P0 KPI Formula**: `test_p0_kpi_formula.ts` $\rightarrow$ **10/10 PASS (100%)**.
+- **Test Quy trình 3 bước**: `test_evaluation_3step.ts` $\rightarrow$ **7/7 PASS (100%)**.
+- **Test Ma trận RBAC**: `test_rbac_full_matrix.ts` $\rightarrow$ **11/11 PASS (100%)**.
+- **Test E2E Toàn hệ thống**: `test_e2e_full.ts` $\rightarrow$ **23/23 PASS (100%)**.
+- **Đóng gói mã nguồn**:
+  - `npm run build:server`: **Exit code 0**.
+  - `npm run build:client`: **Exit code 0**.
+  - `npm run build`: **Exit code 0**.
+
+
 
