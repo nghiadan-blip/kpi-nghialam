@@ -109,12 +109,24 @@ Khi giao việc, lưu snapshot của tên nhiệm vụ, điểm chấm, hệ s�
 Công thức khối lượng quy đổi:
 
 ```text
-assigned_converted = quantity_assigned * coefficient_snapshot
-completed_converted = quantity_accepted * coefficient_snapshot
-quantity_rate = completed_converted / assigned_converted * 100
+assigned_converted = sum(assigned_quantity * coefficient_snapshot)
+completed_converted = sum(accepted_quantity * coefficient_snapshot)
+quality_converted = sum(accepted_quantity * coefficient_snapshot * max(0, 1 - reworks * 0.25))
+on_time_converted = sum(accepted_quantity * coefficient_snapshot * max(0, 1 - delays * 0.25))
 ```
 
-Các công thức chất lượng, tiến độ, điểm quản lý, trần điểm và ngưỡng xếp loại phải nằm trong `kpi_formula_versions`. Công thức trong tài liệu SRS trước đây là đề xuất nghiệp vụ; chỉ bật chính thức sau khi đối chiếu QĐ 283, NĐ 335 và hướng dẫn có hiệu lực.
+### 5.2.1. Phương thức tính chính thức theo Nghị định 335 (`ND335_OFFICIAL_ABC` - `LEGAL_MANDATORY`):
+- **Thành tố a (Số lượng)**: $a = \min(1.0, \frac{\text{completed\_converted}}{\text{assigned\_converted}})$
+- **Thành tố b (Chất lượng)**: $b = \max(0.0, \min(1.0, \frac{\text{quality\_converted}}{\text{assigned\_converted}}))$ (Miễn trừ khi có cờ `is_exempted_rework`).
+- **Thành tố c (Tiến độ)**: $c = \max(0.0, \min(1.0, \frac{\text{on\_time\_converted}}{\text{assigned\_converted}}))$ (Miễn trừ khi có cờ `is_exempted_delay`).
+- **Điểm Phần II (Kết quả nhiệm vụ)**:
+  - Công chức chuyên môn: $\text{TaskScore} = \min(70, \frac{a + b + c}{3} \times \text{taskSectionMax})$
+  - Công chức lãnh đạo: $\text{TaskScore} = \min(70, \frac{a + b + c + d + đ + e}{6} \times \text{taskSectionMax})$
+- **Điểm Tổng kết quả**: $\text{TotalScore} = \text{CommonCriteriaScore (Phần I - Max 30)} + \text{TaskScore (Phần II - Max 70)}$.
+
+### 5.2.2. Phương thức tích lũy điểm chi tiết (`WEIGHTED_DETAIL_SCORE` - `LOCAL_POLICY_PROPOSAL` / `LEGAL_REVIEW_REQUIRED`):
+- Tích lũy điểm trực tiếp: $\text{TaskScore} = \min(70, \sum(\text{accepted\_quantity} \times \text{baseline} \times \text{coefficient} \times \text{quality} \times \text{progress}))$.
+- Chỉ kích hoạt khi có Quyết định/Quy chế của UBND xã phê duyệt phương thức tính điểm trực tiếp theo từng sản phẩm. Gắn cờ cảnh báo `LEGAL_REVIEW_REQUIRED`.
 
 ### 5.3. Nhiệm vụ chuyển giao và nhiều người
 

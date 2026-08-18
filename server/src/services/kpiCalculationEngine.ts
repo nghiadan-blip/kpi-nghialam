@@ -8,6 +8,23 @@
 
 export type CalculationStrategy = 'ND335_OFFICIAL_ABC' | 'WEIGHTED_DETAIL_SCORE' | 'COMPLETION_RATIO';
 
+export interface KPICriteriaConfig {
+  legal_basis_id?: string;
+  version?: string;
+  effective_from?: string;
+  max_general_score?: number;
+  max_politics_score?: number;
+  max_expertise_score?: number;
+  max_innovation_score?: number;
+  max_task_score?: number;
+  max_total_score?: number;
+  excellent_threshold?: number;
+  good_threshold?: number;
+  satisfactory_threshold?: number;
+  delay_penalty_rate?: number;
+  rework_penalty_rate?: number;
+}
+
 export interface KPILineItemInput {
   task_id?: number | null;
   product_catalog_id: number;
@@ -16,7 +33,7 @@ export interface KPILineItemInput {
   accepted_quantity?: number;
   baseline_score?: number;
   coefficient?: number;
-  points?: number; // Validated points (self/manager/final)
+  points?: number; // Validated points (only used when strategy is WEIGHTED_DETAIL_SCORE)
   remarks?: string | null;
   delays?: number;
   reworks?: number;
@@ -26,6 +43,7 @@ export interface KPILineItemInput {
 
 export interface KPICalculationInput {
   strategy?: CalculationStrategy;
+  config?: KPICriteriaConfig;
   criteria_politics: number;
   criteria_expertise: number;
   criteria_innovation: number;
@@ -56,6 +74,8 @@ export interface KPICalculatedLine {
 export interface KPICalculationResult {
   calculationStrategy: CalculationStrategy;
   calculationVersion: string;
+  legalBasisId: string;
+  effectiveFrom: string;
   commonCriteriaScore: number;
   taskScore: number;
   totalScore: number;
@@ -78,10 +98,14 @@ export interface KPICalculationResult {
     formula: string;
     componentsSummary: string;
     insufficientData?: boolean;
+    legalNote?: string;
   };
 }
 
 export const KPI_CONSTANTS = {
+  LEGAL_BASIS_ID: 'ND335_2025_NDCP_ART6',
+  VERSION: 'ND335_OFFICIAL_ABC_2026.08.1',
+  EFFECTIVE_FROM: '2026-01-01',
   MAX_GENERAL_SCORE: 30.0,
   MAX_POLITICS_SCORE: 10.0,
   MAX_EXPERTISE_SCORE: 10.0,
@@ -112,42 +136,80 @@ export function validateNumericField(val: any, fieldName: string, min = 0, max =
   return num;
 }
 
-export function calculateClassification(score: number, isDisciplined?: boolean): string {
+export function calculateClassification(
+  score: number,
+  isDisciplined?: boolean,
+  thresholds?: { excellent?: number; good?: number; satisfactory?: number }
+): string {
   if (isDisciplined) return 'Không hoàn thành nhiệm vụ (Kỷ luật)';
-  if (score >= KPI_CONSTANTS.EXCELLENT_THRESHOLD) return 'Hoàn thành xuất sắc nhiệm vụ';
-  if (score >= KPI_CONSTANTS.GOOD_THRESHOLD) return 'Hoàn thành tốt nhiệm vụ';
-  if (score >= KPI_CONSTANTS.SATISFACTORY_THRESHOLD) return 'Hoàn thành nhiệm vụ';
+  const exc = thresholds?.excellent ?? KPI_CONSTANTS.EXCELLENT_THRESHOLD;
+  const gd = thresholds?.good ?? KPI_CONSTANTS.GOOD_THRESHOLD;
+  const sat = thresholds?.satisfactory ?? KPI_CONSTANTS.SATISFACTORY_THRESHOLD;
+
+  if (score >= exc) return 'Hoàn thành xuất sắc nhiệm vụ';
+  if (score >= gd) return 'Hoàn thành tốt nhiệm vụ';
+  if (score >= sat) return 'Hoàn thành nhiệm vụ';
   return 'Không hoàn thành nhiệm vụ';
 }
 
 export function calculateKPIScore(input: KPICalculationInput): KPICalculationResult {
-  const version = 'ND335_OFFICIAL_ABC_2026.08.1';
+  const cfg = input.config || {};
+  const version = cfg.version || KPI_CONSTANTS.VERSION;
+  const legalBasisId = cfg.legal_basis_id || KPI_CONSTANTS.LEGAL_BASIS_ID;
+  const effectiveFrom = cfg.effective_from || KPI_CONSTANTS.EFFECTIVE_FROM;
   const strategy: CalculationStrategy = input.strategy || 'ND335_OFFICIAL_ABC';
 
+  const maxGeneral = cfg.max_general_score ?? KPI_CONSTANTS.MAX_GENERAL_SCORE;
+  const maxPol = cfg.max_politics_score ?? KPI_CONSTANTS.MAX_POLITICS_SCORE;
+  const maxExp = cfg.max_expertise_score ?? KPI_CONSTANTS.MAX_EXPERTISE_SCORE;
+  const maxInn = cfg.max_innovation_score ?? KPI_CONSTANTS.MAX_INNOVATION_SCORE;
+  const maxTask = cfg.max_task_score ?? KPI_CONSTANTS.MAX_TASK_SCORE;
+  const maxTotal = cfg.max_total_score ?? KPI_CONSTANTS.MAX_TOTAL_SCORE;
+  const delayPenaltyRate = cfg.delay_penalty_rate ?? KPI_CONSTANTS.DELAY_PENALTY_RATE;
+  const reworkPenaltyRate = cfg.rework_penalty_rate ?? KPI_CONSTANTS.REWORK_PENALTY_RATE;
+
   // 1. Validate General Criteria (Part I: Max 30.0 points)
-  const pol = validateNumericField(input.criteria_politics, 'Tiêu chí chính trị, tư tưởng', 0, KPI_CONSTANTS.MAX_POLITICS_SCORE);
-  const exp = validateNumericField(input.criteria_expertise, 'Tiêu chí chuyên môn, nghiệp vụ', 0, KPI_CONSTANTS.MAX_EXPERTISE_SCORE);
-  const inn = validateNumericField(input.criteria_innovation, 'Tiêu chí đổi mới, sáng tạo', 0, KPI_CONSTANTS.MAX_INNOVATION_SCORE);
-  const commonCriteriaScore = Number((pol + exp + inn).toFixed(2));
+  const pol = validateNumericField(input.criteria_politics, 'Tiêu chí chính trị, tư tưởng', 0, maxPol);
+  const exp = validateNumericField(input.criteria_expertise, 'Tiêu chí chuyên môn, nghiệp vụ', 0, maxExp);
+  const inn = validateNumericField(input.criteria_innovation, 'Tiêu chí đổi mới, sáng tạo', 0, maxInn);
+  const rawCommonScore = pol + exp + inn;
+  const commonCriteriaScore = Math.min(maxGeneral, Number(rawCommonScore.toFixed(2)));
 
   // 2. Validate Items (Part II)
   if (!input.items || !Array.isArray(input.items) || input.items.length === 0) {
     throw new Error('Phiếu đánh giá phải có ít nhất 1 sản phẩm / tiêu chí NĐ 335.');
   }
 
-  const calculatedLines: KPICalculatedLine[] = [];
   let assignedConvertedTotal = 0;
   let completedConvertedTotal = 0;
   let qualityConvertedTotal = 0;
   let onTimeConvertedTotal = 0;
-  let sumDirectLineScores = 0;
+  let sumDirectPoints = 0;
+
+  // Temporary container for line details before proportion calculation
+  interface TempLine {
+    task_id?: number | null;
+    product_catalog_id: number;
+    quantity: number;
+    assigned_quantity: number;
+    accepted_quantity: number;
+    baseline_score: number;
+    coefficient: number;
+    converted_assigned: number;
+    converted_accepted: number;
+    quality_ratio: number;
+    progress_ratio: number;
+    direct_points: number;
+    remarks?: string | null;
+  }
+  const tempLines: TempLine[] = [];
 
   for (const it of input.items) {
     const rawQty = it.quantity !== undefined ? it.quantity : (it.assigned_quantity ?? 1);
-    const assignedQty = validateNumericField(it.assigned_quantity ?? rawQty, 'Số lượng giao', 0.01, 10000);
+    const assignedQty = validateNumericField(it.assigned_quantity ?? rawQty, 'Số lượng giao', 0.0, 10000);
     const acceptedQty = validateNumericField(it.accepted_quantity ?? rawQty, 'Số lượng nghiệm thu', 0, 10000);
-    const baseline = validateNumericField(it.baseline_score ?? 5.0, 'Điểm chuẩn sản phẩm', 0.1, 100);
-    const coeff = validateNumericField(it.coefficient ?? 1.0, 'Hệ số quy đổi K', 0.1, 100);
+    const baseline = validateNumericField(it.baseline_score ?? KPI_CONSTANTS.DEFAULT_BASELINE_SCORE, 'Điểm chuẩn sản phẩm', 0.1, 100);
+    const coeff = validateNumericField(it.coefficient ?? KPI_CONSTANTS.DEFAULT_COEFFICIENT, 'Hệ số quy đổi K', 0.1, 100);
 
     const convertedAssigned = Number((assignedQty * coeff).toFixed(4));
     const convertedAccepted = Number((acceptedQty * coeff).toFixed(4));
@@ -157,24 +219,20 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
 
     // Quality calculation (deduction per unexempted rework)
     const reworks = it.is_exempted_rework ? 0 : (Number(it.reworks) || 0);
-    const qualityRatio = Math.max(0.0, 1.0 - (reworks * KPI_CONSTANTS.REWORK_PENALTY_RATE));
+    const qualityRatio = Math.max(0.0, 1.0 - (reworks * reworkPenaltyRate));
     qualityConvertedTotal += convertedAccepted * qualityRatio;
 
     // Progress calculation (deduction per unexempted delay)
     const delays = it.is_exempted_delay ? 0 : (Number(it.delays) || 0);
-    const progressRatio = Math.max(0.0, 1.0 - (delays * KPI_CONSTANTS.DELAY_PENALTY_RATE));
+    const progressRatio = Math.max(0.0, 1.0 - (delays * delayPenaltyRate));
     onTimeConvertedTotal += convertedAccepted * progressRatio;
 
-    // Direct line points if manually specified or computed from baseline
-    let lineScore = 0;
-    if (it.points !== undefined && it.points !== null) {
-      lineScore = validateNumericField(it.points, 'Điểm dòng chi tiết', 0, KPI_CONSTANTS.MAX_TOTAL_SCORE);
-    } else {
-      lineScore = Number((acceptedQty * baseline * coeff * qualityRatio * progressRatio).toFixed(2));
-    }
-    sumDirectLineScores += lineScore;
+    const directPoints = it.points !== undefined && it.points !== null
+      ? validateNumericField(it.points, 'Điểm dòng chi tiết', 0, maxTotal)
+      : Number((acceptedQty * baseline * coeff * qualityRatio * progressRatio).toFixed(2));
+    sumDirectPoints += directPoints;
 
-    calculatedLines.push({
+    tempLines.push({
       task_id: it.task_id,
       product_catalog_id: it.product_catalog_id,
       quantity: acceptedQty,
@@ -184,16 +242,16 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
       coefficient: coeff,
       converted_assigned: convertedAssigned,
       converted_accepted: convertedAccepted,
-      line_score: lineScore,
       quality_ratio: qualityRatio,
       progress_ratio: progressRatio,
+      direct_points: directPoints,
       remarks: it.remarks,
     });
   }
 
   // 3. Components a, b, c ratios according to Decree 335
   const isZeroDenominator = assignedConvertedTotal <= 0;
-  const a_quantity_ratio = isZeroDenominator ? 0.0 : Math.min(1.0, Number((completedConvertedTotal / assignedConvertedTotal).toFixed(4)));
+  const a_quantity_ratio = isZeroDenominator ? 0.0 : Math.min(1.0, Math.max(0.0, Number((completedConvertedTotal / assignedConvertedTotal).toFixed(4))));
   const b_quality_ratio = isZeroDenominator ? 0.0 : Math.min(1.0, Math.max(0.0, Number((qualityConvertedTotal / assignedConvertedTotal).toFixed(4))));
   const c_progress_ratio = isZeroDenominator ? 0.0 : Math.min(1.0, Math.max(0.0, Number((onTimeConvertedTotal / assignedConvertedTotal).toFixed(4))));
 
@@ -218,35 +276,64 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
     taskOverallRatio = Number(((a_quantity_ratio + b_quality_ratio + c_progress_ratio) / 3.0).toFixed(4));
   }
 
-  // 5. Compute Final Task Score (Part II: Max 70.0 points)
+  // 5. Compute Final Task Score
   const penaltyMultiplier = input.penalty_multiplier !== undefined
     ? validateNumericField(input.penalty_multiplier, 'Hệ số phạt tiến độ/chất lượng', 0, 1)
     : 1.0;
 
   let taskScore = 0.0;
+  const calculatedLines: KPICalculatedLine[] = [];
 
-  // If specific item points are provided, we preserve exact item points summation (capped at MAX_TASK_SCORE)
-  // while checking that empty/zero denominator returns 0 / insufficient data
-  if (isZeroDenominator && sumDirectLineScores === 0) {
-    taskScore = 0.0;
-  } else if (sumDirectLineScores > 0) {
-    const rawTaskScore = sumDirectLineScores * penaltyMultiplier;
-    taskScore = Math.min(KPI_CONSTANTS.MAX_TASK_SCORE, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
+  if (strategy === 'WEIGHTED_DETAIL_SCORE') {
+    // Strategy B: Legacy / Local proposal (Sums direct points)
+    taskScore = Math.min(maxTask, Math.max(0.0, Number((sumDirectPoints * penaltyMultiplier).toFixed(2))));
+    for (const tl of tempLines) {
+      calculatedLines.push({
+        ...tl,
+        line_score: tl.direct_points,
+      });
+    }
   } else {
-    const rawTaskScore = taskOverallRatio * KPI_CONSTANTS.MAX_TASK_SCORE * penaltyMultiplier;
-    taskScore = Math.min(KPI_CONSTANTS.MAX_TASK_SCORE, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
+    // Strategy A: ND335_OFFICIAL_ABC (Official Decree 335)
+    if (isZeroDenominator) {
+      taskScore = 0.0;
+    } else {
+      const rawTaskScore = taskOverallRatio * maxTask * penaltyMultiplier;
+      taskScore = Math.min(maxTask, Math.max(0.0, Number(rawTaskScore.toFixed(2))));
+    }
+
+    // Proportionate line scores
+    for (const tl of tempLines) {
+      let lineScore = 0;
+      if (assignedConvertedTotal > 0) {
+        const lineRatio = (tl.converted_accepted / assignedConvertedTotal) * ((1.0 + tl.quality_ratio + tl.progress_ratio) / 3.0);
+        lineScore = Number((lineRatio * maxTask).toFixed(2));
+      }
+      calculatedLines.push({
+        ...tl,
+        line_score: lineScore,
+      });
+    }
   }
 
-  const totalScore = Math.min(KPI_CONSTANTS.MAX_TOTAL_SCORE, Math.max(0.0, Number((commonCriteriaScore + taskScore).toFixed(2))));
-  const rating = calculateClassification(totalScore);
+  const totalScore = Math.min(maxTotal, Math.max(0.0, Number((commonCriteriaScore + taskScore).toFixed(2))));
+  const rating = calculateClassification(totalScore, false, {
+    excellent: cfg.excellent_threshold,
+    good: cfg.good_threshold,
+    satisfactory: cfg.satisfactory_threshold,
+  });
 
-  const formulaSummary = isLeadership
-    ? `TaskScore = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, ${KPI_CONSTANTS.MAX_TASK_SCORE} * (a + b + c + d + đ + e) / 6) = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, ${KPI_CONSTANTS.MAX_TASK_SCORE} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}% + ${(d_unit_result*100).toFixed(1)}% + ${(dd_execution*100).toFixed(1)}% + ${(e_solidarity*100).toFixed(1)}%) / 6)`
-    : `TaskScore = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, sum(line_points)) = min(${KPI_CONSTANTS.MAX_TASK_SCORE}, ${sumDirectLineScores.toFixed(2)} * ${penaltyMultiplier})`;
+  const formulaSummary = strategy === 'WEIGHTED_DETAIL_SCORE'
+    ? `TaskScore (WEIGHTED_DETAIL_SCORE - LOCAL PROPOSAL) = min(${maxTask}, sum(line_points)) = min(${maxTask}, ${sumDirectPoints.toFixed(2)} * ${penaltyMultiplier}) = ${taskScore}đ`
+    : isLeadership
+    ? `TaskScore (NĐ 335) = min(${maxTask}, ${maxTask} * (a + b + c + d + đ + e) / 6) = min(${maxTask}, ${maxTask} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}% + ${(d_unit_result*100).toFixed(1)}% + ${(dd_execution*100).toFixed(1)}% + ${(e_solidarity*100).toFixed(1)}%) / 6) = ${taskScore}đ`
+    : `TaskScore (NĐ 335) = min(${maxTask}, ${maxTask} * (a + b + c) / 3) = min(${maxTask}, ${maxTask} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}%) / 3) = ${taskScore}đ`;
 
   return {
     calculationStrategy: strategy,
     calculationVersion: version,
+    legalBasisId,
+    effectiveFrom,
     commonCriteriaScore,
     taskScore,
     totalScore,
@@ -262,11 +349,14 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
       task_overall_ratio: taskOverallRatio,
     },
     auditFormula: {
-      taskSectionMax: KPI_CONSTANTS.MAX_TASK_SCORE,
+      taskSectionMax: maxTask,
       penaltyMultiplier,
       formula: formulaSummary,
       componentsSummary: `a=${(a_quantity_ratio*100).toFixed(1)}%, b=${(b_quality_ratio*100).toFixed(1)}%, c=${(c_progress_ratio*100).toFixed(1)}%`,
       insufficientData: isZeroDenominator,
+      legalNote: strategy === 'WEIGHTED_DETAIL_SCORE'
+        ? 'LOCAL_POLICY_PROPOSAL: Công thức tích lũy điểm trực tiếp theo từng sản phẩm cần phê duyệt quy chế nội bộ (LEGAL_REVIEW_REQUIRED)'
+        : 'LEGAL_MANDATORY: Công thức chính thức theo Điều 6 Nghị định 335/2025/NĐ-CP',
     },
   };
 }

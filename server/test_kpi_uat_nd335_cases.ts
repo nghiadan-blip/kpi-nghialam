@@ -2,7 +2,7 @@ import http from 'http';
 import app from './src/app';
 import db from './src/config/db';
 
-const PORT = 5145;
+const PORT = 5146;
 
 function request(options: http.RequestOptions, body?: any): Promise<{ status: number; body: any }> {
   return new Promise((resolve, reject) => {
@@ -48,7 +48,7 @@ async function login(username: string, password: string): Promise<{ token: strin
 
 async function runUATTests() {
   console.log('========================================================================');
-  console.log('🏛️ BẮT ĐẦU KIỂM THỬ UAT NĐ 335: CÁC KỊCH BẢN THỰC TẾ & BẢO TOÀN ĐIỂM SỐ');
+  console.log('🏛️ BẮT ĐẦU KIỂM THỬ UAT CHUẨN NGHỊ ĐỊNH 335 (ND335_OFFICIAL_ABC)');
   console.log('========================================================================');
 
   await db.seed.run();
@@ -62,9 +62,9 @@ async function runUATTests() {
       const leader = await login('chutich', 'chutich123');
 
       // -------------------------------------------------------------
-      // UAT Case 1: Tự chấm 5 điểm không được tự phóng đại lên 70đ
+      // UAT Case 1: Giao 1, hoàn thành 1, đạt chất lượng, đúng tiến độ -> 70/70đ
       // -------------------------------------------------------------
-      console.log('\n--- UAT 1: Tự chấm 1 sản phẩm 5đ (Phần I = 30đ) -> Phần II = 5/70, Tổng = 35/100 ---');
+      console.log('\n--- UAT 1: Giao 1, Hoàn thành 1 (Phần I = 30đ) -> a=100%, b=100%, c=100% -> Phần II = 70/70đ, Tổng = 100/100đ ---');
       const uat1Res = await request(
         {
           hostname: 'localhost',
@@ -79,20 +79,20 @@ async function runUATTests() {
           criteria_expertise_self: 10.0,
           criteria_innovation_self: 10.0,
           items: [
-            { product_catalog_id: 1, quantity: 1, self_points: 5.0, remarks: '1 văn bản hành chính' },
+            { product_catalog_id: 1, assigned_quantity: 1, accepted_quantity: 1, remarks: '1 văn bản hành chính đúng hạn' },
           ],
         }
       );
-      if (uat1Res.status === 200 && uat1Res.body.task_score === 5.0 && uat1Res.body.self_score === 35.0) {
-        console.log(`  ✅ PASS UAT 1: Phần II = ${uat1Res.body.task_score}/70đ, Tổng = ${uat1Res.body.self_score}/100đ (KHÔNG bị tự phóng đại lên 70đ)!`);
+      if (uat1Res.status === 200 && uat1Res.body.task_score === 70.0 && uat1Res.body.self_score === 100.0) {
+        console.log(`  ✅ PASS UAT 1: Phần II = ${uat1Res.body.task_score}/70đ, Tổng = ${uat1Res.body.self_score}/100đ (Chính xác theo NĐ 335 tỷ lệ 100%)!`);
       } else {
         throw new Error('FAIL UAT 1: ' + JSON.stringify(uat1Res.body));
       }
 
       // -------------------------------------------------------------
-      // UAT Case 2: Thay đổi số lượng 1 -> 5
+      // UAT Case 2: Đổi số lượng từ 1 -> 5 (Giao 5, Hoàn thành 5) -> Tỷ lệ vẫn là 100%, Điểm vẫn 70/70
       // -------------------------------------------------------------
-      console.log('\n--- UAT 2: Thay đổi số lượng sản phẩm từ 1 -> 5 ---');
+      console.log('\n--- UAT 2: Giao 5, Hoàn thành 5 -> Tỷ lệ hoàn thành vẫn là 100% -> Phần II = 70/70đ (Không tự tăng điểm tùy tiện) ---');
       const uat2Res = await request(
         {
           hostname: 'localhost',
@@ -107,21 +107,21 @@ async function runUATTests() {
           criteria_expertise_self: 10.0,
           criteria_innovation_self: 10.0,
           items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0, remarks: '5 văn bản hành chính' },
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 5, remarks: '5 văn bản hành chính đúng hạn' },
           ],
         }
       );
-      if (uat2Res.status === 200 && uat2Res.body.task_score === 25.0 && uat2Res.body.self_score === 55.0) {
-        console.log(`  ✅ PASS UAT 2: Điểm tự động tăng theo số lượng: Phần II = ${uat2Res.body.task_score}/70đ, Tổng = ${uat2Res.body.self_score}/100đ`);
+      if (uat2Res.status === 200 && uat2Res.body.task_score === 70.0 && uat2Res.body.self_score === 100.0) {
+        console.log(`  ✅ PASS UAT 2: Tỷ lệ 5/5 = 100%, Phần II = ${uat2Res.body.task_score}/70đ, Tổng = ${uat2Res.body.self_score}/100đ`);
       } else {
         throw new Error('FAIL UAT 2: ' + JSON.stringify(uat2Res.body));
       }
 
       // -------------------------------------------------------------
-      // UAT Case 3: Thêm và xóa sản phẩm
+      // UAT Case 3: Giao 5 nhưng chỉ hoàn thành 1 (1/5) -> Tỷ lệ 20% -> Phần II = 14/70đ
       // -------------------------------------------------------------
-      console.log('\n--- UAT 3: Thêm dòng thứ hai (15đ) và sau đó xóa bỏ ---');
-      const addRowRes = await request(
+      console.log('\n--- UAT 3: Giao 5 nhưng chỉ hoàn thành 1 (1/5) -> Tỷ lệ 20% -> Phần II = 14/70đ, Tổng = 44/100đ ---');
+      const uat3Res = await request(
         {
           hostname: 'localhost',
           port: PORT,
@@ -135,18 +135,21 @@ async function runUATTests() {
           criteria_expertise_self: 10.0,
           criteria_innovation_self: 10.0,
           items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0 },
-            { product_catalog_id: 2, quantity: 2, self_points: 15.0 },
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 1, remarks: 'Chỉ hoàn thành 1/5 văn bản' },
           ],
         }
       );
-      if (addRowRes.status === 200 && addRowRes.body.task_score === 40.0 && addRowRes.body.self_score === 70.0) {
-        console.log(`  ✅ PASS UAT 3.1 (Thêm dòng): Phần II = ${addRowRes.body.task_score}/70đ, Tổng = ${addRowRes.body.self_score}/100đ`);
+      if (uat3Res.status === 200 && uat3Res.body.task_score === 14.0 && uat3Res.body.self_score === 44.0) {
+        console.log(`  ✅ PASS UAT 3: Tỷ lệ 1/5 = 20%, Phần II = ${uat3Res.body.task_score}/70đ, Tổng = ${uat3Res.body.self_score}/100đ (< 50đ Không hoàn thành)!`);
       } else {
-        throw new Error('FAIL UAT 3.1: ' + JSON.stringify(addRowRes.body));
+        throw new Error('FAIL UAT 3: ' + JSON.stringify(uat3Res.body));
       }
 
-      const removeRowRes = await request(
+      // -------------------------------------------------------------
+      // UAT Case 4: Giao 5 nhưng hoàn thành 0 (0/5) -> Phần II = 0/70đ
+      // -------------------------------------------------------------
+      console.log('\n--- UAT 4: Giao 5 nhưng hoàn thành 0 (0/5) -> Phần II = 0/70đ, Tổng = 30/100đ ---');
+      const uat4Res = await request(
         {
           hostname: 'localhost',
           port: PORT,
@@ -160,20 +163,20 @@ async function runUATTests() {
           criteria_expertise_self: 10.0,
           criteria_innovation_self: 10.0,
           items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0 },
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 0, remarks: 'Chưa hoàn thành văn bản nào' },
           ],
         }
       );
-      if (removeRowRes.status === 200 && removeRowRes.body.task_score === 25.0 && removeRowRes.body.self_score === 55.0) {
-        console.log(`  ✅ PASS UAT 3.2 (Xóa dòng): Phần II quay về đúng = ${removeRowRes.body.task_score}/70đ`);
+      if (uat4Res.status === 200 && uat4Res.body.task_score === 0.0 && uat4Res.body.self_score === 30.0) {
+        console.log(`  ✅ PASS UAT 4: Tỷ lệ 0/5 = 0%, Phần II = ${uat4Res.body.task_score}/70đ, Tổng = ${uat4Res.body.self_score}/100đ`);
       } else {
-        throw new Error('FAIL UAT 3.2: ' + JSON.stringify(removeRowRes.body));
+        throw new Error('FAIL UAT 4: ' + JSON.stringify(uat4Res.body));
       }
 
       // -------------------------------------------------------------
-      // UAT Case 4: Khóa kỳ và mở khóa có Audit Log
+      // UAT Case 5: Khóa kỳ và mở khóa có Audit Log
       // -------------------------------------------------------------
-      console.log('\n--- UAT 4: Khóa kỳ đánh giá & Mở khóa kèm Audit Log ---');
+      console.log('\n--- UAT 5: Khóa kỳ đánh giá & Mở khóa kèm Audit Log ---');
       const lockRes = await request(
         {
           hostname: 'localhost',
@@ -185,9 +188,9 @@ async function runUATTests() {
         { month: '2026-08' }
       );
       if (lockRes.status === 200) {
-        console.log('  ✅ PASS UAT 4.1: Lãnh đạo khóa kỳ đánh giá tháng 2026-08 thành công!');
+        console.log('  ✅ PASS UAT 5.1: Lãnh đạo khóa kỳ đánh giá tháng 2026-08 thành công!');
       } else {
-        throw new Error('FAIL UAT 4.1: ' + JSON.stringify(lockRes.body));
+        throw new Error('FAIL UAT 5.1: ' + JSON.stringify(lockRes.body));
       }
 
       // Kiểm tra chặn sửa đổi khi đã khóa
@@ -206,9 +209,9 @@ async function runUATTests() {
         }
       );
       if (editLockedRes.status === 400 && editLockedRes.body.message.includes('đã bị khóa')) {
-        console.log('  ✅ PASS UAT 4.2: Hệ thống chặn chỉnh sửa khi kỳ bị khóa:', editLockedRes.body.message);
+        console.log('  ✅ PASS UAT 5.2: Hệ thống chặn chỉnh sửa khi kỳ bị khóa:', editLockedRes.body.message);
       } else {
-        throw new Error('FAIL UAT 4.2: ' + JSON.stringify(editLockedRes.body));
+        throw new Error('FAIL UAT 5.2: ' + JSON.stringify(editLockedRes.body));
       }
 
       // Mở khóa kỳ
@@ -223,17 +226,17 @@ async function runUATTests() {
         { month: '2026-08' }
       );
       if (unlockRes.status === 200) {
-        console.log('  ✅ PASS UAT 4.3: Lãnh đạo mở khóa kỳ đánh giá thành công!');
+        console.log('  ✅ PASS UAT 5.3: Lãnh đạo mở khóa kỳ đánh giá thành công!');
       } else {
-        throw new Error('FAIL UAT 4.3: ' + JSON.stringify(unlockRes.body));
+        throw new Error('FAIL UAT 5.3: ' + JSON.stringify(unlockRes.body));
       }
 
       // Kiểm tra Audit Log có ghi nhận LOCK_PERIOD và UNLOCK_PERIOD
       const lockLogs = await db('audit_logs').whereIn('action', ['LOCK_PERIOD', 'UNLOCK_PERIOD']);
       if (lockLogs.length >= 2) {
-        console.log(`  ✅ PASS UAT 4.4: Đã lưu vết ${lockLogs.length} sự kiện Audit Log cho thao tác Khóa / Mở khóa kỳ!`);
+        console.log(`  ✅ PASS UAT 5.4: Đã lưu vết ${lockLogs.length} sự kiện Audit Log cho thao tác Khóa / Mở khóa kỳ!`);
       } else {
-        throw new Error('FAIL UAT 4.4: Không tìm thấy Audit Log cho lock/unlock!');
+        throw new Error('FAIL UAT 5.4: Không tìm thấy Audit Log cho lock/unlock!');
       }
 
       console.log('\n========================================================================');

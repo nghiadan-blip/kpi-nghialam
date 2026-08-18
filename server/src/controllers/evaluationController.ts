@@ -231,16 +231,27 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
         }
       }
 
+      const assignedQty = it.assigned_quantity !== undefined && !isNaN(Number(it.assigned_quantity))
+        ? Number(it.assigned_quantity)
+        : (it.quantity !== undefined && !isNaN(Number(it.quantity)) ? Number(it.quantity) : 1);
+      const acceptedQty = it.accepted_quantity !== undefined && !isNaN(Number(it.accepted_quantity))
+        ? Number(it.accepted_quantity)
+        : (it.quantity !== undefined && !isNaN(Number(it.quantity)) ? Number(it.quantity) : 1);
+
       inputItems.push({
         task_id: validatedTaskId,
         product_catalog_id: Number(it.product_catalog_id),
-        quantity: qty,
+        quantity: acceptedQty,
+        assigned_quantity: assignedQty,
+        accepted_quantity: acceptedQty,
         baseline_score: unitBaseline,
         coefficient: coeff,
         points: it.self_points !== undefined && !isNaN(Number(it.self_points)) ? Number(it.self_points) : undefined,
         remarks: it.remarks ? it.remarks.trim() : null,
-        delays,
-        reworks,
+        delays: it.delays !== undefined && !isNaN(Number(it.delays)) ? Number(it.delays) : delays,
+        reworks: it.reworks !== undefined && !isNaN(Number(it.reworks)) ? Number(it.reworks) : reworks,
+        is_exempted_delay: Boolean(it.is_exempted_delay),
+        is_exempted_rework: Boolean(it.is_exempted_rework),
       });
     }
 

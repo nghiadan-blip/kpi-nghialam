@@ -610,10 +610,44 @@ Dựa trên việc nghiên cứu chuyên sâu 03 tài liệu đặc tả nghiệ
 - **Test Quy trình 3 bước**: `test_evaluation_3step.ts` $\rightarrow$ **7/7 PASS (100%)**.
 - **Test Ma trận RBAC**: `test_rbac_full_matrix.ts` $\rightarrow$ **11/11 PASS (100%)**.
 - **Test E2E Toàn hệ thống**: `test_e2e_full.ts` $\rightarrow$ **23/23 PASS (100%)**.
-- **Đóng gói mã nguồn**:
-  - `npm run build:server`: **Exit code 0**.
-  - `npm run build:client`: **Exit code 0**.
-  - `npm run build`: **Exit code 0**.
 
+---
 
+## 17. Chuẩn Hóa Công Thức Tính Điểm Toán Học Theo Nghị Định 335/2025/NĐ-CP (`ND335_OFFICIAL_ABC`)
 
+- **Nhánh làm việc (Branch)**: `feat/kpi-nd335-research-integration`
+- **Mục tiêu**: Loại bỏ hoàn toàn mâu thuẫn điểm số giữa mô hình tích lũy điểm cơ sở và công thức chính thức của Nghị định 335/2025/NĐ-CP; thiết lập 2 Strategy rõ ràng và kiểm thử toán học độc lập.
+
+### 17.1. Phân Định 2 Phương Thức Tính Toán (Strategies):
+1. **`ND335_OFFICIAL_ABC` (Bắt buộc theo Nghị định 335/2025/NĐ-CP - `LEGAL_MANDATORY`)**:
+   - Khối lượng giao quy đổi: $\text{assigned\_converted} = \sum(\text{assigned\_qty} \times K)$
+   - Khối lượng hoàn thành quy đổi: $\text{completed\_converted} = \sum(\text{accepted\_qty} \times K)$
+   - Thành tố số lượng $a$: $a = \min(1.0, \frac{\text{completed\_converted}}{\text{assigned\_converted}})$ (Chặn trần 100%).
+   - Thành tố chất lượng $b$: $b = \max(0.0, \min(1.0, \frac{\sum(\text{accepted\_qty} \times K \times (1 - \text{reworks} \times 0.25))}{\text{assigned\_converted}}))$ (Miễn trừ khi có cờ `is_exempted_rework`).
+   - Thành tố tiến độ $c$: $c = \max(0.0, \min(1.0, \frac{\sum(\text{accepted\_qty} \times K \times (1 - \text{delays} \times 0.25))}{\text{assigned\_converted}}))$ (Miễn trừ khi có cờ `is_exempted_delay`).
+   - Điểm Phần II:
+     - Công chức chuyên môn: $\text{TaskScore} = \min(70, \frac{a + b + c}{3} \times \text{taskSectionMax})$ (mặc định $70.0$đ).
+     - Công chức lãnh đạo: $\text{TaskScore} = \min(70, \frac{a + b + c + d + đ + e}{6} \times \text{taskSectionMax})$.
+   - **Quy tắc toán học**:
+     - Khi giao 1, hoàn thành 1 đúng hạn, chất lượng: $a=100\%, b=100\%, c=100\% \implies \text{Part II} = 70.0/70$đ, Tổng = $100.0/100$đ.
+     - Khi giao 5, hoàn thành 5 đúng hạn: Tỷ lệ vẫn là $100\% \implies \text{Part II} = 70.0/70$đ (Không tự tăng điểm tùy tiện).
+     - Khi giao 5, hoàn thành 1: Tỷ lệ $20\% \implies \text{Part II} = 14.0/70$đ, Tổng = $44.0/100$đ (< 50đ Không hoàn thành nhiệm vụ).
+     - Khi giao 5, hoàn thành 0: $\text{Part II} = 0.0/70$đ, Tổng = $30.0/100$đ.
+     - Khi mẫu số bằng 0 (chưa giao việc): $\text{insufficientData} = \text{true}, \text{Part II} = 0.0$đ.
+2. **`WEIGHTED_DETAIL_SCORE` (`LOCAL_POLICY_PROPOSAL` / `LEGAL_REVIEW_REQUIRED`)**:
+   - Tích lũy điểm trực tiếp theo từng sản phẩm: $\text{TaskScore} = \min(70, \sum(\text{accepted\_quantity} \times \text{baseline} \times K \times \text{quality} \times \text{progress}))$.
+   - Chỉ được áp dụng khi có Quyết định/Quy chế của UBND xã Nghĩa Lâm phê duyệt cơ chế tính điểm trực tiếp. Gắn cảnh báo `LEGAL_REVIEW_REQUIRED`.
+
+### 17.2. Cấu Hình Động Bộ Tiêu Chí & Metadata Pháp Lý:
+- Cho phép truyền cấu hình `config` động qua `KPICriteriaConfig` với: `legal_basis_id`, `version`, `effective_from`, `max_general_score`, `max_task_score`, `max_total_score`, `delay_penalty_rate`, `rework_penalty_rate`.
+- Toàn bộ tham số được gắn vào `auditFormula` và lưu vết trong `audit_logs`.
+
+### 17.3. Kết Quả Kiểm Thử Độc Lập:
+- [`server/test_nd335_formula_math.ts`](./server/test_nd335_formula_math.ts): **10/10 PASS (100%)**.
+- [`server/test_kpi_uat_nd335_cases.ts`](./server/test_kpi_uat_nd335_cases.ts): **5/5 PASS (100%)**.
+- [`server/test_p0_kpi_formula.ts`](./server/test_p0_kpi_formula.ts): **10/10 PASS (100%)**.
+- [`server/test_evaluation_persistence_and_fk_safety.ts`](./server/test_evaluation_persistence_and_fk_safety.ts): **10/10 PASS (100%)**.
+- [`server/test_evaluation_3step.ts`](./server/test_evaluation_3step.ts): **7/7 PASS (100%)**.
+- [`server/test_rbac_full_matrix.ts`](./server/test_rbac_full_matrix.ts): **11/11 PASS (100%)**.
+- [`server/test_e2e_full.ts`](./server/test_e2e_full.ts): **23/23 PASS (100%)**.
+- **Đóng gói mã nguồn**: `npm run build` thành công 100% (Exit code 0).
