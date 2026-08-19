@@ -245,6 +245,33 @@ assert(
   JSON.stringify({ legalBasisId: res10.legalBasisId, version: res10.calculationVersion })
 );
 
+// -------------------------------------------------------------
+// Test 11: Nhiều dòng sản phẩm có hệ số quy đổi K khác nhau
+// -------------------------------------------------------------
+// Item 1: assigned=2, accepted=2, K=1.5 -> converted: assigned=3.0, accepted=3.0
+// Item 2: assigned=4, accepted=2, K=0.5 -> converted: assigned=2.0, accepted=1.0
+// Total assigned_converted = 5.0, Total completed_converted = 4.0 -> a = 4/5 = 80%
+// Part II = 80% * 70 = 56.0/70đ
+const res11 = calculateKPIScore({
+  criteria_politics: 10,
+  criteria_expertise: 10,
+  criteria_innovation: 10,
+  items: [
+    { product_catalog_id: 1, assigned_quantity: 2, accepted_quantity: 2, coefficient: 1.5 },
+    { product_catalog_id: 2, assigned_quantity: 4, accepted_quantity: 2, coefficient: 0.5 },
+  ],
+});
+assert(
+  res11.components.assigned_converted_total === 5.0 &&
+  res11.components.completed_converted_total === 4.0 &&
+  res11.components.a_quantity_ratio === 0.8 &&
+  res11.taskScore === 56.0 &&
+  res11.totalScore === 86.0 &&
+  res11.rating === 'Hoàn thành tốt nhiệm vụ',
+  'Nhiều dòng có hệ số K khác nhau (K=1.5, K=0.5) -> Quy đổi chính xác 56/70đ',
+  JSON.stringify({ components: res11.components, taskScore: res11.taskScore })
+);
+
 console.log('\n========================================================================');
 console.log(`📊 TỔNG KẾT: ${passedCount} PASSED, ${failedCount} FAILED`);
 console.log('========================================================================');
@@ -254,3 +281,4 @@ if (failedCount > 0) {
 } else {
   process.exit(0);
 }
+

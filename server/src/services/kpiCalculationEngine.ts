@@ -8,6 +8,17 @@
 
 export type CalculationStrategy = 'ND335_OFFICIAL_ABC' | 'WEIGHTED_DETAIL_SCORE' | 'COMPLETION_RATIO';
 
+export const KPI_LEGAL_REFERENCES = {
+  GENERAL_AND_TASK_SCALE: 'ND335_2025_NDCP_ART12',         // Điều 12: Thang điểm 30/70
+  WORK_CATALOG_AND_CONVERSION: 'ND335_2025_NDCP_ART13',    // Điều 13: Danh mục sản phẩm & Hệ số K
+  EMPLOYEE_EVALUATION_ABC: 'ND335_2025_NDCP_ART14',        // Điều 14: Đánh giá công chức chuyên môn (a, b, c)
+  LEADERSHIP_EVALUATION_ABCDE: 'ND335_2025_NDCP_ART15',    // Điều 15: Đánh giá công chức lãnh đạo (a, b, c, d, đ, e)
+  TASK_SCORE_FORMULAS: 'ND335_2025_NDCP_ART16',            // Điều 16: Công thức tính điểm Phần II ((a+b+c)/3 hoặc (a+b+c+d+đ+e)/6)
+  TOTAL_SCORE_SYNTHESIS: 'ND335_2025_NDCP_ART17',          // Điều 17: Tổng hợp điểm (Phần I + Phần II x 70)
+  OFFICIAL_CLASSIFICATION: 'ND335_2025_NDCP_ART20',        // Điều 20: Ngưỡng và tỷ lệ xếp loại chất lượng
+  APPEAL_AND_PETITION: 'ND335_2025_NDCP_ART24',            // Điều 24: Khiếu nại, phản ánh, kiến nghị đánh giá
+};
+
 export interface KPICriteriaConfig {
   legal_basis_id?: string;
   version?: string;
@@ -75,11 +86,13 @@ export interface KPICalculationResult {
   calculationStrategy: CalculationStrategy;
   calculationVersion: string;
   legalBasisId: string;
+  articleReference: string;
   effectiveFrom: string;
   commonCriteriaScore: number;
   taskScore: number;
   totalScore: number;
   rating: string | null;
+  strategyStatus?: 'OFFICIAL_ACTIVE' | 'DISABLED_FOR_OFFICIAL_RATING';
   taskLines: KPICalculatedLine[];
   components: {
     assigned_converted_total: number;
@@ -103,7 +116,7 @@ export interface KPICalculationResult {
 }
 
 export const KPI_CONSTANTS = {
-  LEGAL_BASIS_ID: 'ND335_2025_NDCP_ART6',
+  LEGAL_BASIS_ID: KPI_LEGAL_REFERENCES.TOTAL_SCORE_SYNTHESIS,
   VERSION: 'ND335_OFFICIAL_ABC_2026.08.1',
   EFFECTIVE_FROM: '2026-01-01',
   MAX_GENERAL_SCORE: 30.0,
@@ -155,7 +168,6 @@ export function calculateClassification(
 export function calculateKPIScore(input: KPICalculationInput): KPICalculationResult {
   const cfg = input.config || {};
   const version = cfg.version || KPI_CONSTANTS.VERSION;
-  const legalBasisId = cfg.legal_basis_id || KPI_CONSTANTS.LEGAL_BASIS_ID;
   const effectiveFrom = cfg.effective_from || KPI_CONSTANTS.EFFECTIVE_FROM;
   const strategy: CalculationStrategy = input.strategy || 'ND335_OFFICIAL_ABC';
 
@@ -276,17 +288,28 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
     taskOverallRatio = Number(((a_quantity_ratio + b_quality_ratio + c_progress_ratio) / 3.0).toFixed(4));
   }
 
-  // 5. Compute Final Task Score
+  // 5. Compute Final Task Score & Strategy Identification
   const penaltyMultiplier = input.penalty_multiplier !== undefined
     ? validateNumericField(input.penalty_multiplier, 'Hệ số phạt tiến độ/chất lượng', 0, 1)
     : 1.0;
 
   let taskScore = 0.0;
+  let rating: string | null = null;
+  let strategyStatus: 'OFFICIAL_ACTIVE' | 'DISABLED_FOR_OFFICIAL_RATING' = 'OFFICIAL_ACTIVE';
+  let legalBasisId = cfg.legal_basis_id || (isLeadership ? KPI_LEGAL_REFERENCES.LEADERSHIP_EVALUATION_ABCDE : KPI_LEGAL_REFERENCES.EMPLOYEE_EVALUATION_ABC);
+  let articleReference = isLeadership ? 'Điều 15 & Điều 16 khoản 2 Nghị định 335/2025/NĐ-CP' : 'Điều 14 & Điều 16 khoản 1 Nghị định 335/2025/NĐ-CP';
+
   const calculatedLines: KPICalculatedLine[] = [];
 
   if (strategy === 'WEIGHTED_DETAIL_SCORE') {
     // Strategy B: Legacy / Local proposal (Sums direct points)
+    // DISABLED FOR OFFICIAL RATING per User Directives
+    strategyStatus = 'DISABLED_FOR_OFFICIAL_RATING';
+    legalBasisId = cfg.legal_basis_id || 'LOCAL_POLICY_PROPOSAL_WEIGHTED_SCORE';
+    articleReference = 'Đề xuất chính sách địa phương (LOCAL_POLICY_PROPOSAL - Chưa có căn cứ NĐ 335)';
     taskScore = Math.min(maxTask, Math.max(0.0, Number((sumDirectPoints * penaltyMultiplier).toFixed(2))));
+    rating = null; // Không xếp loại chính thức với chiến lược chưa được phê duyệt
+
     for (const tl of tempLines) {
       calculatedLines.push({
         ...tl,
@@ -294,7 +317,8 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
       });
     }
   } else {
-    // Strategy A: ND335_OFFICIAL_ABC (Official Decree 335)
+    // Strategy A: ND335_OFFICIAL_ABC (Official Decree 335 - Sole official rating strategy)
+    strategyStatus = 'OFFICIAL_ACTIVE';
     if (isZeroDenominator) {
       taskScore = 0.0;
     } else {
@@ -314,30 +338,34 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
         line_score: lineScore,
       });
     }
+
+    const totalScoreCalc = Math.min(maxTotal, Math.max(0.0, Number((commonCriteriaScore + taskScore).toFixed(2))));
+    rating = calculateClassification(totalScoreCalc, false, {
+      excellent: cfg.excellent_threshold,
+      good: cfg.good_threshold,
+      satisfactory: cfg.satisfactory_threshold,
+    });
   }
 
   const totalScore = Math.min(maxTotal, Math.max(0.0, Number((commonCriteriaScore + taskScore).toFixed(2))));
-  const rating = calculateClassification(totalScore, false, {
-    excellent: cfg.excellent_threshold,
-    good: cfg.good_threshold,
-    satisfactory: cfg.satisfactory_threshold,
-  });
 
   const formulaSummary = strategy === 'WEIGHTED_DETAIL_SCORE'
-    ? `TaskScore (WEIGHTED_DETAIL_SCORE - LOCAL PROPOSAL) = min(${maxTask}, sum(line_points)) = min(${maxTask}, ${sumDirectPoints.toFixed(2)} * ${penaltyMultiplier}) = ${taskScore}đ`
+    ? `TaskScore (WEIGHTED_DETAIL_SCORE - LOCAL PROPOSAL) = min(${maxTask}, sum(line_points)) = min(${maxTask}, ${sumDirectPoints.toFixed(2)} * ${penaltyMultiplier}) = ${taskScore}đ [DISABLED_FOR_OFFICIAL_RATING]`
     : isLeadership
-    ? `TaskScore (NĐ 335) = min(${maxTask}, ${maxTask} * (a + b + c + d + đ + e) / 6) = min(${maxTask}, ${maxTask} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}% + ${(d_unit_result*100).toFixed(1)}% + ${(dd_execution*100).toFixed(1)}% + ${(e_solidarity*100).toFixed(1)}%) / 6) = ${taskScore}đ`
-    : `TaskScore (NĐ 335) = min(${maxTask}, ${maxTask} * (a + b + c) / 3) = min(${maxTask}, ${maxTask} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}%) / 3) = ${taskScore}đ`;
+    ? `TaskScore (NĐ 335 Điều 15, 16) = min(${maxTask}, ${maxTask} * (a + b + c + d + đ + e) / 6) = min(${maxTask}, ${maxTask} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}% + ${(d_unit_result*100).toFixed(1)}% + ${(dd_execution*100).toFixed(1)}% + ${(e_solidarity*100).toFixed(1)}%) / 6) = ${taskScore}đ`
+    : `TaskScore (NĐ 335 Điều 14, 16) = min(${maxTask}, ${maxTask} * (a + b + c) / 3) = min(${maxTask}, ${maxTask} * (${(a_quantity_ratio*100).toFixed(1)}% + ${(b_quality_ratio*100).toFixed(1)}% + ${(c_progress_ratio*100).toFixed(1)}%) / 3) = ${taskScore}đ`;
 
   return {
     calculationStrategy: strategy,
     calculationVersion: version,
     legalBasisId,
+    articleReference,
     effectiveFrom,
     commonCriteriaScore,
     taskScore,
     totalScore,
     rating,
+    strategyStatus,
     taskLines: calculatedLines,
     components: {
       assigned_converted_total: Number(assignedConvertedTotal.toFixed(4)),
@@ -355,8 +383,8 @@ export function calculateKPIScore(input: KPICalculationInput): KPICalculationRes
       componentsSummary: `a=${(a_quantity_ratio*100).toFixed(1)}%, b=${(b_quality_ratio*100).toFixed(1)}%, c=${(c_progress_ratio*100).toFixed(1)}%`,
       insufficientData: isZeroDenominator,
       legalNote: strategy === 'WEIGHTED_DETAIL_SCORE'
-        ? 'LOCAL_POLICY_PROPOSAL: Công thức tích lũy điểm trực tiếp theo từng sản phẩm cần phê duyệt quy chế nội bộ (LEGAL_REVIEW_REQUIRED)'
-        : 'LEGAL_MANDATORY: Công thức chính thức theo Điều 6 Nghị định 335/2025/NĐ-CP',
+        ? 'LOCAL_POLICY_PROPOSAL | LEGAL_REVIEW_REQUIRED | DISABLED_FOR_OFFICIAL_RATING: Công thức tích lũy điểm trực tiếp theo từng sản phẩm chỉ là đề xuất nội bộ, không dùng để xếp loại CBCC chính thức.'
+        : `LEGAL_MANDATORY: Chiến lược chính thức duy nhất theo Nghị định 335/2025/NĐ-CP (${articleReference}, Điều 12, Điều 17, Điều 20)`,
     },
   };
 }
