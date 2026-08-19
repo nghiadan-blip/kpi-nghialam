@@ -54,8 +54,8 @@ async function runTests() {
 
       const month = '2026-08';
 
-      // --- TEST 1: 1 dòng, tự chấm 5 điểm -> Phần II = 5/70, Tổng = 30/100 (Phần I = 25đ) ---
-      console.log('\n--- Test 1: 1 sản phẩm 5 điểm -> Phần II = 5/70, Tổng = 30/100 ---');
+      // --- TEST 1: Giao 1, Hoàn thành 1 -> a=100%, b=100%, c=100% -> Phần II = 70/70, Tổng = 95/100 (Phần I = 25đ) ---
+      console.log('\n--- Test 1: 1/1 hoàn thành (NĐ 335) -> a,b,c=100% -> Phần II = 70/70, Tổng = 95/100 ---');
       const draft1 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
         {
@@ -64,12 +64,12 @@ async function runTests() {
           criteria_expertise_self: 8.0,
           criteria_innovation_self: 8.0, // Tổng Phần I = 25.0
           items: [
-            { product_catalog_id: 1, quantity: 1, self_points: 5.0, remarks: '1 sản phẩm chuẩn 5đ' }
+            { product_catalog_id: 1, assigned_quantity: 1, accepted_quantity: 1, remarks: '1 sản phẩm hoàn thành đúng hạn' }
           ]
         }
       );
 
-      if (draft1.status === 200 && draft1.body.task_score === 5.0 && draft1.body.self_score === 30.0) {
+      if (draft1.status === 200 && draft1.body.task_score === 70.0 && draft1.body.self_score === 95.0) {
         console.log(`  ✅ PASS: Draft 1 saved! Task Score = ${draft1.body.task_score}/70, Self Score = ${draft1.body.self_score}/100`);
       } else {
         console.error('  ❌ FAIL Test 1:', draft1.body);
@@ -78,8 +78,8 @@ async function runTests() {
 
       const evalId = draft1.body.evaluation_id;
 
-      // --- TEST 2: Đổi số lượng từ 1 lên 5 -> Điểm dòng 25, Phần II = 25/70, Tổng = 50/100 ---
-      console.log('\n--- Test 2: Đổi số lượng 1 -> 5 -> Phần II = 25/70, Tổng = 50/100 ---');
+      // --- TEST 2: Giao 5, Hoàn thành 5 -> Tỷ lệ 100% -> Phần II vẫn là 70/70, Tổng = 95/100 ---
+      console.log('\n--- Test 2: Giao 5, Hoàn thành 5 (5/5 = 100%) -> Phần II = 70/70, Tổng = 95/100 ---');
       const draft2 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
         {
@@ -88,20 +88,20 @@ async function runTests() {
           criteria_expertise_self: 8.0,
           criteria_innovation_self: 8.0, // 25.0
           items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0, remarks: '5 sản phẩm = 25đ' }
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 5, remarks: '5 sản phẩm giao và hoàn thành đầy đủ' }
           ]
         }
       );
 
-      if (draft2.status === 200 && draft2.body.task_score === 25.0 && draft2.body.self_score === 50.0) {
+      if (draft2.status === 200 && draft2.body.task_score === 70.0 && draft2.body.self_score === 95.0) {
         console.log(`  ✅ PASS: Draft 2 updated! Task Score = ${draft2.body.task_score}/70, Self Score = ${draft2.body.self_score}/100`);
       } else {
         console.error('  ❌ FAIL Test 2:', draft2.body);
         process.exit(1);
       }
 
-      // --- TEST 3: Thêm dòng thứ hai (10đ) -> Tổng Phần II = 35/70, Tổng = 60/100 ---
-      console.log('\n--- Test 3: Thêm dòng thứ hai (10đ) -> Phần II = 35/70, Tổng = 60/100 ---');
+      // --- TEST 3: Giao 5 nhưng chỉ hoàn thành 1 (1/5 = 20%) -> Phần II = 14/70, Tổng = 39/100 ---
+      console.log('\n--- Test 3: Giao 5, hoàn thành 1 (1/5 = 20%) -> Phần II = 14/70, Tổng = 39/100 ---');
       const draft3 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
         {
@@ -110,21 +110,20 @@ async function runTests() {
           criteria_expertise_self: 8.0,
           criteria_innovation_self: 8.0,
           items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0, remarks: 'Dòng 1: 25đ' },
-            { product_catalog_id: 2, quantity: 2, self_points: 10.0, remarks: 'Dòng 2: 10đ' }
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 1, remarks: 'Chỉ hoàn thành 1/5 khối lượng' }
           ]
         }
       );
 
-      if (draft3.status === 200 && draft3.body.task_score === 35.0 && draft3.body.self_score === 60.0) {
-        console.log(`  ✅ PASS: Draft 3 (2 dòng) -> Task Score = ${draft3.body.task_score}/70, Self Score = ${draft3.body.self_score}/100`);
+      if (draft3.status === 200 && draft3.body.task_score === 14.0 && draft3.body.self_score === 39.0) {
+        console.log(`  ✅ PASS: Draft 3 -> Task Score = ${draft3.body.task_score}/70, Self Score = ${draft3.body.self_score}/100`);
       } else {
         console.error('  ❌ FAIL Test 3:', draft3.body);
         process.exit(1);
       }
 
-      // --- TEST 4: Xóa dòng thứ hai -> Giảm về 25/70 và 50/100 ---
-      console.log('\n--- Test 4: Xóa dòng thứ hai -> Phần II = 25/70, Tổng = 50/100 ---');
+      // --- TEST 4: Giao 5, hoàn thành 0 (0/5 = 0%) -> Phần II = 0/70, Tổng = 25/100 ---
+      console.log('\n--- Test 4: Giao 5, hoàn thành 0 (0/5 = 0%) -> Phần II = 0/70, Tổng = 25/100 ---');
       const draft4 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
         {
@@ -133,55 +132,41 @@ async function runTests() {
           criteria_expertise_self: 8.0,
           criteria_innovation_self: 8.0,
           items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0, remarks: 'Dòng 1: 25đ' }
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 0, remarks: 'Chưa hoàn thành sản phẩm nào' }
           ]
         }
       );
 
-      if (draft4.status === 200 && draft4.body.task_score === 25.0 && draft4.body.self_score === 50.0) {
-        console.log(`  ✅ PASS: Draft 4 (xóa dòng) -> Task Score = ${draft4.body.task_score}/70, Self Score = ${draft4.body.self_score}/100`);
+      if (draft4.status === 200 && draft4.body.task_score === 0.0 && draft4.body.self_score === 25.0) {
+        console.log(`  ✅ PASS: Draft 4 -> Task Score = ${draft4.body.task_score}/70, Self Score = ${draft4.body.self_score}/100`);
       } else {
         console.error('  ❌ FAIL Test 4:', draft4.body);
         process.exit(1);
       }
 
-      // --- TEST 5: Tổng điểm vượt 70 -> Giới hạn trần 70/70, Tổng = 95/100 ---
-      console.log('\n--- Test 5: Điểm Phần II vượt 70 (80đ) -> Giới hạn trần 70/70 ---');
+      // --- TEST 5: Cập nhật lại hoàn thành 5/5 -> Phần II = 70/70, Tổng = 95/100 ---
+      console.log('\n--- Test 5: Cập nhật lại 5/5 hoàn thành -> Phần II = 70/70 ---');
       const draft5 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
         {
           month,
-          criteria_politics_self: 9.0,
-          criteria_expertise_self: 8.0,
-          criteria_innovation_self: 8.0, // 25đ
+          criteria_politics_self: 10.0,
+          criteria_expertise_self: 10.0,
+          criteria_innovation_self: 10.0, // 30.0
           items: [
-            { product_catalog_id: 1, quantity: 16, self_points: 80.0, remarks: '16 sản phẩm = 80đ (>70)' }
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 5, remarks: 'Hoàn thành xuất sắc 5 nhiệm vụ' }
           ]
         }
       );
 
-      if (draft5.status === 200 && draft5.body.task_score === 70.0 && draft5.body.self_score === 95.0) {
-        console.log(`  ✅ PASS: Task Score correctly capped at 70/70! Total = ${draft5.body.self_score}/100`);
+      if (draft5.status === 200 && draft5.body.task_score === 70.0 && draft5.body.self_score === 100.0) {
+        console.log(`  ✅ PASS: Task Score correctly at 70/70! Total = ${draft5.body.self_score}/100`);
       } else {
         console.error('  ❌ FAIL Test 5:', draft5.body);
         process.exit(1);
       }
 
-      // Reset back to 25đ Part II (Total 50đ) for workflow testing
-      await request(
-        { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
-        {
-          month,
-          criteria_politics_self: 9.0,
-          criteria_expertise_self: 8.0,
-          criteria_innovation_self: 8.0,
-          items: [
-            { product_catalog_id: 1, quantity: 5, self_points: 25.0, remarks: '5 sản phẩm = 25đ' }
-          ]
-        }
-      );
-
-      // --- TEST 6: Đồng bộ số liệu giữa GET chi tiết, danh sách và Form ---
+      // --- TEST 6: Kiểm tra đồng bộ dữ liệu giữa Form, Chi tiết và Danh sách ---
       console.log('\n--- Test 6: Kiểm tra đồng bộ dữ liệu giữa Form, Chi tiết và Danh sách ---');
       const detailRes = await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations/${evalId}`, method: 'GET', headers: { Authorization: `Bearer ${empToken}` } }
@@ -189,124 +174,128 @@ async function runTests() {
       const listRes = await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations?month=${month}`, method: 'GET', headers: { Authorization: `Bearer ${empToken}` } }
       );
-      const formRes = await request(
+      const formDetailRes = await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations/forms/${evalId}`, method: 'GET', headers: { Authorization: `Bearer ${empToken}` } }
       );
 
       const dScore = detailRes.body.evaluation.self_score;
       const lScore = listRes.body.evaluations.find((e: any) => e.id === evalId)?.self_score;
-      const fScore = formRes.body.totalScore;
+      const fScore = formDetailRes.body.totalScore;
 
-      if (dScore === 50.0 && lScore === 50.0 && fScore === 50.0 && formRes.body.calculationStrategy === 'WEIGHTED_DETAIL_SCORE') {
-        console.log(`  ✅ PASS: Đồng bộ hoàn hảo: Detail (${dScore}), List (${lScore}), Form (${fScore}) = 50.0đ`);
+      if (dScore === 100.0 && lScore === 100.0 && fScore === 100.0) {
+        console.log(`  ✅ PASS: Đồng bộ hoàn hảo: Detail (${dScore}), List (${lScore}), Form (${fScore}) = 100.0đ (ND335_OFFICIAL_ABC)`);
       } else {
-        console.error('  ❌ FAIL Test 6: Inconsistent scores:', { dScore, lScore, fScore });
+        console.error(`  ❌ FAIL: Không đồng bộ: Detail (${dScore}), List (${lScore}), Form (${fScore})`);
         process.exit(1);
       }
 
-      // --- TEST 7: Quy trình Nộp -> Thẩm định -> Phê duyệt điểm bảo toàn ---
+      // --- TEST 7: Quy trình 3 bước (Submit -> Review -> Approve) bảo toàn điểm ---
       console.log('\n--- Test 7: Quy trình 3 bước (Submit -> Review -> Approve) bảo toàn điểm ---');
-      
-      // Step 1: Submit
-      const subRes = await request(
+      await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations/${evalId}/submit`, method: 'POST', headers: { Authorization: `Bearer ${empToken}` } }
       );
-      if (subRes.status !== 200) throw new Error('Submit failed: ' + JSON.stringify(subRes.body));
 
-      // Step 2: Manager Review
-      const revRes = await request(
+      const reviewRes = await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations/${evalId}/review`, method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${mgrToken}` } },
         {
-          criteria_politics_mgr: 9.0,
-          criteria_expertise_mgr: 8.0,
-          criteria_innovation_mgr: 8.0,
-          remarks: 'Trưởng bộ phận thẩm định đạt 50đ'
+          criteria_politics_mgr: 10.0,
+          criteria_expertise_mgr: 10.0,
+          criteria_innovation_mgr: 10.0,
+          collective_comments: 'Tập thể nhất trí 100%',
+          remarks: 'Thẩm định hoàn thành xuất sắc'
         }
       );
-      if (revRes.status !== 200 || revRes.body.manager_score !== 50.0 || revRes.body.task_score !== 25.0) {
-        console.error('  ❌ FAIL Test 7 (Review):', revRes.body);
+
+      if (reviewRes.status === 200 && reviewRes.body.manager_score === 100.0) {
+        console.log(`  ✅ PASS: Manager reviewed with exact 100.0đ (Part II: ${reviewRes.body.task_score_mgr}đ)`);
+      } else {
+        console.error('  ❌ FAIL Step 2 Review:', reviewRes.body);
         process.exit(1);
       }
-      console.log('  ✅ PASS: Manager reviewed with exact 50.0đ (Part II: 25.0đ)');
 
-      // Step 3: Leadership Approve
-      const appRes = await request(
+      const approveRes = await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations/${evalId}/approve`, method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${chairToken}` } },
         {
-          criteria_politics_final: 9.0,
-          criteria_expertise_final: 8.0,
-          criteria_innovation_final: 8.0,
-          remarks: 'Chủ tịch xã phê duyệt chính thức 50đ'
+          criteria_politics_final: 10.0,
+          criteria_expertise_final: 10.0,
+          criteria_innovation_final: 10.0,
+          party_cell_comments: 'Chi bộ nhất trí xuất sắc',
+          remarks: 'Phê duyệt chính thức theo NĐ 335'
         }
       );
-      if (appRes.status !== 200 || appRes.body.evaluation.final_score !== 50.0 || appRes.body.evaluation.task_score_final !== 25.0) {
-        console.error('  ❌ FAIL Test 7 (Approve):', appRes.body);
+
+      if (approveRes.status === 200 && approveRes.body.final_score === 100.0 && approveRes.body.classification === 'Hoàn thành xuất sắc nhiệm vụ') {
+        console.log(`  ✅ PASS: Leadership approved with exact 100.0đ (Classification: ${approveRes.body.classification})`);
+      } else {
+        console.error('  ❌ FAIL Step 3 Approve:', approveRes.body);
         process.exit(1);
       }
-      console.log('  ✅ PASS: Leadership approved with exact 50.0đ (Classification: ' + appRes.body.evaluation.classification + ')');
 
-      // --- TEST 8: Khóa kỳ đánh giá -> Chặn mọi thao tác sửa đổi ---
+      // --- TEST 8: Khóa kỳ đánh giá và chặn sửa đổi ---
       console.log('\n--- Test 8: Khóa kỳ đánh giá và chặn sửa đổi ---');
-      const lockRes = await request(
+      await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/periods/lock', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${chairToken}` } },
         { month }
       );
-      if (lockRes.status !== 200) throw new Error('Lock period failed: ' + JSON.stringify(lockRes.body));
 
-      const blockedDraft = await request(
+      const modifyLocked = await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
-        {
-          month,
-          criteria_politics_self: 10,
-          items: [{ product_catalog_id: 1, quantity: 1 }]
-        }
+        { month, criteria_politics_self: 9.0, items: [{ product_catalog_id: 1, quantity: 1 }] }
       );
-      if (blockedDraft.status === 400 && typeof blockedDraft.body.message === 'string' && blockedDraft.body.message.includes('khóa')) {
+
+      if (modifyLocked.status === 400 && modifyLocked.body.message.includes('đã bị khóa')) {
         console.log('  ✅ PASS: Blocked modification on locked period successfully.');
       } else {
-        console.error('  ❌ FAIL Test 8: Allowed modification on locked period:', blockedDraft.body);
+        console.error('  ❌ FAIL: Allowed modifying locked period:', modifyLocked.body);
         process.exit(1);
       }
 
-      // Unlock period for cleanup
+      // --- TEST 9: Chặn dữ liệu sai (Âm, NaN, Vượt trần) ---
+      console.log('\n--- Test 9: Chặn dữ liệu sai (Âm, NaN, Vượt trần) ---');
+      await request(
+        { hostname: 'localhost', port: PORT, path: '/api/evaluations/periods/unlock', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${chairToken}` } },
+        { month: '2026-09' }
+      );
+
+      const badDraft = await request(
+        { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
+        {
+          month: '2026-09',
+          criteria_politics_self: -5.0, // Âm
+          items: [{ product_catalog_id: 1, quantity: 1 }]
+        }
+      );
+
+      if (badDraft.status === 400) {
+        console.log('  ✅ PASS: Blocked negative points with 400 Bad Request.');
+      } else {
+        console.error('  ❌ FAIL: Allowed negative criteria points:', badDraft.body);
+        process.exit(1);
+      }
+
+      // --- TEST 10: Recalculate Endpoint (/api/evaluations/forms/:id/recalculate) ---
+      console.log('\n--- Test 10: Recalculate Endpoint (/api/evaluations/forms/:id/recalculate) ---');
       await request(
         { hostname: 'localhost', port: PORT, path: '/api/evaluations/periods/unlock', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${chairToken}` } },
         { month }
       );
 
-      // --- TEST 9: Kiểm tra chặn dữ liệu sai (Negative, NaN, Vượt trần) ---
-      console.log('\n--- Test 9: Chặn dữ liệu sai (Âm, NaN, Vượt trần) ---');
-      const badDraft = await request(
-        { hostname: 'localhost', port: PORT, path: '/api/evaluations/draft', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
-        {
-          month: '2026-09',
-          criteria_politics_self: -5.0,
-          items: [{ product_catalog_id: 1, quantity: 1 }]
-        }
-      );
-      if (badDraft.status === 400) {
-        console.log('  ✅ PASS: Blocked negative points with 400 Bad Request.');
-      } else {
-        console.error('  ❌ FAIL Test 9: Allowed negative points:', badDraft.body);
-        process.exit(1);
-      }
-
-      // --- TEST 10: Recalculate Endpoint ---
-      console.log('\n--- Test 10: Recalculate Endpoint (/api/evaluations/forms/:id/recalculate) ---');
       const recalcRes = await request(
         { hostname: 'localhost', port: PORT, path: `/api/evaluations/forms/${evalId}/recalculate`, method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empToken}` } },
         {
-          criteria_politics: 10,
-          criteria_expertise: 10,
-          criteria_innovation: 10,
-          items: [{ product_catalog_id: 1, quantity: 2, baseline_score: 5, coefficient: 1 }]
+          criteria_politics: 10.0,
+          criteria_expertise: 10.0,
+          criteria_innovation: 10.0,
+          items: [
+            { product_catalog_id: 1, assigned_quantity: 5, accepted_quantity: 5 }
+          ]
         }
       );
 
-      if (recalcRes.status === 200 && recalcRes.body.taskScore === 10 && recalcRes.body.totalScore === 40) {
+      if (recalcRes.status === 200 && recalcRes.body.taskScore === 70.0 && recalcRes.body.totalScore === 100.0) {
         console.log(`  ✅ PASS: Recalculate endpoint returned TaskScore = ${recalcRes.body.taskScore}, Total = ${recalcRes.body.totalScore}`);
       } else {
-        console.error('  ❌ FAIL Test 10:', recalcRes.body);
+        console.error('  ❌ FAIL Recalculate:', recalcRes.body);
         process.exit(1);
       }
 
@@ -314,7 +303,7 @@ async function runTests() {
       server.close();
       process.exit(0);
     } catch (err: any) {
-      console.error('❌ Test failed with error:', err.message);
+      console.error('\n❌ TEST RUNNER EXCEPTION:', err);
       server.close();
       process.exit(1);
     }

@@ -81,8 +81,14 @@ export async function seed(knex: Knex): Promise<void> {
   await knex('budget_revenue_items').del();
 
   await knex('audit_logs').del();
+  if (await knex.schema.hasTable('evaluation_appeals')) {
+    await knex('evaluation_appeals').del();
+  }
   await knex('evaluation_details').del();
   await knex('evaluations').del();
+  if (await knex.schema.hasTable('evaluation_periods')) {
+    await knex('evaluation_periods').del();
+  }
   await knex('tasks').del();
   await knex('product_catalog').del();
   await knex('users').del();
@@ -1055,5 +1061,266 @@ export async function seed(knex: Knex): Promise<void> {
     }
   ];
   await knex('project_payment_disbursements').insert(disbursements);
+
+  // 16. Insert Default Tasks
+  const tasks = [
+    {
+      id: 1,
+      title: 'Rà soát hiện trạng sử dụng đất xóm 3 và đo đạc cắm mốc ranh giới',
+      assigned_to: 6, // Vũ Minh Tuấn
+      assigned_by: 5, // Lê Hoàng Anh
+      product_catalog_id: 1,
+      deadline: '2026-08-20 17:00:00',
+      weight: 1.0,
+      status: 'COMPLETED',
+      evidence: 'Biên bản số 45/BB-ĐC ngày 15/08/2026'
+    },
+    {
+      id: 2,
+      title: 'Tổng hợp báo cáo tiến độ Kế hoạch 965 tháng 8/2026',
+      assigned_to: 6, // Vũ Minh Tuấn
+      assigned_by: 5, // Lê Hoàng Anh
+      product_catalog_id: 2,
+      deadline: '2026-08-25 17:00:00',
+      weight: 1.5,
+      status: 'COMPLETED',
+      evidence: 'Báo cáo số 89/BC-UBND ngày 16/08/2026'
+    },
+    {
+      id: 3,
+      title: 'Tiếp công dân và giải quyết phản ánh ranh giới đất xóm 4',
+      assigned_to: 6, // Vũ Minh Tuấn
+      assigned_by: 5, // Lê Hoàng Anh
+      product_catalog_id: 5,
+      deadline: '2026-08-28 17:00:00',
+      weight: 1.0,
+      status: 'IN_PROGRESS',
+      evidence: null
+    },
+    {
+      id: 4,
+      title: 'Chuẩn bị khánh tiết và tài liệu Hội nghị Ban Thường vụ Đảng ủy',
+      assigned_to: 9, // Nguyễn Văn Phòng
+      assigned_by: 2, // Trần Văn Nam
+      product_catalog_id: 1,
+      deadline: '2026-08-18 17:00:00',
+      weight: 1.0,
+      status: 'COMPLETED',
+      evidence: 'Thông báo số 12/TB-UBND'
+    },
+    {
+      id: 5,
+      title: 'Lập báo cáo quyết toán ngân sách xã quý II/2026',
+      assigned_to: 8, // Lê Văn Tài
+      assigned_by: 2, // Trần Văn Nam
+      product_catalog_id: 2,
+      deadline: '2026-07-25 17:00:00',
+      weight: 1.5,
+      status: 'COMPLETED',
+      evidence: 'Báo cáo số 34/BC-TCKT'
+    }
+  ];
+  await knex('tasks').insert(tasks);
+
+  // 17. Insert Default Evaluation Periods
+  if (await knex.schema.hasTable('evaluation_periods')) {
+    await knex('evaluation_periods').insert([
+      {
+        id: 1,
+        month: '2026-07',
+        status: 'LOCKED',
+        created_by: 2,
+        locked_by: 2,
+        locked_at: '2026-08-05 17:00:00'
+      },
+      {
+        id: 2,
+        month: '2026-08',
+        status: 'ACTIVE',
+        created_by: 2,
+        locked_by: null,
+        locked_at: null
+      }
+    ]);
+  }
+
+  // 18. Insert Persistent Default Evaluations
+  const defaultEvaluations = [
+    {
+      id: 1,
+      employee_id: 6, // Vũ Minh Tuấn
+      month: '2026-07',
+      status: 'APPROVED',
+      criteria_politics_self: 9.5,
+      criteria_politics_mgr: 9.5,
+      criteria_politics_final: 9.5,
+      criteria_expertise_self: 9.5,
+      criteria_expertise_mgr: 9.5,
+      criteria_expertise_final: 9.5,
+      criteria_innovation_self: 9.0,
+      criteria_innovation_mgr: 9.0,
+      criteria_innovation_final: 9.0,
+      general_score_self: 28.0,
+      general_score_mgr: 28.0,
+      general_score_final: 28.0,
+      task_score_self: 67.0,
+      task_score_mgr: 67.0,
+      task_score_final: 67.0,
+      self_score: 95.0,
+      manager_score: 95.0,
+      final_score: 95.0,
+      manager_id: 5,
+      approver_id: 2,
+      remarks: 'Hoàn thành xuất sắc nhiệm vụ tháng 7/2026'
+    },
+    {
+      id: 2,
+      employee_id: 9, // Nguyễn Văn Phòng
+      month: '2026-07',
+      status: 'APPROVED',
+      criteria_politics_self: 9.0,
+      criteria_politics_mgr: 9.0,
+      criteria_politics_final: 9.0,
+      criteria_expertise_self: 8.5,
+      criteria_expertise_mgr: 8.5,
+      criteria_expertise_final: 8.5,
+      criteria_innovation_self: 8.5,
+      criteria_innovation_mgr: 8.5,
+      criteria_innovation_final: 8.5,
+      general_score_self: 26.0,
+      general_score_mgr: 26.0,
+      general_score_final: 26.0,
+      task_score_self: 59.0,
+      task_score_mgr: 59.0,
+      task_score_final: 59.0,
+      self_score: 85.0,
+      manager_score: 85.0,
+      final_score: 85.0,
+      manager_id: 2,
+      approver_id: 2,
+      remarks: 'Hoàn thành tốt nhiệm vụ tháng 7/2026'
+    },
+    {
+      id: 3,
+      employee_id: 6, // Vũ Minh Tuấn
+      month: '2026-08',
+      status: 'DRAFT',
+      criteria_politics_self: 9.5,
+      criteria_politics_mgr: 9.5,
+      criteria_politics_final: 9.5,
+      criteria_expertise_self: 9.5,
+      criteria_expertise_mgr: 9.5,
+      criteria_expertise_final: 9.5,
+      criteria_innovation_self: 9.0,
+      criteria_innovation_mgr: 9.0,
+      criteria_innovation_final: 9.0,
+      general_score_self: 28.0,
+      general_score_mgr: 28.0,
+      general_score_final: 28.0,
+      task_score_self: 25.0,
+      task_score_mgr: 25.0,
+      task_score_final: 25.0,
+      self_score: 53.0,
+      manager_score: 53.0,
+      final_score: 53.0,
+      manager_id: 5,
+      approver_id: null,
+      remarks: 'Bản tự đánh giá nháp tháng 8/2026'
+    }
+  ];
+  await knex('evaluations').insert(defaultEvaluations);
+
+  // 19. Insert Default Evaluation Details
+  const defaultDetails = [
+    {
+      id: 1,
+      evaluation_id: 1,
+      task_id: 1,
+      product_catalog_id: 1,
+      quantity: 4,
+      self_points: 20.0,
+      manager_points: 20.0,
+      final_points: 20.0,
+      remarks: 'Soạn thảo 4 văn bản hành chính'
+    },
+    {
+      id: 2,
+      evaluation_id: 1,
+      task_id: 2,
+      product_catalog_id: 2,
+      quantity: 3,
+      self_points: 22.5,
+      manager_points: 22.5,
+      final_points: 22.5,
+      remarks: 'Báo cáo chuyên đề KH965'
+    },
+    {
+      id: 3,
+      evaluation_id: 1,
+      task_id: null,
+      product_catalog_id: 3,
+      quantity: 4,
+      self_points: 24.0,
+      manager_points: 24.0,
+      final_points: 24.0,
+      remarks: 'Hồ sơ TTPVHCC đúng hạn'
+    },
+    {
+      id: 4,
+      evaluation_id: 2,
+      task_id: 4,
+      product_catalog_id: 1,
+      quantity: 6,
+      self_points: 30.0,
+      manager_points: 30.0,
+      final_points: 30.0,
+      remarks: 'Văn bản hành chính tổng hợp'
+    },
+    {
+      id: 5,
+      evaluation_id: 2,
+      task_id: null,
+      product_catalog_id: 2,
+      quantity: 2,
+      self_points: 15.0,
+      manager_points: 15.0,
+      final_points: 15.0,
+      remarks: 'Báo cáo tổng hợp văn phòng'
+    },
+    {
+      id: 6,
+      evaluation_id: 2,
+      task_id: null,
+      product_catalog_id: 5,
+      quantity: 3,
+      self_points: 14.0,
+      manager_points: 14.0,
+      final_points: 14.0,
+      remarks: 'Tiếp công dân và hướng dẫn TTHC'
+    },
+    {
+      id: 7,
+      evaluation_id: 3,
+      task_id: 1,
+      product_catalog_id: 1,
+      quantity: 2,
+      self_points: 10.0,
+      manager_points: 10.0,
+      final_points: 10.0,
+      remarks: 'Soạn thảo văn bản rà soát đất đai xóm 3'
+    },
+    {
+      id: 8,
+      evaluation_id: 3,
+      task_id: 2,
+      product_catalog_id: 2,
+      quantity: 2,
+      self_points: 15.0,
+      manager_points: 15.0,
+      final_points: 15.0,
+      remarks: 'Báo cáo tổng hợp tiến độ KH965'
+    }
+  ];
+  await knex('evaluation_details').insert(defaultDetails);
 }
 

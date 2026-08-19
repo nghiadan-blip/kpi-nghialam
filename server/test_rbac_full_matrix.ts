@@ -59,7 +59,7 @@ async function runRBACMatrixTests() {
       // 1.1 Employee DC cannot create/assign tasks -> 403
       const t1 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/tasks', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empDcToken}` } },
-        { title: 'Tự giao việc', assigned_to: empDcUser.id, product_catalog_id: 1, deadline: '2026-08-30' }
+        { title: 'Tự giao việc', assigned_to: empDcUser!.id, product_catalog_id: 1, deadline: '2026-08-30' }
       );
       if (t1.status === 403) console.log('  ✅ PASS: 1.1 Employee (Địa chính) calling POST /api/tasks -> 403 Forbidden');
       else throw new Error('FAIL 1.1: ' + JSON.stringify(t1));
@@ -67,7 +67,7 @@ async function runRBACMatrixTests() {
       // 1.2 Employee VP cannot create/assign tasks -> 403
       const t2 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/tasks', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${empVpToken}` } },
-        { title: 'Tự giao việc', assigned_to: empVpUser.id, product_catalog_id: 1, deadline: '2026-08-30' }
+        { title: 'Tự giao việc', assigned_to: empVpUser!.id, product_catalog_id: 1, deadline: '2026-08-30' }
       );
       if (t2.status === 403) console.log('  ✅ PASS: 1.2 Employee (Văn phòng) calling POST /api/tasks -> 403 Forbidden');
       else throw new Error('FAIL 1.2: ' + JSON.stringify(t2));
@@ -75,7 +75,7 @@ async function runRBACMatrixTests() {
       // 1.3 Dept Head DC assigns inside department -> 201
       const t3 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/tasks', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${headDcToken}` } },
-        { title: 'Giao việc nội bộ', assigned_to: empDcUser.id, product_catalog_id: 1, deadline: '2026-08-30' }
+        { title: 'Giao việc nội bộ', assigned_to: empDcUser!.id, product_catalog_id: 1, deadline: '2026-08-30' }
       );
       if (t3.status === 201) console.log('  ✅ PASS: 1.3 Dept Head (Địa chính) assigning inside dept -> 201 Created');
       else throw new Error('FAIL 1.3: ' + JSON.stringify(t3));
@@ -83,7 +83,7 @@ async function runRBACMatrixTests() {
       // 1.4 Dept Head DC assigns outside department -> 403
       const t4 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/tasks', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${headDcToken}` } },
-        { title: 'Giao việc ngoài bộ phận', assigned_to: empVpUser.id, product_catalog_id: 1, deadline: '2026-08-30' }
+        { title: 'Giao việc ngoài bộ phận', assigned_to: empVpUser!.id, product_catalog_id: 1, deadline: '2026-08-30' }
       );
       if (t4.status === 403) console.log('  ✅ PASS: 1.4 Dept Head (Địa chính) assigning outside dept -> 403 Forbidden');
       else throw new Error('FAIL 1.4: ' + JSON.stringify(t4));
@@ -91,7 +91,7 @@ async function runRBACMatrixTests() {
       // 1.5 Leadership assigns task across departments -> 201
       const t5 = await request(
         { hostname: 'localhost', port: PORT, path: '/api/tasks', method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${leaderToken}` } },
-        { title: 'Lãnh đạo giao việc', assigned_to: empVpUser.id, product_catalog_id: 1, deadline: '2026-08-30' }
+        { title: 'Lãnh đạo giao việc', assigned_to: empVpUser!.id, product_catalog_id: 1, deadline: '2026-08-30' }
       );
       if (t5.status === 201) console.log('  ✅ PASS: 1.5 Leadership assigning task across departments -> 201 Created');
       else throw new Error('FAIL 1.5: ' + JSON.stringify(t5));

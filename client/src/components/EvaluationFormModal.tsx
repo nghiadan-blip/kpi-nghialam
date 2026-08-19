@@ -338,10 +338,10 @@ export const EvaluationFormModal: React.FC<Props> = ({
         party_cell_comments: partyCellComments,
         special_case: specialCase,
         items: items.map((it) => ({
-          product_catalog_id: it.product_catalog_id,
-          task_id: it.task_id,
-          quantity: it.quantity,
-          remarks: it.remarks,
+          product_catalog_id: Number(it.product_catalog_id),
+          task_id: (it.task_id && Number(it.task_id) > 0) ? Number(it.task_id) : null,
+          quantity: Number(it.quantity) || 1,
+          remarks: it.remarks || '',
         })),
         remarks: generalRemarks,
       });
@@ -379,10 +379,10 @@ export const EvaluationFormModal: React.FC<Props> = ({
         party_cell_comments: partyCellComments,
         special_case: specialCase,
         items: items.map((it) => ({
-          product_catalog_id: it.product_catalog_id,
-          task_id: it.task_id,
-          quantity: it.quantity,
-          remarks: it.remarks,
+          product_catalog_id: Number(it.product_catalog_id),
+          task_id: (it.task_id && Number(it.task_id) > 0) ? Number(it.task_id) : null,
+          quantity: Number(it.quantity) || 1,
+          remarks: it.remarks || '',
         })),
         remarks: generalRemarks,
       });

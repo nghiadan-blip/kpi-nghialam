@@ -195,10 +195,16 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     // 1. Build line items with catalog coefficients & baseline scores
     const inputItems: KPILineItemInput[] = [];
     for (const it of items) {
+      if (!it.product_catalog_id || isNaN(Number(it.product_catalog_id))) {
+        await trx.rollback();
+        res.status(400).json({ message: 'Không thể lưu phiếu vì mã danh mục sản phẩm không hợp lệ. Vui lòng tải lại danh mục và thực hiện lại.' });
+        return;
+      }
+
       const catalog = await trx('product_catalog').where('id', Number(it.product_catalog_id)).first();
       if (!catalog) {
         await trx.rollback();
-        res.status(400).json({ message: `Sản phẩm danh mục ID ${it.product_catalog_id} không tồn tại.` });
+        res.status(400).json({ message: `Không thể lưu phiếu vì sản phẩm/tiêu chí ID ${it.product_catalog_id} không còn tồn tại trong danh mục. Vui lòng tải lại danh mục và thực hiện lại.` });
         return;
       }
 
@@ -208,24 +214,44 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
 
       let delays = 0;
       let reworks = 0;
-      if (it.task_id) {
-        const task = await trx('tasks').where('id', Number(it.task_id)).first();
-        if (task) {
-          delays = Number(task.delay_count) || 0;
-          reworks = Number(task.rework_count) || 0;
+      let validatedTaskId: number | null = null;
+      if (it.task_id !== undefined && it.task_id !== null && it.task_id !== '' && it.task_id !== 'null') {
+        const parsedTaskId = Number(it.task_id);
+        if (!isNaN(parsedTaskId) && parsedTaskId > 0) {
+          const task = await trx('tasks').where('id', parsedTaskId).first();
+          if (task) {
+            validatedTaskId = task.id;
+            delays = Number(task.delay_count) || 0;
+            reworks = Number(task.rework_count) || 0;
+          } else {
+            await trx.rollback();
+            res.status(400).json({ message: `Không thể lưu phiếu vì nhiệm vụ liên kết (ID: ${it.task_id}) không còn tồn tại trên hệ thống. Vui lòng tải lại và thực hiện lại.` });
+            return;
+          }
         }
       }
 
+      const assignedQty = it.assigned_quantity !== undefined && !isNaN(Number(it.assigned_quantity))
+        ? Number(it.assigned_quantity)
+        : (it.quantity !== undefined && !isNaN(Number(it.quantity)) ? Number(it.quantity) : 1);
+      const acceptedQty = it.accepted_quantity !== undefined && !isNaN(Number(it.accepted_quantity))
+        ? Number(it.accepted_quantity)
+        : (it.quantity !== undefined && !isNaN(Number(it.quantity)) ? Number(it.quantity) : 1);
+
       inputItems.push({
-        task_id: it.task_id ? Number(it.task_id) : null,
+        task_id: validatedTaskId,
         product_catalog_id: Number(it.product_catalog_id),
-        quantity: qty,
+        quantity: acceptedQty,
+        assigned_quantity: assignedQty,
+        accepted_quantity: acceptedQty,
         baseline_score: unitBaseline,
         coefficient: coeff,
         points: it.self_points !== undefined && !isNaN(Number(it.self_points)) ? Number(it.self_points) : undefined,
         remarks: it.remarks ? it.remarks.trim() : null,
-        delays,
-        reworks,
+        delays: it.delays !== undefined && !isNaN(Number(it.delays)) ? Number(it.delays) : delays,
+        reworks: it.reworks !== undefined && !isNaN(Number(it.reworks)) ? Number(it.reworks) : reworks,
+        is_exempted_delay: Boolean(it.is_exempted_delay),
+        is_exempted_rework: Boolean(it.is_exempted_rework),
       });
     }
 
@@ -233,7 +259,7 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     let calcResult;
     try {
       calcResult = calculateKPIScore({
-        strategy: 'WEIGHTED_DETAIL_SCORE',
+        strategy: 'ND335_OFFICIAL_ABC',
         criteria_politics: criteria_politics_self,
         criteria_expertise: criteria_expertise_self,
         criteria_innovation: criteria_innovation_self,
@@ -313,9 +339,17 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
     }
 
     for (const line of calcResult.taskLines) {
+      let finalTaskId: number | null = null;
+      if (line.task_id && Number(line.task_id) > 0) {
+        const checkTask = await trx('tasks').where('id', Number(line.task_id)).first();
+        if (checkTask) {
+          finalTaskId = checkTask.id;
+        }
+      }
+
       await trx('evaluation_details').insert({
         evaluation_id: evalId,
-        task_id: line.task_id || null,
+        task_id: finalTaskId,
         product_catalog_id: line.product_catalog_id,
         quantity: line.quantity,
         self_points: line.line_score,
@@ -345,7 +379,17 @@ export async function saveDraftEvaluation(req: AuthRequest, res: Response): Prom
   } catch (err: any) {
     await trx.rollback();
     console.error('Lỗi lưu nháp đánh giá:', err);
-    res.status(500).json({ message: err.message || 'Lỗi máy chủ khi lưu nháp phiếu đánh giá.' });
+    let errorMsg = 'Lỗi máy chủ khi lưu nháp phiếu đánh giá.';
+    if (err.message) {
+      if (err.message.includes('FOREIGN KEY constraint failed')) {
+        errorMsg = 'Lỗi ràng buộc dữ liệu: Nhiệm vụ hoặc sản phẩm danh mục không tồn tại trong hệ thống.';
+      } else if (err.message.includes('UNIQUE constraint failed')) {
+        errorMsg = `Phiếu tự đánh giá của cán bộ trong tháng ${req.body?.month || ''} đã tồn tại trong hệ thống.`;
+      } else {
+        errorMsg = err.message;
+      }
+    }
+    res.status(500).json({ message: errorMsg });
   }
 }
 
@@ -495,7 +539,7 @@ export async function reviewByManager(req: AuthRequest, res: Response): Promise<
     let calcResult;
     try {
       calcResult = calculateKPIScore({
-        strategy: 'WEIGHTED_DETAIL_SCORE',
+        strategy: 'ND335_OFFICIAL_ABC',
         criteria_politics: criteria_politics_mgr !== undefined ? criteria_politics_mgr : evaluation.criteria_politics_self,
         criteria_expertise: criteria_expertise_mgr !== undefined ? criteria_expertise_mgr : evaluation.criteria_expertise_self,
         criteria_innovation: criteria_innovation_mgr !== undefined ? criteria_innovation_mgr : evaluation.criteria_innovation_self,
@@ -652,7 +696,7 @@ export async function approveByLeadership(req: AuthRequest, res: Response): Prom
     let calcResult;
     try {
       calcResult = calculateKPIScore({
-        strategy: 'WEIGHTED_DETAIL_SCORE',
+        strategy: 'ND335_OFFICIAL_ABC',
         criteria_politics: criteria_politics_final !== undefined ? criteria_politics_final : (evaluation.criteria_politics_mgr ?? evaluation.criteria_politics_self),
         criteria_expertise: criteria_expertise_final !== undefined ? criteria_expertise_final : (evaluation.criteria_expertise_mgr ?? evaluation.criteria_expertise_self),
         criteria_innovation: criteria_innovation_final !== undefined ? criteria_innovation_final : (evaluation.criteria_innovation_mgr ?? evaluation.criteria_innovation_self),
@@ -1315,6 +1359,7 @@ export async function getEvaluationFormDetail(req: AuthRequest, res: Response): 
     }));
 
     const calcResult = calculateKPIScore({
+      strategy: 'ND335_OFFICIAL_ABC',
       criteria_politics: evaluation.criteria_politics_final ?? evaluation.criteria_politics_mgr ?? evaluation.criteria_politics_self ?? 10.0,
       criteria_expertise: evaluation.criteria_expertise_final ?? evaluation.criteria_expertise_mgr ?? evaluation.criteria_expertise_self ?? 10.0,
       criteria_innovation: evaluation.criteria_innovation_final ?? evaluation.criteria_innovation_mgr ?? evaluation.criteria_innovation_self ?? 10.0,
@@ -1329,6 +1374,9 @@ export async function getEvaluationFormDetail(req: AuthRequest, res: Response): 
       period: { month: parseInt(month, 10), year: parseInt(year, 10) },
       calculationStrategy: calcResult.calculationStrategy,
       calculationVersion: calcResult.calculationVersion,
+      legalBasisId: calcResult.legalBasisId,
+      articleReference: calcResult.articleReference,
+      strategyStatus: calcResult.strategyStatus,
       commonCriteriaScore: calcResult.commonCriteriaScore,
       taskScore: calcResult.taskScore,
       totalScore: calcResult.totalScore,
